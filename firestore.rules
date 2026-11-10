@@ -53,6 +53,28 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /appointments/{appointmentId} {
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'service', 'appointmentDate', 'appointmentTime', 'purpose', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.status == 'pending';
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+      allow delete: if isSuperAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'note', 'createdAt', 'createdBy'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow update, delete: if isSuperAdmin();
+    }
+
     match /measurements/{measurementId} {
       allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
