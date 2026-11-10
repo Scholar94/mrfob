@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowUpRight, Menu, X, Scissors, Sparkles, GraduationCap, Ruler,
-  ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play
+  ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play, UserRound
 } from "lucide-react";
+import Portal from "./Portal.jsx";
 
 const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
 const collections = [
@@ -21,19 +22,15 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [musicNotice, setMusicNotice] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
   async function install() {
-    if (!installPrompt) {
-      alert("Open your browser menu and choose Add to Home screen or Install app.");
-      return;
-    }
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
+    if (!installPrompt) { alert("Open your browser menu and choose Add to Home screen or Install app."); return; }
+    installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null);
   }
   const close = () => setMenu(false);
   return <div className="site-shell">
@@ -44,7 +41,9 @@ export default function App() {
       <nav className={menu ? "nav nav-open" : "nav"}>
         <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a>
         <a href="#institute" onClick={close}>Fashion Institute</a><a href="#story" onClick={close}>Our Story</a>
-        <a href="#contact" onClick={close}>Contact</a><a className="nav-cta" href={wa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
+        <a href="#contact" onClick={close}>Contact</a>
+        <button className="account-cta" onClick={() => {setPortalOpen(true);close();}}><UserRound size={15}/> My Account</button>
+        <a className="nav-cta" href={wa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
       </nav>
     </header>
     <main>
@@ -67,7 +66,7 @@ export default function App() {
       </section>
       <section className="collections section-pad" id="collections">
         <div className="section-heading"><div><p className="eyebrow"><i/> MADE FOR YOUR MOMENTS</p><h2>Find your <em>signature.</em></h2></div><p>Explore expressions of style, made with care and finished with intention.</p></div>
-        <div className="collection-grid">{collections.map((item, i) => <a className="collection-card" href={wa} target="_blank" rel="noreferrer" key={item.name}>
+        <div className="collection-grid">{collections.map(item => <a className="collection-card" href={wa} target="_blank" rel="noreferrer" key={item.name}>
           <img src={item.image} alt={item.name} loading="lazy"/><div className="collection-overlay"/><span className="collection-type">{item.type}</span>
           <div className="collection-info"><div><h3>{item.name}</h3><p>{item.tag}</p></div><span className="collection-arrow"><ArrowUpRight/></span></div>
         </a>)}</div>
@@ -98,5 +97,6 @@ export default function App() {
     <button className="install-button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
     <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><div className="music-modal" onClick={e => e.stopPropagation()}><button onClick={() => setMusicNotice(false)} aria-label="Close">×</button><h3>MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></div></div>}
+    {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
   </div>;
 }
