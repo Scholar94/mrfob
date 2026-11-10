@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
-import { auth, db, functions } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
 export default function Portal({ onClose }) {
@@ -17,7 +16,6 @@ export default function Portal({ onClose }) {
   const [error, setError] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [staffRole, setStaffRole] = useState("manager");
-  const [bootstrapSecret, setBootstrapSecret] = useState("");
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -36,23 +34,15 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  async function bootstrap(e) {
-    e.preventDefault(); setBusy(true); setError(""); setMessage("");
-    try {
-      const callable = httpsCallable(functions, "bootstrapSuperAdmin");
-      const result = await callable({ bootstrapSecret });
-      setMessage(result.data.message || "Super Admin setup completed. Sign out and sign in again.");
-      setBootstrapSecret("");
-    } catch (err) { setError(err.message || "Super Admin setup failed."); }
-    finally { setBusy(false); }
-  }
-
   async function addStaff(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
-      const callable = httpsCallable(functions, "setStaffRole");
-      await callable({ email: staffEmail.trim().toLowerCase(), staffRole });
-      setMessage("Staff permissions updated. The staff member should sign out and sign in again.");
+      const result = await getDocs(query(collection(db, "users"), where("email", "==", staffEmail.trim().toLowerCase())));
+      if (result.empty) throw new Error("No customer account was found for that email. Ask the staff member to register first.");
+      const target = result.docs[0].data();
+      if (target.uid === user.uid) throw new Error("You cannot change your own Super Admin access.");
+      await setDoc(doc(db, "roles", target.uid), { uid: target.uid, email: target.email, role: staffRole, updatedAt: serverTimestamp() });
+      setMessage("Staff permission saved. Ask the staff member to sign out and sign in again.");
       setStaffEmail("");
     } catch (err) { setError(err.message || "Could not update staff permissions."); }
     finally { setBusy(false); }
@@ -66,7 +56,6 @@ export default function Portal({ onClose }) {
     {loading ? <p>Checking your account…</p> : user ? <>
       <div className="portal-welcome"><span className="portal-avatar"><UserRound/></span><div><small>WELCOME</small><h2>{user.displayName || user.email}</h2><p>{user.email}</p></div></div>
       <div className="portal-role"><ShieldCheck/><span>{claims.superAdmin ? "Super Administrator" : claims.staffRole ? "Staff · " + claims.staffRole : "Customer account"}</span></div>
-      {!claims.superAdmin && !claims.staffRole && <form className="portal-form staff-form" onSubmit={bootstrap}><h3><KeyRound/> Initial Super Admin setup</h3><p className="portal-hint">Only the account owner with the one-time secret configured in Firebase can activate the first Super Admin account.</p><label>One-time setup secret<input type="password" required value={bootstrapSecret} onChange={e=>setBootstrapSecret(e.target.value)} autoComplete="off" placeholder="Enter the private setup secret"/></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Activate Super Admin account"}</button></form>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Available tools will follow your assigned role." : "Your customer account is ready. Customer order and measurement tools will be added in the next development steps."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
