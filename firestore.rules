@@ -35,9 +35,21 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow create: if signedIn() && (
+        (request.resource.data.customerUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['customerUid', 'item', 'description', 'createdAt'])
+        ) || (isSuperAdmin()
+          && request.resource.data.keys().hasOnly(['orderNumber', 'customerUid', 'customerName', 'customerEmail', 'item', 'description', 'amount', 'currency', 'dueDate', 'status', 'paymentStatus', 'createdAt', 'updatedAt', 'createdBy'])
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.amount is number
+          && request.resource.data.amount >= 0
+        )
+      );
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']);
+      allow update: if (isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt']))
+        || (hasStaffRole(['manager', 'sales', 'tailor'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
       allow delete: if isSuperAdmin();
     }
 
