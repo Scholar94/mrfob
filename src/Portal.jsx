@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
@@ -34,6 +34,29 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function resendVerification() {
+    if (!user) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await sendEmailVerification(user);
+      setMessage("A new verification email has been sent. Check your inbox and spam folder.");
+    } catch (err) { setError(err.message || "Could not send the verification email."); }
+    finally { setBusy(false); }
+  }
+
+  async function refreshVerification() {
+    if (!user) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await reload(user);
+      if (auth.currentUser?.emailVerified) {
+        setMessage("Your email is verified. Thank you.");
+        window.location.reload();
+      } else setMessage("Firebase has not detected verification yet. Open the link in your email, then try again.");
+    } catch (err) { setError(err.message || "Could not refresh verification status."); }
+    finally { setBusy(false); }
+  }
+
   async function addStaff(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
@@ -55,6 +78,8 @@ export default function Portal({ onClose }) {
     <div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div>
     {loading ? <p>Checking your account…</p> : user ? <>
       <div className="portal-welcome"><span className="portal-avatar"><UserRound/></span><div><small>WELCOME</small><h2>{user.displayName || user.email}</h2><p>{user.email}</p></div></div>
+      {!user.emailVerified && <div className="verification-panel"><strong>Email verification pending</strong><p>We sent a verification link to <b>{user.email}</b>. Check your inbox and spam folder. Open the link, then return here and refresh your status.</p><div className="verification-actions"><button type="button" onClick={resendVerification} disabled={busy}>{busy ? "Please wait…" : "Resend verification email"}</button><button type="button" onClick={refreshVerification} disabled={busy}>I've verified — refresh</button></div></div>}
+      {user.emailVerified && <div className="verification-confirmed">Email address verified</div>}
       <div className="portal-role"><ShieldCheck/><span>{claims.superAdmin ? "Super Administrator" : claims.staffRole ? "Staff · " + claims.staffRole : "Customer account"}</span></div>
       <h3 className="dashboard-title">{claims.superAdmin ? "Administration overview" : claims.staffRole ? "Staff workspace" : "My customer dashboard"}</h3>
       <div className="dashboard-grid">
