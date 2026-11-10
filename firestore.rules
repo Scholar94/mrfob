@@ -23,10 +23,14 @@ service cloud.firestore {
         && request.resource.data.accountType == 'customer'
         && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'accountType', 'createdAt', 'updatedAt']);
       allow read: if signedIn() && (request.auth.uid == userId || isSuperAdmin() || hasStaffRole(['manager', 'sales']));
-      allow update: if signedIn() && request.auth.uid == userId
+      allow update: if (signedIn() && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.accountType == resource.data.accountType
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phone', 'address', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phone', 'address', 'updatedAt']))
+        || (isSuperAdmin() && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.accountType == resource.data.accountType
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phone', 'address', 'updatedAt']));
       allow delete: if isSuperAdmin();
     }
 
