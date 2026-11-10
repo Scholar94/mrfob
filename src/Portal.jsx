@@ -35,7 +35,13 @@ export default function Portal({ onClose }) {
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", stock: "0", imageUrl: "" });
+  const [sales, setSales] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [saleCart, setSaleCart] = useState([]);
+  const [saleProductId, setSaleProductId] = useState("");
+  const [saleQuantity, setSaleQuantity] = useState("1");
+  const [saleForm, setSaleForm] = useState({ customerName: "", paymentMethod: "Cash", amountPaid: "" });
+  const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
   const [stockAdjustments, setStockAdjustments] = useState({});
 
   async function submit(e) {
@@ -218,14 +224,14 @@ export default function Portal({ onClose }) {
       const price = Number(productForm.price);
       const stock = Number(productForm.stock);
       if (!name || !sku) throw new Error("Enter both a product name and SKU.");
-      if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");
+      const costPrice = Number(productForm.costPrice || 0);\n      if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");\n      if (!Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter a valid product cost price.");
       if (!Number.isInteger(stock) || stock < 0) throw new Error("Opening stock must be a whole number of zero or more.");
       await addDoc(collection(db, "products"), {
         name, sku, category: productForm.category, description: productForm.description.trim(),
-        price, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(), active: true,
+        price, costPrice, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(), active: true,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid
       });
-      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", stock: "0", imageUrl: "" });
+      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
       setMessage("Product added to inventory successfully.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not add product."); }
@@ -257,6 +263,91 @@ export default function Portal({ onClose }) {
       setMessage(direction === "in" ? "Stock added successfully." : "Stock issued successfully.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not update stock."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadSales() {
+    if (!claims.superAdmin) return;
+    setSalesLoading(true); setError("");
+    try {
+      const snapshot = await getDocs(collection(db, "sales"));
+      setSales(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load sales history."); }
+    finally { setSalesLoading(false); }
+  }
+
+  function addSaleItem() {
+    const product = products.find(item => item.id === saleProductId);
+    const quantity = Number(saleQuantity);
+    if (!product) { setError("Select a product to add to the sale."); return; }
+    if (!Number.isInteger(quantity) || quantity < 1) { setError("Enter a whole-number quantity greater than zero."); return; }
+    const existing = saleCart.find(item => item.productId === product.id);
+    const nextQuantity = quantity + (existing?.quantity || 0);
+    if (nextQuantity > Number(product.stock || 0)) { setError("The requested quantity exceeds the available stock."); return; }
+    setError("");
+    setSaleCart(current => existing
+      ? current.map(item => item.productId === product.id ? { ...item, quantity: nextQuantity } : item)
+      : [...current, { productId: product.id, name: product.name, sku: product.sku, price: Number(product.price || 0), quantity }]);
+    setSaleProductId(""); setSaleQuantity("1");
+  }
+
+  async function completeSale(e) {
+    e.preventDefault();
+    if (!claims.superAdmin || !saleCart.length) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const amountPaid = Number(saleForm.amountPaid);
+      if (!Number.isFinite(amountPaid) || amountPaid < 0) throw new Error("Enter a valid amount received (zero or more).");
+      const saleRef = doc(collection(db, "sales"));
+      const receiptNumber = "MFS-" + Date.now().toString().slice(-9);
+      await runTransaction(db, async transaction => {
+        const productRefs = saleCart.map(item => doc(db, "products", item.productId));
+        const snapshots = [];
+        for (const productRef of productRefs) snapshots.push(await transaction.get(productRef));
+        let subtotal = 0;
+        let totalCost = 0;
+        const saleItems = [];
+        snapshots.forEach((snapshot, index) => {
+          if (!snapshot.exists()) throw new Error("A product in this cart no longer exists.");
+          const product = snapshot.data();
+          const cartItem = saleCart[index];
+          const quantity = cartItem.quantity;
+          const available = Number(product.stock || 0);
+          if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) throw new Error("Insufficient stock for " + (product.name || cartItem.name) + ". Refresh inventory and try again.");
+          const price = Number(product.price || 0);
+          const costPrice = Number(product.costPrice || 0);
+          subtotal += price * quantity;
+          totalCost += costPrice * quantity;
+          saleItems.push({ productId: cartItem.productId, name: product.name || cartItem.name, sku: product.sku || cartItem.sku, quantity, unitPrice: price, unitCost: costPrice, lineTotal: price * quantity });
+        });
+        const total = subtotal;
+        if (amountPaid > total) throw new Error("Amount received cannot exceed the sale total.");
+        saleItems.forEach((item, index) => {
+          const productRef = productRefs[index];
+          const currentStock = Number(snapshots[index].data().stock || 0);
+          const nextStock = currentStock - item.quantity;
+          transaction.update(productRef, { stock: nextStock, updatedAt: serverTimestamp() });
+          const movementRef = doc(collection(db, "inventoryMovements"));
+          transaction.set(movementRef, {
+            productId: item.productId, productName: item.name, sku: item.sku,
+            type: "out", quantity: item.quantity, previousStock: currentStock,
+            newStock: nextStock, createdAt: serverTimestamp(), createdBy: user.uid,
+            reason: "sale", receiptNumber
+          });
+        });
+        transaction.set(saleRef, {
+          receiptNumber, customerName: saleForm.customerName.trim() || "Walk-in customer",
+          items: saleItems, subtotal, total, totalCost, grossProfit: total - totalCost,
+          amountPaid, balance: total - amountPaid,
+          paymentStatus: amountPaid >= total ? "paid" : amountPaid > 0 ? "part_paid" : "unpaid",
+          paymentMethod: saleForm.paymentMethod, currency: "NGN",
+          createdAt: serverTimestamp(), createdBy: user.uid
+        });
+      });
+      setSaleCart([]); setSaleForm({ customerName: "", paymentMethod: "Cash", amountPaid: "" });
+      setMessage("Sale completed. Receipt " + receiptNumber + " has been saved and inventory updated.");
+      await Promise.all([loadProducts(), loadSales()]);
+    } catch (err) { setError(err.message || "Could not complete the sale."); }
     finally { setBusy(false); }
   }
 
@@ -329,7 +420,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
@@ -395,6 +486,27 @@ export default function Portal({ onClose }) {
         {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
+      {claims.superAdmin && <section className="pos-management">
+        <div className="customer-management-heading"><div><h3>Sales & Point of Sale</h3><p>Create sales, issue receipts and update stock automatically</p></div><button type="button" onClick={loadSales} disabled={salesLoading}>{salesLoading ? "Loading…" : "Refresh sales"}</button></div>
+        <form className="portal-form pos-form" onSubmit={completeSale}>
+          <h4>New sale</h4>
+          <label>Customer name (optional)<input value={saleForm.customerName} onChange={e=>setSaleForm({...saleForm,customerName:e.target.value})} placeholder="Leave blank for walk-in customer"/></label>
+          <div className="pos-add-row"><label>Product<select value={saleProductId} onChange={e=>setSaleProductId(e.target.value)}><option value="">Select product</option>{products.filter(product=>product.active !== false && Number(product.stock || 0) > 0).map(product=><option key={product.id} value={product.id}>{product.name} — {product.sku} · {Number(product.stock || 0)} available</option>)}</select></label><label>Qty<input type="number" min="1" step="1" value={saleQuantity} onChange={e=>setSaleQuantity(e.target.value)}/></label><button type="button" onClick={addSaleItem}>Add item</button></div>
+          {saleCart.length ? <div className="pos-cart">{saleCart.map(item=><div className="pos-cart-row" key={item.productId}><div><strong>{item.name}</strong><span>{item.sku} · {item.quantity} × ₦{item.price.toLocaleString("en-NG")}</span></div><b>₦{(item.quantity*item.price).toLocaleString("en-NG")}</b><button type="button" onClick={()=>setSaleCart(items=>items.filter(row=>row.productId!==item.productId))}>Remove</button></div>)}</div> : <p className="staff-empty">No products added to this sale yet.</p>}
+          <div className="pos-total"><span>Sale total</span><strong>₦{saleCart.reduce((sum,item)=>sum+item.quantity*item.price,0).toLocaleString("en-NG")}</strong></div>
+          <label>Payment method<select value={saleForm.paymentMethod} onChange={e=>setSaleForm({...saleForm,paymentMethod:e.target.value})}><option>Cash</option><option>Bank transfer</option><option>POS</option><option>Card</option><option>Other</option></select></label>
+          <label>Amount received (₦)<input type="number" min="0" step="0.01" value={saleForm.amountPaid} onChange={e=>setSaleForm({...saleForm,amountPaid:e.target.value})} placeholder="Enter amount paid"/></label>
+          <button className="portal-submit" disabled={busy || !saleCart.length}>{busy ? "Processing sale…" : "Complete sale & generate receipt"}</button>
+        </form>
+        <div className="pos-report-grid">
+          <article><span>Today's sales</span><strong>₦{sales.filter(sale=>sale.createdAt?.toDate && sale.createdAt.toDate().toDateString()===new Date().toDateString()).reduce((sum,sale)=>sum+Number(sale.total||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>This week's sales</span><strong>₦{sales.filter(sale=>sale.createdAt?.toDate && (Date.now()-sale.createdAt.toDate().getTime())<=7*86400000).reduce((sum,sale)=>sum+Number(sale.total||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>This month's sales</span><strong>₦{sales.filter(sale=>sale.createdAt?.toDate && sale.createdAt.toDate().getMonth()===new Date().getMonth() && sale.createdAt.toDate().getFullYear()===new Date().getFullYear()).reduce((sum,sale)=>sum+Number(sale.total||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>Recorded gross profit</span><strong>₦{sales.reduce((sum,sale)=>sum+Number(sale.grossProfit||0),0).toLocaleString("en-NG")}</strong></article>
+        </div>
+        <h4 className="pos-history-title">Sales history</h4>
+        {salesLoading ? <p className="staff-empty">Loading sales…</p> : sales.length ? <div className="pos-history">{sales.map(sale=><article className="pos-sale-card" key={sale.id}><div><strong>{sale.receiptNumber}</strong><span>{sale.customerName} · {sale.paymentMethod}</span></div><b>₦{Number(sale.total||0).toLocaleString("en-NG")}</b><small>{sale.items?.map(item=>item.name+" × "+item.quantity).join(", ")} · {sale.paymentStatus} · Profit ₦{Number(sale.grossProfit||0).toLocaleString("en-NG")}</small></article>)}</div> : <p className="staff-empty">No sales recorded yet.</p>}
+      </section>}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
         <form className="portal-form inventory-form" onSubmit={createProduct}>
@@ -403,7 +515,7 @@ export default function Portal({ onClose }) {
           <label>SKU / product code<input required value={productForm.sku} onChange={e=>setProductForm({...productForm,sku:e.target.value})} placeholder="e.g. MFO-001"/></label>
           <label>Category<select value={productForm.category} onChange={e=>setProductForm({...productForm,category:e.target.value})}><option>Custom clothing</option><option>Ready-to-wear</option><option>Fabrics</option><option>Accessories</option><option>Footwear</option><option>Other</option></select></label>
           <label>Description<textarea value={productForm.description} onChange={e=>setProductForm({...productForm,description:e.target.value})} placeholder="Product details, material, colour, sizes…"/></label>
-          <label>Selling price (₦)<input type="number" min="0" step="0.01" required value={productForm.price} onChange={e=>setProductForm({...productForm,price:e.target.value})} placeholder="0.00"/></label>
+          <label>Selling price (₦)<input type="number" min="0" step="0.01" required value={productForm.price} onChange={e=>setProductForm({...productForm,price:e.target.value})} placeholder="0.00"/></label>\n          <label>Product cost price (₦)<input type="number" min="0" step="0.01" required value={productForm.costPrice} onChange={e=>setProductForm({...productForm,costPrice:e.target.value})} placeholder="What the business paid to make or buy it"/></label>
           <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>
           <label>Product image URL (optional)<input type="url" value={productForm.imageUrl} onChange={e=>setProductForm({...productForm,imageUrl:e.target.value})} placeholder="https://…"/></label>
           <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Add product"}</button>
