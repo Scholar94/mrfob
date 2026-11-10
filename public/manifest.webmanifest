@@ -1,0 +1,11 @@
+{
+  "name": "MR FOP FASHIONS",
+  "short_name": "MR FOP",
+  "description": "Premium bespoke fashion and fashion institute",
+  "start_url": "/mrfob/",
+  "scope": "/mrfob/",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#251018",
+  "icons": [{ "src": "/mrfob/brand-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
