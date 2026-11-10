@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -16,6 +16,8 @@ export default function Portal({ onClose }) {
   const [error, setError] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [staffRole, setStaffRole] = useState("manager");
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -57,6 +59,28 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function loadStaff() {
+    if (!claims.superAdmin) return;
+    setStaffLoading(true); setError("");
+    try {
+      const snapshot = await getDocs(collection(db, "roles"));
+      setStaffMembers(snapshot.docs.map(item => item.data()).filter(item => item.uid && item.role && item.role !== "customer" && item.role !== "superAdmin"));
+    } catch (err) { setError(err.message || "Could not load staff accounts."); }
+    finally { setStaffLoading(false); }
+  }
+
+  async function removeStaff(uid) {
+    if (!claims.superAdmin || !uid || uid === user.uid) return;
+    if (!window.confirm("Remove this staff member’s access? Their customer account will remain active.")) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await deleteDoc(doc(db, "roles", uid));
+      setStaffMembers(items => items.filter(item => item.uid !== uid));
+      setMessage("Staff access removed. Their account remains a customer account.");
+    } catch (err) { setError(err.message || "Could not remove staff access."); }
+    finally { setBusy(false); }
+  }
+
   async function addStaff(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
@@ -70,6 +94,8 @@ export default function Portal({ onClose }) {
     } catch (err) { setError(err.message || "Could not update staff permissions."); }
     finally { setBusy(false); }
   }
+
+  React.useEffect(() => { if (claims.superAdmin) loadStaff(); }, [claims.superAdmin]);
 
   if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
@@ -85,6 +111,7 @@ export default function Portal({ onClose }) {
       <div className="dashboard-grid">
         {(claims.superAdmin ? [["Customers","Customer accounts"],["Orders","Order management"],["Measurements","Customer measurement records"],["Institute","Training enquiries"]] : claims.staffRole ? [["My work","Tasks assigned to your role"],["Orders","Role-permitted orders"],["Updates","Work status and updates"]] : [["My profile","Your contact information"],["My orders","Order history and status"],["My measurements","Saved fitting details"],["Training","Fashion Institute enquiries"]]).map(([title,desc])=><article className="dashboard-tile" key={title}><strong>{title}</strong><span>{desc}</span><small>Available in the next build step</small></article>)}
       </div>
+      {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button></article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Available tools will follow your assigned role." : "Your customer account is ready. Customer order and measurement tools will be added in the next development steps."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
