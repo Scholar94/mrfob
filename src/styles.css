@@ -40,3 +40,22 @@
 .customer-management,.customer-detail{margin-top:22px;border-top:1px solid #ddd1c1;padding-top:18px}.customer-management-heading,.customer-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.customer-management-heading h3,.customer-detail-heading h3{font:20px 'Playfair Display';margin:0}.customer-management-heading p{font-size:10px;color:#75696a;margin:5px 0 0}.customer-management-heading>button,.customer-detail-heading>button{border:1px solid #bca77e;background:#fffaf0;color:#4d3924;padding:9px 11px;font-size:10px;font-weight:700;cursor:pointer}.customer-search{width:100%;margin:14px 0;padding:12px;border:1px solid #d9cebf;background:#fff;font:12px 'DM Sans'}.customer-list{display:grid;gap:8px}.customer-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;background:#eee7dc}.customer-row>div{display:grid;gap:4px;min-width:0}.customer-row strong{font-size:11px}.customer-row span,.customer-row small{font-size:9px;color:#75696a;overflow-wrap:anywhere}.customer-row>button{flex:none;border:1px solid #bca77e;background:#fffaf0;color:#4d3924;padding:9px;font-size:9px;font-weight:700;cursor:pointer}.customer-detail h4{font:17px 'Playfair Display';margin:22px 0 10px}.customer-detail .portal-form textarea{width:100%;min-height:75px;padding:12px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:12px 'DM Sans'}.customer-order{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;background:#eee7dc;margin-top:7px;font-size:10px}.customer-order span{color:#87673d;text-transform:capitalize}.customer-order small{color:#75696a}
 
 .order-management{margin-top:22px;border-top:1px solid #ddd1c1;padding-top:18px}.order-create-form{background:#f0e9df;padding:15px;margin:14px 0}.order-create-form h4{font:18px 'Playfair Display';margin:0}.order-create-form textarea{width:100%;min-height:68px;padding:12px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:12px 'DM Sans'}.order-list{display:grid;gap:10px;margin-top:14px}.order-card{background:#eee7dc;padding:14px}.order-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.order-card-top>div{display:grid;gap:5px}.order-card-top strong{font-size:11px}.order-card-top span{font-size:10px;color:#75696a}.order-card-top>b{font-size:12px;color:#795a30;white-space:nowrap}.order-card>p{font-size:10px;line-height:1.6;color:#5e5050}.order-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:9px;color:#75696a;margin-top:10px;text-transform:capitalize}.order-controls{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.order-controls label{display:grid;gap:6px;font-size:9px;font-weight:700;color:#5a4b4d}.order-controls select{width:100%;padding:10px 8px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:10px 'DM Sans'}@media(max-width:420px){.order-controls{grid-template-columns:1fr}.order-card-top{flex-direction:column}}
+
+
+/* Appointment and payment management */
+.appointment-management,.payment-management{margin-top:22px;border-top:1px solid #ddd1c1;padding-top:18px}
+.appointment-form,.payment-form{background:#f0e9df;padding:15px;margin:14px 0}
+.appointment-form h4,.payment-form h4{font:18px 'Playfair Display';margin:0}
+.appointment-form textarea,.payment-form textarea{width:100%;min-height:65px;padding:12px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:12px 'DM Sans'}
+.appointment-form input,.appointment-form select,.payment-form input,.payment-form select{width:100%;padding:12px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:12px 'DM Sans'}
+.appointment-list,.payment-list{display:grid;gap:9px;margin-top:13px}
+.appointment-card,.payment-card{background:#eee7dc;padding:13px;display:grid;gap:8px}
+.appointment-card>div,.payment-card>div{display:grid;gap:4px}
+.appointment-card strong,.payment-card strong{font-size:11px;color:#4c3034}
+.appointment-card span,.payment-card span,.appointment-card p,.payment-card small{font-size:10px;color:#75696a;line-height:1.5;margin:0}
+.appointment-status{display:grid;gap:6px;font-size:9px;font-weight:700;color:#5a4b4d}
+.appointment-status select{padding:9px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:10px 'DM Sans'}
+.appointment-status-text{font-size:10px;color:#87673d;text-transform:capitalize}
+.payment-card{grid-template-columns:1fr auto;align-items:center}
+.payment-card>b{font-size:12px;color:#795a30}
+.payment-card>small{grid-column:1/-1}
