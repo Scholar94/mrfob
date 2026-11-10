@@ -26,3 +26,11 @@
 @media(max-width:650px){.account-cta{justify-content:center;padding:13px}.portal-card{padding:24px 20px}.portal-card h2{font-size:26px}}
 
 .dashboard-title{font:22px 'Playfair Display';margin:24px 0 13px}.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.dashboard-tile{display:flex;flex-direction:column;gap:6px;background:#eee7dc;padding:13px;min-height:100px}.dashboard-tile strong{font:16px 'Playfair Display';color:#4c3034}.dashboard-tile span{font-size:10px;color:#75696a;line-height:1.5}.dashboard-tile small{font-size:8px;color:#98764b;margin-top:auto}@media(max-width:400px){.dashboard-grid{grid-template-columns:1fr}}
+
+.verification-panel{margin:18px 0;padding:15px;border:1px solid #d7b978;background:#f6eedc;color:#5c4525}
+.verification-panel strong{font:18px 'Playfair Display';display:block}
+.verification-panel p{font-size:11px;line-height:1.7;color:#705f49}
+.verification-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.verification-actions button{border:1px solid #bca77e;background:#fffaf0;color:#4d3924;padding:10px;font-size:10px;font-weight:700;cursor:pointer}
+.verification-actions button:disabled{opacity:.6}
+.verification-confirmed{margin:18px 0;padding:12px;background:#e5f1e7;color:#28613a;font-size:11px;font-weight:700}
