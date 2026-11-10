@@ -224,7 +224,9 @@ export default function Portal({ onClose }) {
       const price = Number(productForm.price);
       const stock = Number(productForm.stock);
       if (!name || !sku) throw new Error("Enter both a product name and SKU.");
-      const costPrice = Number(productForm.costPrice || 0);\n      if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");\n      if (!Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter a valid product cost price.");
+      const costPrice = Number(productForm.costPrice || 0);
+      if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");
+      if (!Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter a valid product cost price.");
       if (!Number.isInteger(stock) || stock < 0) throw new Error("Opening stock must be a whole number of zero or more.");
       await addDoc(collection(db, "products"), {
         name, sku, category: productForm.category, description: productForm.description.trim(),
