@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
-import { collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -24,6 +24,10 @@ export default function Portal({ onClose }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [customerForm, setCustomerForm] = useState({ displayName: "", phone: "", address: "" });
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
+  const [myOrders, setMyOrders] = useState([]);
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -62,6 +66,54 @@ export default function Portal({ onClose }) {
         window.location.reload();
       } else setMessage("Firebase has not detected verification yet. Open the link in your email, then try again.");
     } catch (err) { setError(err.message || "Could not refresh verification status."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadOrders() {
+    if (!claims.superAdmin && !claims.staffRole) return;
+    setOrdersLoading(true); setError("");
+    try {
+      const snapshot = await getDocs(collection(db, "orders"));
+      setOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load orders."); }
+    finally { setOrdersLoading(false); }
+  }
+
+  async function loadMyOrders() {
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    try {
+      const snapshot = await getDocs(query(collection(db, "orders"), where("customerUid", "==", user.uid)));
+      setMyOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load your orders."); }
+  }
+
+  async function createOrder(e) {
+    e.preventDefault();
+    if (!claims.superAdmin || !orderForm.customerUid) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const customer = customers.find(item => item.uid === orderForm.customerUid);
+      if (!customer) throw new Error("Select a registered customer.");
+      const amount = Number(orderForm.amount);
+      if (!Number.isFinite(amount) || amount < 0) throw new Error("Enter a valid order amount.");
+      const orderNumber = "MFO-" + Date.now().toString().slice(-9);
+      const payload = { orderNumber, customerUid: customer.uid, customerName: customer.displayName || "", customerEmail: customer.email || "", item: orderForm.item.trim(), description: orderForm.description.trim(), amount, currency: "NGN", dueDate: orderForm.dueDate || "", status: "received", paymentStatus: "unpaid", createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid };
+      await addDoc(collection(db, "orders"), payload);
+      setOrderForm({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
+      setMessage("Order " + orderNumber + " created successfully.");
+      await loadOrders();
+    } catch (err) { setError(err.message || "Could not create the order."); }
+    finally { setBusy(false); }
+  }
+
+  async function updateOrder(id, changes) {
+    if (!claims.superAdmin || !id) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
+      setOrders(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
+      setMessage("Order updated successfully.");
+    } catch (err) { setError(err.message || "Could not update the order."); }
     finally { setBusy(false); }
   }
 
@@ -134,7 +186,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); } }, [claims.superAdmin]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
@@ -151,6 +203,25 @@ export default function Portal({ onClose }) {
       <div className="dashboard-grid">
         {(claims.superAdmin ? [["Customers","Customer accounts"],["Orders","Order management"],["Measurements","Customer measurement records"],["Institute","Training enquiries"]] : claims.staffRole ? [["My work","Tasks assigned to your role"],["Orders","Role-permitted orders"],["Updates","Work status and updates"]] : [["My profile","Your contact information"],["My orders","Order history and status"],["My measurements","Saved fitting details"],["Training","Fashion Institute enquiries"]]).map(([title,desc])=><article className="dashboard-tile" key={title}><strong>{title}</strong><span>{desc}</span><small>Available in the next build step</small></article>)}
       </div>
+      {(claims.superAdmin || claims.staffRole) && <section className="order-management">
+        <div className="customer-management-heading"><div><h3>Order Management</h3><p>Create orders and monitor production and payment</p></div><button type="button" onClick={loadOrders} disabled={ordersLoading}>{ordersLoading ? "Loading…" : "Refresh orders"}</button></div>
+        {claims.superAdmin && <form className="portal-form order-create-form" onSubmit={createOrder}>
+          <h4>Create a new order</h4>
+          <label>Customer<select required value={orderForm.customerUid} onChange={e=>setOrderForm({...orderForm,customerUid:e.target.value})}><option value="">Select a registered customer</option>{customers.map(customer=><option key={customer.uid} value={customer.uid}>{customer.displayName || customer.email} — {customer.email}</option>)}</select></label>
+          <label>Item / service<input required value={orderForm.item} onChange={e=>setOrderForm({...orderForm,item:e.target.value})} placeholder="e.g. Custom dress, suit"/></label>
+          <label>Order description<textarea value={orderForm.description} onChange={e=>setOrderForm({...orderForm,description:e.target.value})} placeholder="Style, fabric, colour, instructions…"/></label>
+          <label>Order amount (₦)<input type="number" min="0" step="0.01" required value={orderForm.amount} onChange={e=>setOrderForm({...orderForm,amount:e.target.value})} placeholder="0.00"/></label>
+          <label>Expected delivery date<input type="date" value={orderForm.dueDate} onChange={e=>setOrderForm({...orderForm,dueDate:e.target.value})}/></label>
+          <button className="portal-submit" disabled={busy || customers.length===0}>{busy ? "Saving…" : "Create order"}</button>
+        </form>}
+        {ordersLoading ? <p className="staff-empty">Loading orders…</p> : orders.length ? <div className="order-list">{orders.map(order=><article className="order-card" key={order.id}>
+          <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
+          <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
+          <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>
+          {claims.superAdmin ? <div className="order-controls"><label>Production status<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}><option value="received">Received</option><option value="confirmed">Confirmed</option><option value="in_production">In production</option><option value="ready">Ready for collection</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span></div>}
+        </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Management</h3><p>View and update registered customer profiles</p></div><button type="button" onClick={loadCustomers} disabled={customerLoading}>{customerLoading ? "Loading…" : "Refresh customers"}</button></div>
         <input className="customer-search" value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Search by name, email or phone"/>
