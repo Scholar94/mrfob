@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -33,6 +33,10 @@ export default function Portal({ onClose }) {
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
   const [payments, setPayments] = useState([]);
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", stock: "0", imageUrl: "" });
+  const [stockAdjustments, setStockAdjustments] = useState({});
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -194,6 +198,68 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function loadProducts() {
+    if (!user) return;
+    setProductsLoading(true); setError("");
+    try {
+      const snapshot = await getDocs(collection(db, "products"));
+      setProducts(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.name || "").localeCompare(b.name || "")));
+    } catch (err) { setError(err.message || "Could not load products."); }
+    finally { setProductsLoading(false); }
+  }
+
+  async function createProduct(e) {
+    e.preventDefault();
+    if (!claims.superAdmin) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const name = productForm.name.trim();
+      const sku = productForm.sku.trim();
+      const price = Number(productForm.price);
+      const stock = Number(productForm.stock);
+      if (!name || !sku) throw new Error("Enter both a product name and SKU.");
+      if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");
+      if (!Number.isInteger(stock) || stock < 0) throw new Error("Opening stock must be a whole number of zero or more.");
+      await addDoc(collection(db, "products"), {
+        name, sku, category: productForm.category, description: productForm.description.trim(),
+        price, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(), active: true,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid
+      });
+      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", stock: "0", imageUrl: "" });
+      setMessage("Product added to inventory successfully.");
+      await loadProducts();
+    } catch (err) { setError(err.message || "Could not add product."); }
+    finally { setBusy(false); }
+  }
+
+  async function adjustStock(product, direction) {
+    if (!claims.superAdmin || !product?.id) return;
+    const quantity = Number(stockAdjustments[product.id] || 0);
+    if (!Number.isInteger(quantity) || quantity <= 0) { setError("Enter a whole-number quantity greater than zero."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const productRef = doc(db, "products", product.id);
+      const movementRef = doc(collection(db, "inventoryMovements"));
+      await runTransaction(db, async transaction => {
+        const snapshot = await transaction.get(productRef);
+        if (!snapshot.exists()) throw new Error("This product no longer exists.");
+        const currentStock = Number(snapshot.data().stock || 0);
+        const nextStock = currentStock + (direction === "in" ? quantity : -quantity);
+        if (nextStock < 0) throw new Error("There is not enough stock to record this stock-out.");
+        transaction.update(productRef, { stock: nextStock, updatedAt: serverTimestamp() });
+        transaction.set(movementRef, {
+          productId: product.id, productName: product.name, sku: product.sku,
+          type: direction, quantity, previousStock: currentStock, newStock: nextStock,
+          createdAt: serverTimestamp(), createdBy: user.uid
+        });
+      });
+      setStockAdjustments(current => ({ ...current, [product.id]: "" }));
+      setMessage(direction === "in" ? "Stock added successfully." : "Stock issued successfully.");
+      await loadProducts();
+    } catch (err) { setError(err.message || "Could not update stock."); }
+    finally { setBusy(false); }
+  }
+
   async function loadCustomers() {
     if (!claims.superAdmin) return;
     setCustomerLoading(true); setError("");
@@ -263,7 +329,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
@@ -329,6 +395,32 @@ export default function Portal({ onClose }) {
         {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
+      {claims.superAdmin && <section className="inventory-management">
+        <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
+        <form className="portal-form inventory-form" onSubmit={createProduct}>
+          <h4>Add a product</h4>
+          <label>Product name<input required value={productForm.name} onChange={e=>setProductForm({...productForm,name:e.target.value})} placeholder="e.g. Senator fabric set"/></label>
+          <label>SKU / product code<input required value={productForm.sku} onChange={e=>setProductForm({...productForm,sku:e.target.value})} placeholder="e.g. MFO-001"/></label>
+          <label>Category<select value={productForm.category} onChange={e=>setProductForm({...productForm,category:e.target.value})}><option>Custom clothing</option><option>Ready-to-wear</option><option>Fabrics</option><option>Accessories</option><option>Footwear</option><option>Other</option></select></label>
+          <label>Description<textarea value={productForm.description} onChange={e=>setProductForm({...productForm,description:e.target.value})} placeholder="Product details, material, colour, sizes…"/></label>
+          <label>Selling price (₦)<input type="number" min="0" step="0.01" required value={productForm.price} onChange={e=>setProductForm({...productForm,price:e.target.value})} placeholder="0.00"/></label>
+          <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>
+          <label>Product image URL (optional)<input type="url" value={productForm.imageUrl} onChange={e=>setProductForm({...productForm,imageUrl:e.target.value})} placeholder="https://…"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Add product"}</button>
+        </form>
+        {productsLoading ? <p className="staff-empty">Loading inventory…</p> : products.length ? <div className="inventory-list">{products.map(product=><article className="inventory-card" key={product.id}>
+          {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.sku} · {product.category}</span><p>{product.description || "No description added."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) <= 5 ? "stock-low" : "stock-ok"}>Stock available: {Number(product.stock || 0)}</span></div>
+          <div className="stock-adjust"><input type="number" min="1" step="1" value={stockAdjustments[product.id] || ""} onChange={e=>setStockAdjustments(current=>({...current,[product.id]:e.target.value}))} placeholder="Quantity"/><button type="button" disabled={busy} onClick={()=>adjustStock(product,"in")}>Stock in</button><button type="button" disabled={busy} onClick={()=>adjustStock(product,"out")}>Stock out</button></div>
+        </article>)}</div> : <p className="staff-empty">No products added yet. Use the form above to create your first product.</p>}
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="inventory-management">
+        <div className="customer-management-heading"><div><h3>Product Catalogue</h3><p>Browse products and current availability</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh catalogue"}</button></div>
+        {productsLoading ? <p className="staff-empty">Loading products…</p> : products.filter(product=>product.active !== false).length ? <div className="inventory-list">{products.filter(product=>product.active !== false).map(product=><article className="inventory-card customer-product-card" key={product.id}>
+          {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span></div>
+        </article>)}</div> : <p className="staff-empty">Our product catalogue is being updated. Please check again soon.</p>}
+      </section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Management</h3><p>View and update registered customer profiles</p></div><button type="button" onClick={loadCustomers} disabled={customerLoading}>{customerLoading ? "Loading…" : "Refresh customers"}</button></div>
         <input className="customer-search" value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Search by name, email or phone"/>
