@@ -145,6 +145,7 @@ export default function Portal({ onClose }) {
       <div className="portal-welcome"><span className="portal-avatar"><UserRound/></span><div><small>WELCOME</small><h2>{user.displayName || user.email}</h2><p>{user.email}</p></div></div>
       {!user.emailVerified && <div className="verification-panel"><strong>Email verification pending</strong><p>We sent a verification link to <b>{user.email}</b>. Check your inbox and spam folder. Open the link, then return here and refresh your status.</p><div className="verification-actions"><button type="button" onClick={resendVerification} disabled={busy}>{busy ? "Please wait…" : "Resend verification email"}</button><button type="button" onClick={refreshVerification} disabled={busy}>I've verified — refresh</button></div></div>}
       {user.emailVerified && <div className="verification-confirmed">Email address verified</div>}
+      {error && <p className="portal-error" role="alert">{error}</p>}{message && <p className="portal-success" role="status">{message}</p>}
       <div className="portal-role"><ShieldCheck/><span>{claims.superAdmin ? "Super Administrator" : claims.staffRole ? "Staff · " + claims.staffRole : "Customer account"}</span></div>
       <h3 className="dashboard-title">{claims.superAdmin ? "Administration overview" : claims.staffRole ? "Staff workspace" : "My customer dashboard"}</h3>
       <div className="dashboard-grid">
