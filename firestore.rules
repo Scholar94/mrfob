@@ -2,8 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function rolePath(uid) { return /databases/$(database)/documents/roles/$(uid); }
     function roleOf(uid) {
-      return get(/databases/$(database)/documents/roles/$(uid)).data.role;
+      return exists(rolePath(uid)) ? get(rolePath(uid)).data.role : 'customer';
     }
     function isSuperAdmin() { return signedIn() && roleOf(request.auth.uid) == 'superAdmin'; }
     function isStaff() {
