@@ -28,6 +28,11 @@ export default function Portal({ onClose }) {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
   const [myOrders, setMyOrders] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
+  const [payments, setPayments] = useState([]);
+  const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -117,6 +122,78 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function loadAppointments() {
+    if (!user) return;
+    setAppointmentsLoading(true); setError("");
+    try {
+      const source = claims.superAdmin || claims.staffRole ? collection(db, "appointments") : query(collection(db, "appointments"), where("customerUid", "==", user.uid));
+      const snapshot = await getDocs(source);
+      setAppointments(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.appointmentDate || "").localeCompare(b.appointmentDate || "")));
+    } catch (err) { setError(err.message || "Could not load appointments."); }
+    finally { setAppointmentsLoading(false); }
+  }
+
+  async function bookAppointment(e) {
+    e.preventDefault();
+    if (!user || !appointmentForm.appointmentDate || !appointmentForm.appointmentTime) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await addDoc(collection(db, "appointments"), {
+        customerUid: user.uid, customerName: user.displayName || "", customerEmail: user.email || "",
+        service: appointmentForm.service, appointmentDate: appointmentForm.appointmentDate,
+        appointmentTime: appointmentForm.appointmentTime, purpose: appointmentForm.purpose.trim(),
+        status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setAppointmentForm({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
+      setMessage("Appointment request submitted. The team will confirm your booking.");
+      await loadAppointments();
+    } catch (err) { setError(err.message || "Could not submit appointment request."); }
+    finally { setBusy(false); }
+  }
+
+  async function updateAppointment(id, status) {
+    if (!claims.superAdmin || !id) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "appointments", id), { status, updatedAt: serverTimestamp() });
+      setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
+      setMessage("Appointment status updated.");
+    } catch (err) { setError(err.message || "Could not update appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadPayments() {
+    if (!user) return;
+    try {
+      const source = claims.superAdmin || claims.staffRole ? collection(db, "payments") : query(collection(db, "payments"), where("customerUid", "==", user.uid));
+      const snapshot = await getDocs(source);
+      setPayments(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load payment history."); }
+  }
+
+  async function recordPayment(e) {
+    e.preventDefault();
+    if (!claims.superAdmin || !paymentForm.orderId) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const order = orders.find(item => item.id === paymentForm.orderId);
+      const amount = Number(paymentForm.amount);
+      if (!order) throw new Error("Select an order.");
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a payment amount greater than zero.");
+      await addDoc(collection(db, "payments"), {
+        orderId: order.id, orderNumber: order.orderNumber || order.id,
+        customerUid: order.customerUid, customerName: order.customerName || "",
+        amount, currency: "NGN", method: paymentForm.method,
+        reference: paymentForm.reference.trim(), note: paymentForm.note.trim(),
+        createdAt: serverTimestamp(), createdBy: user.uid
+      });
+      setPaymentForm({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
+      setMessage("Payment transaction recorded successfully.");
+      await loadPayments();
+    } catch (err) { setError(err.message || "Could not record payment."); }
+    finally { setBusy(false); }
+  }
+
   async function loadCustomers() {
     if (!claims.superAdmin) return;
     setCustomerLoading(true); setError("");
@@ -186,7 +263,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
@@ -222,6 +299,36 @@ export default function Portal({ onClose }) {
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      <section className="appointment-management">
+        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
+        {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
+          <h4>Request an appointment</h4>
+          <label>Appointment type<select value={appointmentForm.service} onChange={e=>setAppointmentForm({...appointmentForm,service:e.target.value})}><option>Measurement</option><option>Fitting</option><option>Consultation</option><option>Collection</option></select></label>
+          <label>Preferred date<input type="date" min={new Date().toISOString().slice(0,10)} required value={appointmentForm.appointmentDate} onChange={e=>setAppointmentForm({...appointmentForm,appointmentDate:e.target.value})}/></label>
+          <label>Preferred time<input type="time" required value={appointmentForm.appointmentTime} onChange={e=>setAppointmentForm({...appointmentForm,appointmentTime:e.target.value})}/></label>
+          <label>Additional details<textarea value={appointmentForm.purpose} onChange={e=>setAppointmentForm({...appointmentForm,purpose:e.target.value})} placeholder="Tell us what you need…"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Submitting…" : "Request appointment"}</button>
+        </form>}
+        {appointmentsLoading ? <p className="staff-empty">Loading appointments…</p> : appointments.length ? <div className="appointment-list">{appointments.map(item=><article className="appointment-card" key={item.id}>
+          <div><strong>{item.service}</strong><span>{item.customerName || item.customerEmail || "Customer"}</span></div>
+          <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}
+          {claims.superAdmin ? <label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label> : <span className="appointment-status-text">Status: {item.status || "pending"}</span>}
+        </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
+      </section>
+      {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
+        <div className="customer-management-heading"><div><h3>Payment Management</h3><p>Record and review payments linked to customer orders</p></div><button type="button" onClick={loadPayments}>Refresh payments</button></div>
+        {claims.superAdmin && <form className="portal-form payment-form" onSubmit={recordPayment}>
+          <h4>Record a payment</h4>
+          <label>Customer order<select required value={paymentForm.orderId} onChange={e=>setPaymentForm({...paymentForm,orderId:e.target.value})}><option value="">Select an order</option>{orders.map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.customerName || order.customerEmail}</option>)}</select></label>
+          <label>Amount received (₦)<input type="number" min="0.01" step="0.01" required value={paymentForm.amount} onChange={e=>setPaymentForm({...paymentForm,amount:e.target.value})} placeholder="0.00"/></label>
+          <label>Payment method<select value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value})}><option>Bank transfer</option><option>Cash</option><option>POS</option><option>Card</option><option>Other</option></select></label>
+          <label>Transaction reference<input value={paymentForm.reference} onChange={e=>setPaymentForm({...paymentForm,reference:e.target.value})} placeholder="Optional receipt/reference number"/></label>
+          <label>Note<textarea value={paymentForm.note} onChange={e=>setPaymentForm({...paymentForm,note:e.target.value})} placeholder="Optional payment note"/></label>
+          <button className="portal-submit" disabled={busy || orders.length===0}>{busy ? "Saving…" : "Record payment"}</button>
+        </form>}
+        {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Management</h3><p>View and update registered customer profiles</p></div><button type="button" onClick={loadCustomers} disabled={customerLoading}>{customerLoading ? "Loading…" : "Refresh customers"}</button></div>
         <input className="customer-search" value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} placeholder="Search by name, email or phone"/>
