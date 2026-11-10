@@ -75,6 +75,23 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+
+    match /sales/{saleId} {
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['receiptNumber', 'customerName', 'items', 'subtotal', 'total', 'totalCost', 'grossProfit', 'amountPaid', 'balance', 'paymentStatus', 'paymentMethod', 'currency', 'createdAt', 'createdBy'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.receiptNumber is string
+        && request.resource.data.items is list
+        && request.resource.data.total is number && request.resource.data.total >= 0
+        && request.resource.data.totalCost is number && request.resource.data.totalCost >= 0
+        && request.resource.data.grossProfit is number
+        && request.resource.data.amountPaid is number && request.resource.data.amountPaid >= 0
+        && request.resource.data.balance is number && request.resource.data.balance >= 0
+        && request.resource.data.paymentStatus in ['unpaid', 'part_paid', 'paid'];
+      allow read: if isSuperAdmin() || hasStaffRole(['manager', 'sales']);
+      allow update, delete: if isSuperAdmin();
+    }
+
     match /products/{productId} {
       allow read: if signedIn();
       allow create: if isSuperAdmin()
@@ -83,6 +100,7 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.sku is string
         && request.resource.data.price is number && request.resource.data.price >= 0
+        && request.resource.data.costPrice is number && request.resource.data.costPrice >= 0
         && request.resource.data.stock is int && request.resource.data.stock >= 0;
       allow update: if isSuperAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt'])
@@ -92,7 +110,7 @@ service cloud.firestore {
 
     match /inventoryMovements/{movementId} {
       allow create: if isSuperAdmin()
-        && request.resource.data.keys().hasOnly(['productId', 'productName', 'sku', 'type', 'quantity', 'previousStock', 'newStock', 'createdAt', 'createdBy'])
+        && request.resource.data.keys().hasOnly(['productId', 'productName', 'sku', 'type', 'quantity', 'previousStock', 'newStock', 'createdAt', 'createdBy', 'reason', 'receiptNumber'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.type in ['in', 'out']
         && request.resource.data.quantity is int && request.resource.data.quantity > 0
