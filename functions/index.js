@@ -9,6 +9,7 @@ const bootstrapSecret = defineSecret("MRFOP_SUPER_ADMIN_BOOTSTRAP_SECRET");
 exports.bootstrapSuperAdmin = onCall({ secrets: [bootstrapSecret] }, async request => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in before bootstrapping the Super Admin account.");
   if (request.auth.token.superAdmin === true) return { success: true, message: "This account is already a Super Admin." };
+  if (request.auth.token.staffRole) throw new HttpsError("permission-denied", "A staff account cannot bootstrap the Super Admin.");
   const provided = String(request.data?.bootstrapSecret || "");
   if (!provided || provided !== bootstrapSecret.value()) throw new HttpsError("permission-denied", "Invalid one-time bootstrap secret.");
   const user = await getAuth().getUser(request.auth.uid);
@@ -25,6 +26,8 @@ exports.setStaffRole = onCall(async request => {
   let user;
   try { user = await getAuth().getUserByEmail(email); }
   catch { throw new HttpsError("not-found", "No registered Firebase user was found for that email. Ask the staff member to register first."); }
-  await getAuth().setCustomUserClaims(user.uid, { ...user.customClaims, staffRole, superAdmin: false });
+  if (user.customClaims?.superAdmin === true) throw new HttpsError("failed-precondition", "A Super Admin account cannot be downgraded through staff management.");
+  if (user.uid === request.auth.uid) throw new HttpsError("failed-precondition", "You cannot change your own Super Admin access here.");
+  await getAuth().setCustomUserClaims(user.uid, { ...user.customClaims, staffRole });
   return { success: true, uid: user.uid, staffRole };
 });
