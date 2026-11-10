@@ -2,15 +2,26 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function isSuperAdmin() { return signedIn() && request.auth.token.superAdmin == true; }
-    function isStaff() { return signedIn() && request.auth.token.staffRole in ['manager', 'sales', 'tailor', 'institute']; }
+    function roleOf(uid) {
+      return get(/databases/$(database)/documents/roles/$(uid)).data.role;
+    }
+    function isSuperAdmin() { return signedIn() && roleOf(request.auth.uid) == 'superAdmin'; }
+    function isStaff() {
+      return signedIn() && roleOf(request.auth.uid) in ['manager', 'sales', 'tailor', 'institute'];
+    }
+    function hasStaffRole(roles) { return isStaff() && roleOf(request.auth.uid) in roles; }
+
+    match /roles/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow create, update, delete: if isSuperAdmin() && userId != request.auth.uid;
+    }
 
     match /users/{userId} {
       allow create: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == userId
         && request.resource.data.accountType == 'customer'
         && request.resource.data.keys().hasOnly(['uid', 'displayName', 'email', 'accountType', 'createdAt', 'updatedAt']);
-      allow read: if signedIn() && (request.auth.uid == userId || isSuperAdmin() || isStaff());
+      allow read: if signedIn() && (request.auth.uid == userId || isSuperAdmin() || hasStaffRole(['manager', 'sales']));
       allow update: if signedIn() && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.accountType == resource.data.accountType
@@ -21,19 +32,19 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if isSuperAdmin() || (isStaff() && request.auth.token.staffRole in ['manager', 'sales', 'tailor']);
+      allow update: if isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']);
       allow delete: if isSuperAdmin();
     }
 
     match /measurements/{measurementId} {
       allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || request.auth.token.staffRole in ['manager', 'tailor']);
-      allow update, delete: if isSuperAdmin() || (isStaff() && request.auth.token.staffRole in ['manager', 'tailor']);
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
+      allow update, delete: if isSuperAdmin() || hasStaffRole(['manager', 'tailor']);
     }
 
     match /trainingEnquiries/{enquiryId} {
       allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
-      allow read, update: if isSuperAdmin() || (isStaff() && request.auth.token.staffRole in ['manager', 'institute']);
+      allow read, update: if isSuperAdmin() || hasStaffRole(['manager', 'institute']);
       allow delete: if isSuperAdmin();
     }
 
