@@ -165,3 +165,28 @@
   body.printing-receipt .receipt-items th,
   body.printing-receipt .receipt-items td{display:table-cell!important}
 }
+ 
+/* Financial management dashboard */
+.finance-management{margin-top:22px;border-top:1px solid #ddd1c1;padding-top:18px}
+.finance-report-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:15px 0}
+.finance-report-grid article{display:grid;gap:7px;background:#eee7dc;padding:14px;min-width:0}
+.finance-report-grid span{font-size:9px;color:#75696a}
+.finance-report-grid strong{font:17px 'Playfair Display';color:#4c3034;overflow-wrap:anywhere}
+.finance-report-grid .finance-net{background:#32151f}
+.finance-report-grid .finance-net span{color:#d8c6a0}
+.finance-report-grid .finance-net strong{color:#f4e6c9}
+.finance-note{font-size:10px;line-height:1.7;color:#75696a;background:#f0e9df;padding:12px}
+.finance-expense-form{background:#f0e9df;padding:15px;margin:14px 0}
+.finance-expense-form h4,.finance-expense-heading h4{font:18px 'Playfair Display';margin:0}
+.finance-expense-form input,.finance-expense-form select,.finance-expense-form textarea{width:100%;padding:12px;border:1px solid #d9cebf;background:#fff;color:#2b1b20;font:12px 'DM Sans'}
+.finance-expense-form textarea{min-height:65px}
+.finance-expense-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 10px}
+.finance-expense-heading button{border:1px solid #bca77e;background:#fffaf0;color:#4d3924;padding:9px 11px;font-size:10px;font-weight:700;cursor:pointer}
+.finance-expense-list{display:grid;gap:8px}
+.finance-expense-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#eee7dc;padding:12px}
+.finance-expense-card>div{display:grid;gap:5px;min-width:0}
+.finance-expense-card strong{font-size:11px;color:#4c3034}
+.finance-expense-card span,.finance-expense-card small{font-size:9px;color:#75696a;line-height:1.5;overflow-wrap:anywhere}
+.finance-expense-card>b{font-size:12px;color:#795a30;white-space:nowrap}
+@media(max-width:650px){.finance-report-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.finance-report-grid{grid-template-columns:1fr}}
