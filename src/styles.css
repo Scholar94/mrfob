@@ -149,11 +149,19 @@
 .receipt-footer span,.receipt-footer small{font-size:9px;color:#786b68}
 @media(max-width:520px){.receipt-panel{padding:10px}.receipt-print{padding:18px 12px}.receipt-header h2{font-size:16px}.receipt-meta{grid-template-columns:1fr}.receipt-items{font-size:8px}.receipt-items th,.receipt-items td{padding:7px 3px}}
 @media print{
-  @page{size:A4;margin:12mm}
-  body *{visibility:hidden!important}
-  .receipt-overlay,.receipt-overlay *{visibility:visible!important}
-  .receipt-overlay{position:absolute!important;inset:0!important;display:block!important;background:#fff!important;padding:0!important;overflow:visible!important}
-  .receipt-panel{width:100%!important;max-height:none!important;overflow:visible!important;padding:0!important;box-shadow:none!important;background:#fff!important}
-  .receipt-actions{display:none!important}
-  .receipt-print{display:block!important;width:100%!important;max-width:none!important;padding:0!important}
+  @page{size:A4 portrait;margin:12mm}
+  html,body{background:#fff!important;margin:0!important;padding:0!important}
+  body.printing-receipt *{visibility:hidden!important}
+  body.printing-receipt .receipt-overlay,
+  body.printing-receipt .receipt-overlay *{visibility:visible!important}
+  body.printing-receipt .receipt-overlay{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:auto!important;overflow:visible!important;background:#fff!important;padding:0!important}
+  body.printing-receipt .receipt-panel{width:100%!important;max-width:none!important;max-height:none!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;background:#fff!important}
+  body.printing-receipt .receipt-actions{display:none!important}
+  body.printing-receipt .receipt-print{display:block!important;width:100%!important;max-width:none!important;padding:0!important;margin:0!important;background:#fff!important}
+  body.printing-receipt .receipt-items{display:table!important;width:100%!important;border-collapse:collapse!important}
+  body.printing-receipt .receipt-items thead{display:table-header-group!important}
+  body.printing-receipt .receipt-items tbody{display:table-row-group!important}
+  body.printing-receipt .receipt-items tr{display:table-row!important}
+  body.printing-receipt .receipt-items th,
+  body.printing-receipt .receipt-items td{display:table-cell!important}
 }
