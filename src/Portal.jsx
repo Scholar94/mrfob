@@ -41,6 +41,7 @@ export default function Portal({ onClose }) {
   const [saleProductId, setSaleProductId] = useState("");
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleForm, setSaleForm] = useState({ customerName: "", paymentMethod: "Cash", amountPaid: "" });
+  const [editingProductId, setEditingProductId] = useState("");
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
   const [stockAdjustments, setStockAdjustments] = useState({});
 
@@ -237,6 +238,32 @@ export default function Portal({ onClose }) {
       setMessage("Product added to inventory successfully.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not add product."); }
+    finally { setBusy(false); }
+  }
+
+  function startProductEdit(product) {
+    setEditingProductId(product.id);
+    setProductForm({ name: product.name || "", sku: product.sku || "", category: product.category || "Other", description: product.description || "", price: String(product.price ?? ""), costPrice: String(product.costPrice ?? ""), stock: String(product.stock ?? 0), imageUrl: product.imageUrl || "" });
+    setError(""); setMessage("Editing " + (product.name || "product") + ". Update the details in the form above.");
+  }
+
+  async function saveProductEdit(e) {
+    e.preventDefault();
+    if (!claims.superAdmin || !editingProductId) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const name = productForm.name.trim();
+      const sku = productForm.sku.trim();
+      const price = Number(productForm.price);
+      const costPrice = Number(productForm.costPrice || 0);
+      if (!name || !sku) throw new Error("Enter both a product name and SKU.");
+      if (!Number.isFinite(price) || price < 0 || !Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter valid non-negative selling and cost prices.");
+      await updateDoc(doc(db, "products", editingProductId), { name, sku, category: productForm.category, description: productForm.description.trim(), price, costPrice, imageUrl: productForm.imageUrl.trim(), updatedAt: serverTimestamp() });
+      setEditingProductId("");
+      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
+      setMessage("Product details updated successfully. Stock quantity was not changed.");
+      await loadProducts();
+    } catch (err) { setError(err.message || "Could not update product."); }
     finally { setBusy(false); }
   }
 
@@ -511,22 +538,22 @@ export default function Portal({ onClose }) {
       </section>}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
-        <form className="portal-form inventory-form" onSubmit={createProduct}>
-          <h4>Add a product</h4>
+        <form className="portal-form inventory-form" onSubmit={editingProductId ? saveProductEdit : createProduct}>
+          <h4>{editingProductId ? "Edit product details" : "Add a product"}</h4>
           <label>Product name<input required value={productForm.name} onChange={e=>setProductForm({...productForm,name:e.target.value})} placeholder="e.g. Senator fabric set"/></label>
           <label>SKU / product code<input required value={productForm.sku} onChange={e=>setProductForm({...productForm,sku:e.target.value})} placeholder="e.g. MFO-001"/></label>
           <label>Category<select value={productForm.category} onChange={e=>setProductForm({...productForm,category:e.target.value})}><option>Custom clothing</option><option>Ready-to-wear</option><option>Fabrics</option><option>Accessories</option><option>Footwear</option><option>Other</option></select></label>
           <label>Description<textarea value={productForm.description} onChange={e=>setProductForm({...productForm,description:e.target.value})} placeholder="Product details, material, colour, sizes…"/></label>
           <label>Selling price (₦)<input type="number" min="0" step="0.01" required value={productForm.price} onChange={e=>setProductForm({...productForm,price:e.target.value})} placeholder="0.00"/></label>
           <label>Product cost price (₦)<input type="number" min="0" step="0.01" required value={productForm.costPrice} onChange={e=>setProductForm({...productForm,costPrice:e.target.value})} placeholder="What the business paid to make or buy it"/></label>
-          <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>
+          {!editingProductId && <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>}{editingProductId && <p className="staff-empty">Current stock: {products.find(item=>item.id===editingProductId)?.stock ?? 0}. Use Stock in / Stock out to change inventory quantities.</p>}
           <label>Product image URL (optional)<input type="url" value={productForm.imageUrl} onChange={e=>setProductForm({...productForm,imageUrl:e.target.value})} placeholder="https://…"/></label>
-          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Add product"}</button>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingProductId ? "Save product changes" : "Add product"}</button>{editingProductId && <button type="button" className="portal-submit secondary" disabled={busy} onClick={()=>{setEditingProductId("");setProductForm({name:"",sku:"",category:"Custom clothing",description:"",price:"",costPrice:"",stock:"0",imageUrl:""});setError("");setMessage("Product editing cancelled.");}}>Cancel editing</button>}
         </form>
         {productsLoading ? <p className="staff-empty">Loading inventory…</p> : products.length ? <div className="inventory-list">{products.map(product=><article className="inventory-card" key={product.id}>
           {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
           <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.sku} · {product.category}</span><p>{product.description || "No description added."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) <= 5 ? "stock-low" : "stock-ok"}>Stock available: {Number(product.stock || 0)}</span></div>
-          <div className="stock-adjust"><input type="number" min="1" step="1" value={stockAdjustments[product.id] || ""} onChange={e=>setStockAdjustments(current=>({...current,[product.id]:e.target.value}))} placeholder="Quantity"/><button type="button" disabled={busy} onClick={()=>adjustStock(product,"in")}>Stock in</button><button type="button" disabled={busy} onClick={()=>adjustStock(product,"out")}>Stock out</button></div>
+          <div className="stock-adjust"><button type="button" disabled={busy} onClick={()=>startProductEdit(product)}>Edit product</button><input type="number" min="1" step="1" value={stockAdjustments[product.id] || ""} onChange={e=>setStockAdjustments(current=>({...current,[product.id]:e.target.value}))} placeholder="Quantity"/><button type="button" disabled={busy} onClick={()=>adjustStock(product,"in")}>Stock in</button><button type="button" disabled={busy} onClick={()=>adjustStock(product,"out")}>Stock out</button></div>
         </article>)}</div> : <p className="staff-empty">No products added yet. Use the form above to create your first product.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="inventory-management">
