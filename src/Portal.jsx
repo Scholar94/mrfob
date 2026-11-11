@@ -38,6 +38,9 @@ export default function Portal({ onClose }) {
   const [sales, setSales] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [expensesLoading, setExpensesLoading] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ title: "", category: "Operations", amount: "", expenseDate: new Date().toISOString().slice(0,10), method: "Cash", note: "" });
   const [saleCart, setSaleCart] = useState([]);
   const [saleProductId, setSaleProductId] = useState("");
   const [saleQuantity, setSaleQuantity] = useState("1");
@@ -296,6 +299,38 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function loadExpenses() {
+    if (!claims.superAdmin) return;
+    setExpensesLoading(true); setError("");
+    try {
+      const snapshot = await getDocs(collection(db, "expenses"));
+      setExpenses(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.expenseDate || "").localeCompare(a.expenseDate || "") || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load expenses."); }
+    finally { setExpensesLoading(false); }
+  }
+
+  async function recordExpense(e) {
+    e.preventDefault();
+    if (!claims.superAdmin) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const title = expenseForm.title.trim();
+      const amount = Number(expenseForm.amount);
+      if (!title) throw new Error("Enter an expense description.");
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter an expense amount greater than zero.");
+      if (!expenseForm.expenseDate) throw new Error("Select the expense date.");
+      await addDoc(collection(db, "expenses"), {
+        title, category: expenseForm.category, amount, currency: "NGN",
+        expenseDate: expenseForm.expenseDate, method: expenseForm.method,
+        note: expenseForm.note.trim(), createdAt: serverTimestamp(), createdBy: user.uid
+      });
+      setExpenseForm({ title: "", category: "Operations", amount: "", expenseDate: new Date().toISOString().slice(0,10), method: "Cash", note: "" });
+      setMessage("Business expense recorded successfully.");
+      await loadExpenses();
+    } catch (err) { setError(err.message || "Could not record expense."); }
+    finally { setBusy(false); }
+  }
+
   async function loadSales() {
     if (!claims.superAdmin) return;
     setSalesLoading(true); setError("");
@@ -537,6 +572,30 @@ export default function Portal({ onClose }) {
         <h4 className="pos-history-title">Sales history</h4>
         {salesLoading ? <p className="staff-empty">Loading sales…</p> : sales.length ? <div className="pos-history">{sales.map(sale=><article className="pos-sale-card" key={sale.id}><div><strong>{sale.receiptNumber}</strong><span>{sale.customerName} · {sale.paymentMethod}</span></div><b>₦{Number(sale.total||0).toLocaleString("en-NG")}</b><small>{sale.items?.map(item=>item.name+" × "+item.quantity).join(", ")} · {sale.paymentStatus} · Profit ₦{Number(sale.grossProfit||0).toLocaleString("en-NG")}</small><button type="button" className="receipt-open-button" onClick={()=>setSelectedReceipt(sale)}>View / print receipt</button></article>)}</div> : <p className="staff-empty">No sales recorded yet.</p>}
         {selectedReceipt && <div className="receipt-overlay" role="dialog" aria-modal="true" aria-label="Sales receipt"><div className="receipt-panel"><div className="receipt-actions"><button type="button" onClick={()=>{const receipt=document.querySelector(".receipt-print");if(!receipt)return;const printWindow=window.open("","_blank","width=900,height=700");if(!printWindow){setError("Please allow pop-ups for this site to print the receipt.");return;}printWindow.document.open();printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>MR FOP FASHIONS Receipt</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{margin:0;background:#fff;color:#241119;font:12px Arial,sans-serif}.receipt-print{width:100%;max-width:760px;margin:0 auto;padding:0}.receipt-header{display:flex;align-items:center;gap:14px;border-bottom:2px solid #9a794d;padding-bottom:17px}.receipt-monogram{width:54px;height:54px;display:grid;place-items:center;background:#32151f;color:#d9bd82;font:22px Georgia,serif}.receipt-header h2{font:700 20px Georgia,serif;letter-spacing:1.5px;margin:0 0 4px;color:#32151f}.receipt-header p{font-size:9px;letter-spacing:2px;margin:0 0 6px;color:#98764b}.receipt-header small{font-size:9px;color:#6d6260}.receipt-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:22px 0 14px}.receipt-title h3{font:700 15px Georgia,serif;letter-spacing:2px;margin:0}.receipt-title strong{font-size:11px;color:#8b6637}.receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:18px}.receipt-meta p,.receipt-totals p{display:flex;justify-content:space-between;gap:12px;margin:0;padding:7px 0;border-bottom:1px solid #eee7dc;font-size:10px}.receipt-meta span,.receipt-totals span{color:#786b68}.receipt-meta b,.receipt-totals b{text-align:right}.receipt-items{width:100%;border-collapse:collapse;font-size:10px}.receipt-items th{background:#32151f;color:#f4e6c9;text-align:left;padding:9px 6px}.receipt-items td{padding:10px 6px;border-bottom:1px solid #e9e0d4;vertical-align:top}.receipt-items td:not(:first-child),.receipt-items th:not(:first-child){text-align:right;white-space:nowrap}.receipt-items td small{display:block;color:#8a7c76;font-size:8px;margin-top:3px}.receipt-totals{width:300px;max-width:100%;margin:16px 0 0 auto}.receipt-totals p{font-size:11px;padding:8px 0}.receipt-payment-status{border-top:1px solid #9a794d;margin-top:5px;padding-top:12px}.receipt-footer{display:grid;gap:6px;text-align:center;border-top:1px dashed #bca77e;margin-top:24px;padding-top:18px}.receipt-footer strong{font:16px Georgia,serif;color:#32151f}.receipt-footer span,.receipt-footer small{font-size:9px;color:#786b68}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${receipt.outerHTML}<script>window.onload=()=>{window.focus();window.print()}<\/script></body></html>`);printWindow.document.close();}}>Print / Save as PDF</button><button type="button" onClick={()=>setSelectedReceipt(null)}>Close</button></div><div className="receipt-print"><header className="receipt-header"><div className="receipt-monogram">MF</div><div><h2>MR FOP FASHIONS</h2><p>COMPANY NIGERIA LIMITED</p><small>Crafted with purpose since 2010 · Ijebu Ode, Ogun State, Nigeria</small></div></header><div className="receipt-title"><h3>SALES RECEIPT</h3><strong>{selectedReceipt.receiptNumber || "Receipt"}</strong></div><div className="receipt-meta"><p><span>Date</span><b>{selectedReceipt.createdAt?.toDate ? selectedReceipt.createdAt.toDate().toLocaleString("en-NG") : "Date not available"}</b></p><p><span>Customer</span><b>{selectedReceipt.customerName || "Walk-in customer"}</b></p><p><span>Payment method</span><b>{selectedReceipt.paymentMethod || "Not recorded"}</b></p></div><table className="receipt-items"><thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead><tbody>{(selectedReceipt.items || []).map((item,index)=><tr key={item.productId || index}><td>{item.name}{item.sku ? <small>SKU: {item.sku}</small> : null}</td><td>{item.quantity}</td><td>₦{Number(item.unitPrice || 0).toLocaleString("en-NG")}</td><td>₦{Number(item.lineTotal ?? item.quantity*item.unitPrice ?? 0).toLocaleString("en-NG")}</td></tr>)}</tbody></table><div className="receipt-totals"><p><span>Subtotal</span><b>₦{Number(selectedReceipt.subtotal ?? selectedReceipt.total ?? 0).toLocaleString("en-NG")}</b></p><p><span>Total</span><b>₦{Number(selectedReceipt.total || 0).toLocaleString("en-NG")}</b></p><p><span>Amount paid</span><b>₦{Number(selectedReceipt.amountPaid || 0).toLocaleString("en-NG")}</b></p><p><span>Balance</span><b>₦{Number(selectedReceipt.balance || 0).toLocaleString("en-NG")}</b></p><p className="receipt-payment-status"><span>Payment status</span><b>{String(selectedReceipt.paymentStatus || "unpaid").replace("_"," ").toUpperCase()}</b></p></div><footer className="receipt-footer"><strong>Thank you for choosing MR FOP FASHIONS.</strong><span>We appreciate your patronage.</span><small>For enquiries: +234 805 547 2913</small></footer></div></div></div>}
+      </section>}
+      {claims.superAdmin && <section className="finance-management">
+        <div className="customer-management-heading"><div><h3>Financial Management</h3><p>Track sales revenue, cost of goods, expenses and estimated net profit</p></div><button type="button" onClick={()=>Promise.all([loadSales(),loadExpenses()])} disabled={salesLoading || expensesLoading}>{salesLoading || expensesLoading ? "Refreshing…" : "Refresh financial data"}</button></div>
+        <div className="finance-report-grid">
+          <article><span>Total sales revenue</span><strong>₦{sales.reduce((sum,item)=>sum+Number(item.total||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>Cash received from POS sales</span><strong>₦{sales.reduce((sum,item)=>sum+Number(item.amountPaid||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>Cost of goods sold</span><strong>₦{sales.reduce((sum,item)=>sum+Number(item.totalCost||0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>Gross profit</span><strong>₦{sales.reduce((sum,item)=>sum+Number(item.grossProfit ?? (Number(item.total||0)-Number(item.totalCost||0)),0),0).toLocaleString("en-NG")}</strong></article>
+          <article><span>Operating expenses</span><strong>₦{expenses.reduce((sum,item)=>sum+Number(item.amount||0),0).toLocaleString("en-NG")}</strong></article>
+          <article className="finance-net"><span>Estimated net profit</span><strong>₦{(sales.reduce((sum,item)=>sum+Number(item.grossProfit ?? (Number(item.total||0)-Number(item.totalCost||0)),0),0)-expenses.reduce((sum,item)=>sum+Number(item.amount||0),0)).toLocaleString("en-NG")}</strong></article>
+        </div>
+        <p className="finance-note">Figures are based on recorded POS sales and expenses. Customer-order payments are kept separate to avoid double-counting. Net profit here is gross profit less recorded expenses; it is not a full statutory accounting statement.</p>
+        <form className="portal-form finance-expense-form" onSubmit={recordExpense}>
+          <h4>Record a business expense</h4>
+          <label>Expense description<input required value={expenseForm.title} onChange={e=>setExpenseForm({...expenseForm,title:e.target.value})} placeholder="e.g. Electricity bill, transport, packaging"/></label>
+          <label>Category<select value={expenseForm.category} onChange={e=>setExpenseForm({...expenseForm,category:e.target.value})}><option>Operations</option><option>Rent</option><option>Utilities</option><option>Transport</option><option>Marketing</option><option>Staff wages</option><option>Materials and supplies</option><option>Maintenance</option><option>Other</option></select></label>
+          <label>Amount (₦)<input type="number" min="0.01" step="0.01" required value={expenseForm.amount} onChange={e=>setExpenseForm({...expenseForm,amount:e.target.value})} placeholder="0.00"/></label>
+          <label>Expense date<input type="date" required value={expenseForm.expenseDate} onChange={e=>setExpenseForm({...expenseForm,expenseDate:e.target.value})}/></label>
+          <label>Payment method<select value={expenseForm.method} onChange={e=>setExpenseForm({...expenseForm,method:e.target.value})}><option>Cash</option><option>Bank transfer</option><option>POS</option><option>Card</option><option>Other</option></select></label>
+          <label>Note (optional)<textarea value={expenseForm.note} onChange={e=>setExpenseForm({...expenseForm,note:e.target.value})} placeholder="Supplier, reference or additional details"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Record expense"}</button>
+        </form>
+        <div className="finance-expense-heading"><h4>Expense history</h4><button type="button" onClick={loadExpenses} disabled={expensesLoading}>{expensesLoading ? "Loading…" : "Refresh expenses"}</button></div>
+        {expensesLoading ? <p className="staff-empty">Loading expenses…</p> : expenses.length ? <div className="finance-expense-list">{expenses.map(item=><article className="finance-expense-card" key={item.id}><div><strong>{item.title}</strong><span>{item.category} · {item.expenseDate} · {item.method}</span>{item.note && <small>{item.note}</small>}</div><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></article>)}</div> : <p className="staff-empty">No business expenses recorded yet.</p>}
       </section>}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
