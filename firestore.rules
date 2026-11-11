@@ -76,6 +76,19 @@ service cloud.firestore {
     }
 
 
+    match /expenses/{expenseId} {
+      allow create: if isSuperAdmin()
+        && request.resource.data.keys().hasOnly(['title', 'category', 'amount', 'currency', 'expenseDate', 'method', 'note', 'createdAt', 'createdBy'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.title is string && request.resource.data.title.size() > 0
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.expenseDate is string
+        && request.resource.data.category is string
+        && request.resource.data.method is string;
+      allow read: if isSuperAdmin() || hasStaffRole(['manager']);
+      allow update, delete: if isSuperAdmin();
+    }
+
     match /sales/{saleId} {
       allow create: if isSuperAdmin()
         && request.resource.data.keys().hasOnly(['receiptNumber', 'customerName', 'items', 'subtotal', 'total', 'totalCost', 'grossProfit', 'amountPaid', 'balance', 'paymentStatus', 'paymentMethod', 'currency', 'createdAt', 'createdBy'])
