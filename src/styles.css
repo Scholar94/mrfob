@@ -114,3 +114,46 @@
 .pos-sale-card>b{font-size:12px;color:#795a30;white-space:nowrap}
 .pos-sale-card small{grid-column:1/-1}
 @media(max-width:430px){.pos-add-row{grid-template-columns:1fr 75px}.pos-add-row button{grid-column:1/-1}.pos-cart-row{grid-template-columns:minmax(0,1fr) auto}.pos-cart-row button{grid-column:1/-1}.pos-report-grid{grid-template-columns:1fr}}
+
+
+/* Branded POS receipt and print layout */
+.receipt-open-button{justify-self:start;border:1px solid #bca77e;background:#fffaf0;color:#4d3924;padding:8px 11px;font:700 9px 'DM Sans';cursor:pointer}
+.receipt-overlay{position:fixed;inset:0;z-index:120;background:rgba(18,8,13,.78);display:grid;place-items:center;padding:16px;overflow:auto}
+.receipt-panel{width:min(100%,620px);max-height:calc(100vh - 32px);overflow:auto;background:#f8f4ed;padding:18px;box-shadow:0 20px 70px #0005}
+.receipt-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px}
+.receipt-actions button{border:1px solid #bca77e;background:#32151f;color:#f4e6c9;padding:10px 13px;font:700 10px 'DM Sans';cursor:pointer}
+.receipt-actions button+button{background:#fffaf0;color:#4d3924}
+.receipt-print{background:#fff;color:#241119;padding:30px;max-width:100%;font:12px Arial,sans-serif}
+.receipt-header{display:flex;align-items:center;gap:14px;border-bottom:2px solid #9a794d;padding-bottom:17px}
+.receipt-monogram{width:54px;height:54px;display:grid;place-items:center;background:#32151f;color:#d9bd82;font:22px Georgia,serif}
+.receipt-header h2{font:700 20px Georgia,serif;letter-spacing:1.5px;margin:0 0 4px;color:#32151f}
+.receipt-header p{font-size:9px;letter-spacing:2px;margin:0 0 6px;color:#98764b}
+.receipt-header small{font-size:9px;color:#6d6260}
+.receipt-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:22px 0 14px}
+.receipt-title h3{font:700 15px Georgia,serif;letter-spacing:2px;margin:0}
+.receipt-title strong{font-size:11px;color:#8b6637}
+.receipt-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:18px}
+.receipt-meta p,.receipt-totals p{display:flex;justify-content:space-between;gap:12px;margin:0;padding:7px 0;border-bottom:1px solid #eee7dc;font-size:10px}
+.receipt-meta span,.receipt-totals span{color:#786b68}
+.receipt-meta b,.receipt-totals b{text-align:right;overflow-wrap:anywhere}
+.receipt-items{width:100%;border-collapse:collapse;font-size:10px}
+.receipt-items th{background:#32151f;color:#f4e6c9;text-align:left;padding:9px 6px}
+.receipt-items td{padding:10px 6px;border-bottom:1px solid #e9e0d4;vertical-align:top}
+.receipt-items td:not(:first-child),.receipt-items th:not(:first-child){text-align:right;white-space:nowrap}
+.receipt-items td small{display:block;color:#8a7c76;font-size:8px;margin-top:3px}
+.receipt-totals{width:min(100%,300px);margin:16px 0 0 auto}
+.receipt-totals p{font-size:11px;padding:8px 0}
+.receipt-totals .receipt-payment-status{border-top:1px solid #9a794d;margin-top:5px;padding-top:12px;color:#32151f}
+.receipt-footer{display:grid;gap:6px;text-align:center;border-top:1px dashed #bca77e;margin-top:24px;padding-top:18px}
+.receipt-footer strong{font:16px Georgia,serif;color:#32151f}
+.receipt-footer span,.receipt-footer small{font-size:9px;color:#786b68}
+@media(max-width:520px){.receipt-panel{padding:10px}.receipt-print{padding:18px 12px}.receipt-header h2{font-size:16px}.receipt-meta{grid-template-columns:1fr}.receipt-items{font-size:8px}.receipt-items th,.receipt-items td{padding:7px 3px}}
+@media print{
+  @page{size:A4;margin:12mm}
+  body *{visibility:hidden!important}
+  .receipt-overlay,.receipt-overlay *{visibility:visible!important}
+  .receipt-overlay{position:absolute!important;inset:0!important;display:block!important;background:#fff!important;padding:0!important;overflow:visible!important}
+  .receipt-panel{width:100%!important;max-height:none!important;overflow:visible!important;padding:0!important;box-shadow:none!important;background:#fff!important}
+  .receipt-actions{display:none!important}
+  .receipt-print{display:block!important;width:100%!important;max-width:none!important;padding:0!important}
+}
