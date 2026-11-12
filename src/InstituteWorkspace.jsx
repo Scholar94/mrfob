@@ -44,6 +44,7 @@ export default function InstituteWorkspace() {
   const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
   const [courseForm, setCourseForm] = useState(blankCourse);
+  const [editingCourseId, setEditingCourseId] = useState("");
   const [windowForm, setWindowForm] = useState(blankWindow);
   const [applicationForm, setApplicationForm] = useState({ fullName: user?.displayName || "", phone: "", address: "", courseId: "", windowId: "", mode: "Onsite", experience: "", note: "" });
   const [busy, setBusy] = useState(false);
@@ -140,15 +141,46 @@ export default function InstituteWorkspace() {
 
   const availableWindows = useMemo(() => windows.filter(w => w.status !== "closed" && (!w.applicationClose || w.applicationClose >= new Date().toISOString().slice(0,10))), [windows]);
 
+  function editCourse(course) {
+    setEditingCourseId(course.id);
+    setCourseForm({ title: course.title || "", category: course.category || COURSE_TYPES[0], description: course.description || "", mode: course.mode || "Online and onsite", duration: course.duration || "", fee: String(course.fee ?? ""), active: course.active !== false });
+    setError(""); setNotice("Editing " + (course.title || "course") + ". Save changes when finished.");
+  }
+
+  function cancelCourseEdit() {
+    setEditingCourseId("");
+    setCourseForm(blankCourse);
+    setNotice("");
+    setError("");
+  }
+
   async function saveCourse(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
       if (!courseForm.title.trim()) throw new Error("Enter a course title.");
       const fee = Number(courseForm.fee || 0);
       if (!Number.isFinite(fee) || fee < 0) throw new Error("Enter a valid course fee.");
-      await addDoc(collection(db, "instituteCourses"), { ...courseForm, title: courseForm.title.trim(), fee, active: true, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      setCourseForm(blankCourse); setNotice("Course created successfully."); await load();
+      const courseData = { title: courseForm.title.trim(), category: courseForm.category, description: courseForm.description.trim(), mode: courseForm.mode.trim(), duration: courseForm.duration.trim(), fee, active: courseForm.active !== false, updatedAt: serverTimestamp() };
+      if (editingCourseId) {
+        await updateDoc(doc(db, "instituteCourses", editingCourseId), courseData);
+        setNotice("Course details updated successfully.");
+      } else {
+        await addDoc(collection(db, "instituteCourses"), { ...courseData, active: true, createdBy: user.uid, createdAt: serverTimestamp() });
+        setNotice("Course created successfully.");
+      }
+      setEditingCourseId(""); setCourseForm(blankCourse); await load();
     } catch(e) { setError(e.message || "Could not save course."); } finally { setBusy(false); }
+  }
+
+  async function toggleCourseArchive(course) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const nextActive = course.active === false;
+      await updateDoc(doc(db, "instituteCourses", course.id), { active: nextActive, updatedAt: serverTimestamp() });
+      if (editingCourseId === course.id && !nextActive) cancelCourseEdit();
+      setNotice(nextActive ? "Course restored to the active catalogue." : "Course archived. Existing enrolment and learning records have been retained.");
+      await load();
+    } catch(e) { setError(e.message || "Could not update course status."); } finally { setBusy(false); }
   }
 
   async function saveWindow(e) {
@@ -488,15 +520,17 @@ export default function InstituteWorkspace() {
         <button className="portal-submit" disabled={busy}>Publish announcement</button>
       </form>
       <div className="institute-admin-grid">
-        <form className="portal-form" onSubmit={saveCourse}><h4>Create a course</h4>
+        <form className="portal-form" onSubmit={saveCourse}><h4>{editingCourseId ? "Edit course" : "Create a course"}</h4>
           <label>Course title<input required value={courseForm.title} onChange={e=>setCourseForm({...courseForm,title:e.target.value})} placeholder="e.g. Advanced Pattern Drafting"/></label>
           <label>Suggested course category<select value={courseForm.category} onChange={e=>setCourseForm({...courseForm,category:e.target.value})}>{COURSE_TYPES.map(x=><option key={x}>{x}</option>)}</select></label>
           <label>Description<textarea value={courseForm.description} onChange={e=>setCourseForm({...courseForm,description:e.target.value})}/></label>
           <label>Learning modes<input value={courseForm.mode} onChange={e=>setCourseForm({...courseForm,mode:e.target.value})}/></label>
           <label>Duration<input value={courseForm.duration} onChange={e=>setCourseForm({...courseForm,duration:e.target.value})}/></label>
           <label>Indicative fee (₦)<input type="number" min="0" step="0.01" value={courseForm.fee} onChange={e=>setCourseForm({...courseForm,fee:e.target.value})}/></label>
-          <button className="portal-submit" disabled={busy}>Create course</button>
+          <button className="portal-submit" disabled={busy}>{editingCourseId ? "Save course changes" : "Create course"}</button>
+          {editingCourseId && <button type="button" className="portal-secondary" disabled={busy} onClick={cancelCourseEdit}>Cancel editing</button>}
         </form>
+        <div className="institute-window-list"><h4>Manage course catalogue</h4>{courses.length ? courses.map(course=><article className="appointment-card" key={course.id}><strong>{course.title}</strong><span>{course.category || "Course"} · {course.active === false ? "Archived" : "Active"} · ₦{Number(course.fee || 0).toLocaleString("en-NG")}</span>{course.description && <p>{course.description}</p>}<div className="portal-actions"><button type="button" className="portal-secondary" disabled={busy} onClick={()=>editCourse(course)}>Edit course</button><button type="button" className="portal-secondary" disabled={busy} onClick={()=>toggleCourseArchive(course)}>{course.active === false ? "Restore course" : "Archive course"}</button></div></article>) : <p className="staff-empty">No courses have been created yet.</p>}</div>
         <form className="portal-form" onSubmit={saveWindow}><h4>Create a training window</h4>
           <label>Intake name<input required value={windowForm.title} onChange={e=>setWindowForm({...windowForm,title:e.target.value})} placeholder="e.g. January–March intake"/></label>
           <label>Course<select required value={windowForm.courseId} onChange={e=>setWindowForm({...windowForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
