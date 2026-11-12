@@ -4,6 +4,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransact
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
+import InstituteWorkspace from "./InstituteWorkspace.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -1176,6 +1177,7 @@ export default function Portal({ onClose }) {
       </section>}
       {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button></article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
+      <InstituteWorkspace />
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
     </> : <>
