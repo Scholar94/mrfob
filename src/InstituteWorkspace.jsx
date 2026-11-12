@@ -46,6 +46,7 @@ export default function InstituteWorkspace() {
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [editingCourseId, setEditingCourseId] = useState("");
   const [windowForm, setWindowForm] = useState(blankWindow);
+  const [editingWindowId, setEditingWindowId] = useState("");
   const [applicationForm, setApplicationForm] = useState({ fullName: user?.displayName || "", phone: "", address: "", courseId: "", windowId: "", mode: "Onsite", experience: "", note: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -183,6 +184,16 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not update course status."); } finally { setBusy(false); }
   }
 
+  function editWindow(item) {
+    setEditingWindowId(item.id);
+    setWindowForm({ title:item.title || "", courseId:item.courseId || "", applicationOpen:item.applicationOpen || "", applicationClose:item.applicationClose || "", commencement:item.commencement || "", duration:item.duration || "", modes:item.modes || ["Onsite"], fee:String(item.fee ?? ""), capacity:String(item.capacity ?? ""), timetable:item.timetable || "", venue:item.venue || "", instructorName:item.instructorName || "" });
+    setError(""); setNotice("Editing " + item.title + ". Reserved applications will be retained.");
+  }
+
+  function cancelWindowEdit() {
+    setEditingWindowId(""); setWindowForm(blankWindow); setError(""); setNotice("");
+  }
+
   async function saveWindow(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -192,9 +203,19 @@ export default function InstituteWorkspace() {
       const fee = Number(windowForm.fee);
       if (!Number.isInteger(capacity) || capacity < 1) throw new Error("Enter a whole-number student capacity.");
       if (!Number.isFinite(fee) || fee < 0) throw new Error("Enter a valid training fee.");
-      await addDoc(collection(db, "trainingWindows"), { ...windowForm, title: windowForm.title.trim(), capacity, fee, status: "open", enrolledCount: 0, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      setWindowForm(blankWindow); setNotice("Training window created successfully."); await load();
-    } catch(e) { setError(e.message || "Could not create training window."); } finally { setBusy(false); }
+      const windowData = { ...windowForm, title:windowForm.title.trim(), capacity, fee, updatedAt:serverTimestamp() };
+      if (editingWindowId) {
+        const current = windows.find(w=>w.id===editingWindowId);
+        if (!current) throw new Error("The training window could not be found. Refresh and try again.");
+        if (capacity < Number(current.enrolledCount || 0)) throw new Error("Capacity cannot be reduced below the number of reserved applications (" + Number(current.enrolledCount || 0) + ").");
+        await updateDoc(doc(db,"trainingWindows",editingWindowId),windowData);
+        setNotice("Training window updated. Existing application reservations were preserved.");
+      } else {
+        await addDoc(collection(db, "trainingWindows"), { ...windowData, status: "open", enrolledCount: 0, createdBy: user.uid, createdAt: serverTimestamp() });
+        setNotice("Training window created successfully.");
+      }
+      setEditingWindowId(""); setWindowForm(blankWindow); await load();
+    } catch(e) { setError(e.message || "Could not save training window."); } finally { setBusy(false); }
   }
 
   async function reconcileTrainingCapacity() {
@@ -596,7 +617,7 @@ export default function InstituteWorkspace() {
           {editingCourseId && <button type="button" className="portal-secondary" disabled={busy} onClick={cancelCourseEdit}>Cancel editing</button>}
         </form>
         <div className="institute-window-list"><h4>Manage course catalogue</h4>{courses.length ? courses.map(course=><article className="appointment-card" key={course.id}><strong>{course.title}</strong><span>{course.category || "Course"} · {course.active === false ? "Archived" : "Active"} · ₦{Number(course.fee || 0).toLocaleString("en-NG")}</span>{course.description && <p>{course.description}</p>}<div className="portal-actions"><button type="button" className="portal-secondary" disabled={busy} onClick={()=>editCourse(course)}>Edit course</button><button type="button" className="portal-secondary" disabled={busy} onClick={()=>toggleCourseArchive(course)}>{course.active === false ? "Restore course" : "Archive course"}</button></div></article>) : <p className="staff-empty">No courses have been created yet.</p>}</div>
-        <form className="portal-form" onSubmit={saveWindow}><h4>Create a training window</h4>
+        <form className="portal-form" onSubmit={saveWindow}><h4>{editingWindowId ? "Edit training window" : "Create a training window"}</h4>
           <label>Intake name<input required value={windowForm.title} onChange={e=>setWindowForm({...windowForm,title:e.target.value})} placeholder="e.g. January–March intake"/></label>
           <label>Course<select required value={windowForm.courseId} onChange={e=>setWindowForm({...windowForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
           <label>Applications open<input type="date" required value={windowForm.applicationOpen} onChange={e=>setWindowForm({...windowForm,applicationOpen:e.target.value})}/></label>
@@ -609,10 +630,10 @@ export default function InstituteWorkspace() {
           <label>Venue<input value={windowForm.venue} onChange={e=>setWindowForm({...windowForm,venue:e.target.value})}/></label>
           <label>Timetable<input value={windowForm.timetable} onChange={e=>setWindowForm({...windowForm,timetable:e.target.value})}/></label>
           <label>Instructor name<input value={windowForm.instructorName} onChange={e=>setWindowForm({...windowForm,instructorName:e.target.value})}/></label>
-          <button className="portal-submit" disabled={busy || !courses.length}>Create training window</button>
+          <button className="portal-submit" disabled={busy || !courses.length}>{editingWindowId ? "Save training window changes" : "Create training window"}</button>{editingWindowId && <button type="button" className="portal-secondary" disabled={busy} onClick={cancelWindowEdit}>Cancel editing</button>}
         </form>
       </div>
-      <div className="institute-window-list"><h4>Manage training windows</h4><button type="button" className="portal-secondary" disabled={busy||!windows.length} onClick={reconcileTrainingCapacity}>Reconcile capacity counters from application records</button>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
+      <div className="institute-window-list"><h4>Manage training windows</h4><button type="button" className="portal-secondary" disabled={busy||!windows.length} onClick={reconcileTrainingCapacity}>Reconcile capacity counters from application records</button>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>editWindow(w)}>Edit intake</button></div><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
