@@ -243,3 +243,6 @@
 
 
 - **2026-11-12 — Production-team order stage updates:** aligned the order-management interface with the existing Firestore production-role policy. Super Admin, Manager, Sales and Tailor can update the production stage; each change is written to the order event history with the staff UID/name and timestamp. Delivery-date and payment-status controls remain Super Admin-only. Firestore event creation now permits the same authorized production roles while retaining the allowed-stage and actor checks. Build and live role-isolation tests remain pending; publish the latest rules before use.
+
+
+- **2026-11-12 — Customer-visible production stage notes:** when authorized staff change an order's production stage, they can add an optional update of up to 500 characters. The note is saved with the immutable stage-history event and appears in both staff and customer order timelines. Firestore validates the optional note type and length. This is an in-app timeline update, not an SMS, email or WhatsApp notification. Build and live customer/staff authorization tests remain pending; publish the latest rules before use.
