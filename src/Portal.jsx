@@ -38,7 +38,7 @@ export default function Portal({ onClose }) {
   const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
   const [profileLoading, setProfileLoading] = useState(false);
-  const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
+  const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", unit: "cm", notes: "" });
   const [measurements, setMeasurements] = useState([]);
   const [measurementsLoading, setMeasurementsLoading] = useState(false);
   const [trainingForm, setTrainingForm] = useState({ course: "Fashion Design", mode: "Onsite practical training", message: "" });
@@ -187,10 +187,10 @@ export default function Portal({ onClose }) {
     try {
       const fields = ["chest","waist","hip","shoulder","sleeve","length","neck","inseam"];
       const values = {};
-      fields.forEach(key => { const raw = measurementForm[key].trim(); if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank."); values[key] = raw ? Number(raw) : null; });
+      fields.forEach(key => { const raw = measurementForm[key].trim(); if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank."); values[key] = raw ? Number((measurementForm.unit === "in" ? Number(raw) * 2.54 : Number(raw)).toFixed(1)) : null; });
       if (!fields.some(key => values[key] !== null)) throw new Error("Enter at least one measurement.");
       await addDoc(collection(db, "measurements"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", ...values, notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      setMeasurementForm({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
+      setMeasurementForm({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", unit: "cm", notes: "" });
       setMessage("Your measurement record has been saved securely.");
       await loadMeasurements();
     } catch (err) { setError(err.message || "Could not save your measurements."); }
@@ -686,9 +686,9 @@ export default function Portal({ onClose }) {
         </form>
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
-        <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Enter values in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
+        <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Values are stored consistently in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
         <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
-          <div className="measurement-grid">{[["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve"],["length","Garment length"],["neck","Neck"],["inseam","Inseam"]].map(([key,label])=><label key={key}>{label} (cm)<input type="number" min="0.1" step="0.1" value={measurementForm[key]} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder="cm"/></label>)}</div>
+          <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label><div className="measurement-grid">{[["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve"],["length","Garment length"],["neck","Neck"],["inseam","Inseam"]].map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key]} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
           <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
           <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurements"}</button>
         </form>
