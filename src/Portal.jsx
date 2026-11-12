@@ -35,6 +35,7 @@ export default function Portal({ onClose }) {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
   const [myOrders, setMyOrders] = useState([]);
+  const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
   const [profileLoading, setProfileLoading] = useState(false);
   const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
@@ -255,6 +256,25 @@ export default function Portal({ onClose }) {
       setMessage("Order " + orderNumber + " created successfully.");
       await loadOrders();
     } catch (err) { setError(err.message || "Could not create the order."); }
+    finally { setBusy(false); }
+  }
+
+  async function submitCustomerOrder(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const item = customerOrderForm.item.trim();
+      if (!item) throw new Error("Describe the garment or service you want.");
+      const quantity = Number(customerOrderForm.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) throw new Error("Quantity must be a whole number between 1 and 50.");
+      const orderNumber = "MFO-REQ-" + Date.now().toString().slice(-8);
+      const description = ["Category: " + customerOrderForm.category, "Fabric preference: " + (customerOrderForm.fabric.trim() || "To be discussed"), "Colour: " + (customerOrderForm.colour.trim() || "To be discussed"), "Quantity: " + quantity, "Measurement: " + customerOrderForm.measurementMethod, "Preferred completion date: " + (customerOrderForm.preferredDate || "Not specified"), "Delivery: " + customerOrderForm.deliveryMethod, "Special instructions: " + (customerOrderForm.instructions.trim() || "None")].join("\\n");
+      await addDoc(collection(db, "orders"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", customerEmail: user.email || "", orderNumber, item, description, category: customerOrderForm.category, fabric: customerOrderForm.fabric.trim(), colour: customerOrderForm.colour.trim(), quantity, measurementMethod: customerOrderForm.measurementMethod, preferredDate: customerOrderForm.preferredDate, deliveryMethod: customerOrderForm.deliveryMethod, instructions: customerOrderForm.instructions.trim(), status: "received", paymentStatus: "unquoted", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setCustomerOrderForm({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
+      setMessage("Your request " + orderNumber + " has been submitted. The team must review it and prepare a quotation; no price or completion date is confirmed yet.");
+      await loadMyOrders();
+    } catch (err) { setError(err.message || "Could not submit your order request."); }
     finally { setBusy(false); }
   }
 
@@ -647,6 +667,22 @@ export default function Portal({ onClose }) {
           <label>Phone number<input value={profileForm.phone} onChange={e=>setProfileForm({...profileForm,phone:e.target.value})} placeholder="Your contact number"/></label>
           <label>Address<textarea value={profileForm.address} onChange={e=>setProfileForm({...profileForm,address:e.target.value})} placeholder="Your delivery or contact address"/></label>
           <button className="portal-submit" disabled={busy || profileLoading}>{busy ? "Saving…" : "Save my profile"}</button>
+        </form>
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>Request a Custom Order</h3><p>Send your garment requirements for review and quotation</p></div></div>
+        <form className="portal-form" onSubmit={submitCustomerOrder}>
+          <label>Garment category<select value={customerOrderForm.category} onChange={e=>setCustomerOrderForm({...customerOrderForm,category:e.target.value})}><option>Men’s clothing</option><option>Women’s clothing</option><option>Bridal and occasion wear</option><option>Traditional Nigerian attire</option><option>Corporate or institutional uniforms</option><option>Industrial or group tailoring</option><option>Other custom request</option></select></label>
+          <label>What would you like us to make?<input required maxLength="120" value={customerOrderForm.item} onChange={e=>setCustomerOrderForm({...customerOrderForm,item:e.target.value})} placeholder="e.g. Two-piece senator outfit"/></label>
+          <label>Fabric preference (optional)<input maxLength="100" value={customerOrderForm.fabric} onChange={e=>setCustomerOrderForm({...customerOrderForm,fabric:e.target.value})} placeholder="Fabric type or 'please advise'"/></label>
+          <label>Preferred colour (optional)<input maxLength="80" value={customerOrderForm.colour} onChange={e=>setCustomerOrderForm({...customerOrderForm,colour:e.target.value})} placeholder="e.g. Navy blue"/></label>
+          <label>Quantity<input type="number" min="1" max="50" step="1" required value={customerOrderForm.quantity} onChange={e=>setCustomerOrderForm({...customerOrderForm,quantity:e.target.value})}/></label>
+          <label>Measurement arrangement<select value={customerOrderForm.measurementMethod} onChange={e=>setCustomerOrderForm({...customerOrderForm,measurementMethod:e.target.value})}><option>I need a measurement appointment</option><option>I have measurements to discuss</option><option>Use my previously saved measurements</option></select></label>
+          <label>Preferred completion date (request only)<input type="date" min={localDateString()} value={customerOrderForm.preferredDate} onChange={e=>setCustomerOrderForm({...customerOrderForm,preferredDate:e.target.value})}/></label>
+          <label>Collection or delivery<select value={customerOrderForm.deliveryMethod} onChange={e=>setCustomerOrderForm({...customerOrderForm,deliveryMethod:e.target.value})}><option>Collection at the studio</option><option>Delivery arrangement required</option><option>To be discussed</option></select></label>
+          <label>Additional instructions<textarea maxLength="1500" rows="4" value={customerOrderForm.instructions} onChange={e=>setCustomerOrderForm({...customerOrderForm,instructions:e.target.value})} placeholder="Style details, occasion, fitting needs or other instructions"/></label>
+          <p className="portal-hint">This is an order request, not a confirmed order. The price, deposit and completion date will be confirmed by MR FOP after review.</p>
+          <button className="portal-submit" disabled={busy}>{busy ? "Submitting request…" : "Submit custom order request"}</button>
         </form>
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
