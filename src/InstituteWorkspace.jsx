@@ -16,6 +16,10 @@ export default function InstituteWorkspace() {
   const [myApplications, setMyApplications] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [lessons, setLessons] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
+  const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [windowForm, setWindowForm] = useState(blankWindow);
@@ -42,10 +46,17 @@ export default function InstituteWorkspace() {
         setEnrollments(active);
         const sets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", en.courseId)))));
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
+        const assignmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", en.courseId)))));
+        setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
+        const submissionSnap = await getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid)));
+        setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        const [assignmentSnap, submissionSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions"))]);
+        setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
   }
@@ -131,6 +142,42 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not publish lesson."); } finally { setBusy(false); }
   }
 
+  async function createAssignment(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      if (!assignmentForm.courseId || !assignmentForm.title.trim() || !assignmentForm.instructions.trim()) throw new Error("Choose a course and provide an assignment title and instructions.");
+      const points = Number(assignmentForm.points || 100);
+      if (!Number.isFinite(points) || points < 1) throw new Error("Enter a valid maximum score.");
+      await addDoc(collection(db, "instituteAssignments"), { courseId: assignmentForm.courseId, courseTitle: courses.find(c=>c.id===assignmentForm.courseId)?.title || "", title: assignmentForm.title.trim(), instructions: assignmentForm.instructions.trim(), dueDate: assignmentForm.dueDate || "", points, published: true, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setAssignmentForm(v=>({...v,title:"",instructions:"",dueDate:""})); setNotice("Assignment published to paid students in the selected course."); await load();
+    } catch(e) { setError(e.message || "Could not publish assignment."); } finally { setBusy(false); }
+  }
+
+  async function submitAssignment(item) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const answer = (submissionDrafts[item.id] || "").trim();
+      if (!answer) throw new Error("Enter your assignment response before submitting.");
+      if (submissions.some(s=>s.assignmentId===item.id)) throw new Error("You have already submitted this assignment. Contact your instructor if a correction is required.");
+      await addDoc(collection(db, "instituteSubmissions"), { assignmentId:item.id, courseId:item.courseId, assignmentTitle:item.title, studentUid:user.uid, studentName:user.displayName || user.email || "Student", answer, status:"submitted", submittedAt:serverTimestamp(), createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setNotice("Your assignment has been submitted."); setSubmissionDrafts(v=>({...v,[item.id]:""})); await load();
+    } catch(e) { setError(e.message || "Could not submit assignment."); } finally { setBusy(false); }
+  }
+
+  async function gradeSubmission(item, status) {
+    const scoreText = window.prompt("Enter score (0 to " + (assignments.find(a=>a.id===item.assignmentId)?.points || 100) + ")");
+    if (scoreText === null) return;
+    const score = Number(scoreText);
+    const max = Number(assignments.find(a=>a.id===item.assignmentId)?.points || 100);
+    if (!Number.isFinite(score) || score < 0 || score > max) { setError("Enter a valid score within the assignment maximum."); return; }
+    const feedback = window.prompt("Optional instructor feedback") || "";
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await updateDoc(doc(db,"instituteSubmissions",item.id), { status, score, maxScore:max, feedback, gradedBy:user.uid, gradedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setNotice("Submission graded."); await load();
+    } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
+  }
+
   async function changeWindowStatus(item, status) {
     setBusy(true); setError(""); setNotice("");
     try { await updateDoc(doc(db, "trainingWindows", item.id), { status, updatedAt: serverTimestamp() }); setNotice("Training window updated."); await load(); }
@@ -193,6 +240,17 @@ export default function InstituteWorkspace() {
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
+    {isAdmin && <form className="portal-form" onSubmit={createAssignment}>
+      <h4>Publish a course assignment</h4>
+      <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+      <label>Assignment title<input required value={assignmentForm.title} onChange={e=>setAssignmentForm({...assignmentForm,title:e.target.value})}/></label>
+      <label>Instructions<textarea required rows="5" value={assignmentForm.instructions} onChange={e=>setAssignmentForm({...assignmentForm,instructions:e.target.value})}/></label>
+      <label>Due date (optional)<input type="date" value={assignmentForm.dueDate} onChange={e=>setAssignmentForm({...assignmentForm,dueDate:e.target.value})}/></label>
+      <label>Maximum score<input type="number" min="1" step="1" value={assignmentForm.points} onChange={e=>setAssignmentForm({...assignmentForm,points:e.target.value})}/></label>
+      <button className="portal-submit" disabled={busy||!courses.length}>Publish assignment</button>
+    </form>}
+    {isAdmin && <div className="institute-window-list"><h4>Student submissions & grading</h4>{submissions.length?submissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assignmentTitle}</strong><span>{sub.studentName} · {sub.status}</span><p>{sub.answer}</p>{sub.status==="graded"?<p>Score: {sub.score}/{sub.maxScore} · {sub.feedback}</p>:<button type="button" disabled={busy} onClick={()=>gradeSubmission(sub,"graded")}>Grade submission</button>}</article>):<p className="staff-empty">No student submissions yet.</p>}</div>}
+    {!isAdmin && <div className="institute-window-list"><h4>My course assignments</h4>{assignments.map(a=>{const prior=submissions.find(s=>s.assignmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle} · Maximum score: {a.points}</span>{a.dueDate&&<p>Due: {a.dueDate}</p>}<p>{a.instructions}</p>{prior?<div><p>Submission status: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}<p>{prior.answer}</p></div>:<><label>Your response<textarea rows="5" value={submissionDrafts[a.id]||""} onChange={e=>setSubmissionDrafts(v=>({...v,[a.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>submitAssignment(a)}>Submit assignment</button></>}</article>})}{!assignments.length&&<p className="staff-empty">No assignments have been published for your enrolled courses.</p>}</div>}
     {isAdmin && <form className="portal-form" onSubmit={createLesson}><h4>Publish a course lesson</h4>
       <label>Course<select required value={lessonForm.courseId} onChange={e=>setLessonForm({...lessonForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(x=><option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
       <label>Lesson title<input required value={lessonForm.title} onChange={e=>setLessonForm({...lessonForm,title:e.target.value})}/></label>
