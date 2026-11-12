@@ -396,7 +396,7 @@ service cloud.firestore {
     }
 
     match /instituteAttendance/{attendanceId} {
-      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
         && request.resource.data.studentUid is string
         && request.resource.data.courseId is string
         && request.resource.data.date is string
