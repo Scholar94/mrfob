@@ -59,6 +59,7 @@ export default function Portal({ onClose }) {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
+  const [quoteEdits, setQuoteEdits] = useState({});
   const [myOrders, setMyOrders] = useState([]);
   const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
@@ -312,6 +313,32 @@ export default function Portal({ onClose }) {
       setOrders(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
       setMessage("Order updated successfully.");
     } catch (err) { setError(err.message || "Could not update the order."); }
+    finally { setBusy(false); }
+  }
+
+  async function sendOrderQuotation(order) {
+    if (!claims.superAdmin || !order?.id) return;
+    const edit = quoteEdits[order.id] || {};
+    const amount = Number(edit.amount);
+    if (!Number.isFinite(amount) || amount <= 0) { setError("Enter a quotation amount greater than zero."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const patch = { amount, quotationNote: (edit.note || "").trim(), quotationStatus: "sent", quotationSentAt: serverTimestamp(), paymentStatus: "awaiting_customer_approval", updatedAt: serverTimestamp() };
+      await updateDoc(doc(db, "orders", order.id), patch);
+      setOrders(items => items.map(item => item.id === order.id ? { ...item, ...patch, quotationSentAt: new Date() } : item));
+      setMessage("Quotation sent to the customer for approval.");
+    } catch (err) { setError(err.message || "Could not send the quotation."); }
+    finally { setBusy(false); }
+  }
+
+  async function respondToQuotation(order, decision) {
+    if (!user || !order?.id || order.customerUid !== user.uid || order.quotationStatus !== "sent" || !["accepted", "declined"].includes(decision)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "orders", order.id), { quotationStatus: decision, updatedAt: serverTimestamp() });
+      setMyOrders(items => items.map(item => item.id === order.id ? { ...item, quotationStatus: decision } : item));
+      setMessage(decision === "accepted" ? "You accepted the quotation. The team can now confirm the deposit and production arrangements." : "You declined the quotation. The team will contact you to discuss next steps.");
+    } catch (err) { setError(err.message || "Could not submit your quotation response."); }
     finally { setBusy(false); }
   }
 
@@ -772,10 +799,11 @@ export default function Portal({ onClose }) {
           <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
           <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>
+          {claims.superAdmin && (order.paymentStatus === "unquoted" || order.amount === undefined || order.quotationStatus === "declined") && <div className="order-quotation-editor"><strong>Prepare customer quotation</strong><label>Quotation amount (₦)<input type="number" min="0.01" step="0.01" value={quoteEdits[order.id]?.amount ?? (order.amount ? String(order.amount) : "")} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],amount:e.target.value}}))}/></label><label>Quotation notes<textarea value={quoteEdits[order.id]?.note ?? order.quotationNote ?? ""} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],note:e.target.value}}))} placeholder="Fabric, fittings, deposit terms and scope"/></label><button type="button" disabled={busy} onClick={()=>sendOrderQuotation(order)}>Send quotation</button></div>}
           {claims.superAdmin ? <div className="order-controls"><label>Production stage<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}>{PRODUCTION_STAGES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span></div>}
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div>{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
         <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
         {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
