@@ -240,3 +240,6 @@
 
 
 - **2026-11-12 — Expected delivery date administration:** Super Admin can revise an order's expected delivery date from Order Management and save the change explicitly. The customer order view already displays the date, so a saved update is reflected on refresh. Firestore rules limit this additional order-field update to Super Admin and validate the date field type; this does not promise automatic customer notifications or guarantee the delivery date. Build and live permission/customer-refresh tests remain pending.
+
+
+- **2026-11-12 — Production-team order stage updates:** aligned the order-management interface with the existing Firestore production-role policy. Super Admin, Manager, Sales and Tailor can update the production stage; each change is written to the order event history with the staff UID/name and timestamp. Delivery-date and payment-status controls remain Super Admin-only. Firestore event creation now permits the same authorized production roles while retaining the allowed-stage and actor checks. Build and live role-isolation tests remain pending; publish the latest rules before use.
