@@ -332,7 +332,17 @@ service cloud.firestore {
     }
 
     match /instituteAssignments/{assignmentId} {
-      allow create: if isActiveInstituteCourse(request.resource.data.courseId) && (isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid));
+      allow create: if isActiveInstituteCourse(request.resource.data.courseId)
+        && (isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.instructions is string
+        && request.resource.data.instructions.size() > 0
+        && request.resource.data.published == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && (!request.resource.data.keys().hasAny(['dueAt']) || request.resource.data.dueAt == null || request.resource.data.dueAt is timestamp);
       allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(resource.data.courseId) && request.resource.data.courseId == resource.data.courseId);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
@@ -349,6 +359,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId))
         && get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.courseId == request.resource.data.courseId
         && get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.published == true
+        && (!get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.keys().hasAny(['dueAt']) || get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.dueAt == null || request.time <= get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.dueAt)
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['assignmentId','courseId','assignmentTitle','studentUid','studentName','answer','status','submittedAt','createdAt','updatedAt']);
