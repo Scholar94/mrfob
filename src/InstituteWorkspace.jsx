@@ -203,13 +203,23 @@ export default function InstituteWorkspace() {
     try {
       for (const windowItem of windows) {
         const windowRef = doc(db, "trainingWindows", windowItem.id);
+        const initialWindow = await getDoc(windowRef);
+        if (!initialWindow.exists()) continue;
+        const initialData = initialWindow.data();
+        const applicationQuery = query(collection(db, "instituteApplications"), where("windowId", "==", windowItem.id));
+        const applicationSnap = await getDocs(applicationQuery);
+        const reservedPlaces = applicationSnap.docs.filter(application => application.data().status !== "rejected").length;
         await runTransaction(db, async transaction => {
           const latestWindow = await transaction.get(windowRef);
           if (!latestWindow.exists()) return;
-          const applicationQuery = query(collection(db, "instituteApplications"), where("windowId", "==", windowItem.id));
-          const applicationSnap = await transaction.get(applicationQuery);
-          const reservedPlaces = applicationSnap.docs.filter(application => application.data().status !== "rejected").length;
-          const currentCount = Number(latestWindow.data().enrolledCount || 0);
+          const latestData = latestWindow.data();
+          const initialUpdatedAt = initialData.updatedAt;
+          const latestUpdatedAt = latestData.updatedAt;
+          const sameUpdatedAt = (!initialUpdatedAt && !latestUpdatedAt) || (initialUpdatedAt?.seconds === latestUpdatedAt?.seconds && initialUpdatedAt?.nanoseconds === latestUpdatedAt?.nanoseconds);
+          if (!sameUpdatedAt || Number(initialData.enrolledCount || 0) !== Number(latestData.enrolledCount || 0) || (initialData.lastApplicationId || "") !== (latestData.lastApplicationId || "")) {
+            throw new Error("A training-window record changed during reconciliation. Run the reconciliation again to use a fresh application count.");
+          }
+          const currentCount = Number(latestData.enrolledCount || 0);
           if (currentCount !== reservedPlaces) {
             transaction.update(windowRef, { enrolledCount: reservedPlaces, updatedAt: serverTimestamp() });
           }
