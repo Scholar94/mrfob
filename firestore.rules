@@ -71,9 +71,23 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'service', 'appointmentDate', 'appointmentTime', 'purpose', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.status == 'pending';
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+      allow update: if (
+        isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proposedDate', 'proposedTime', 'adminMessage', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'confirmed', 'alternative_proposed', 'completed', 'cancelled']
+        && (request.resource.data.status != 'alternative_proposed'
+          || (request.resource.data.proposedDate is string
+            && request.resource.data.proposedTime is string
+            && request.resource.data.proposedDate >= request.time.date().toString()))
+      ) || (
+        signedIn()
+        && resource.data.customerUid == request.auth.uid
+        && resource.data.status == 'alternative_proposed'
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.appointmentDate == resource.data.proposedDate
+        && request.resource.data.appointmentTime == resource.data.proposedTime
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'appointmentDate', 'appointmentTime', 'updatedAt'])
+      );
       allow delete: if isSuperAdmin();
     }
 
