@@ -242,7 +242,7 @@ export default function InstituteWorkspace() {
   async function createAssessment(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      const questions = assessmentForm.questions.split("\\n").map(q => q.trim()).filter(Boolean);
+      const questions = assessmentForm.questions.split(/\r?\n/).map(q => q.trim()).filter(Boolean);
       if (!assessmentForm.courseId || !assessmentForm.title.trim() || !questions.length) throw new Error("Choose a course, enter an assessment title and add at least one question (one per line).");
       if (questions.length > 30) throw new Error("An assessment can contain up to 30 questions.");
       const course = courses.find(c => c.id === assessmentForm.courseId);
