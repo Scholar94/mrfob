@@ -228,3 +228,6 @@
 
 
 - **2026-11-12 — Assessment submission deadline enforcement:** assessment publishers can set a due date; the app stores an end-of-day deadline timestamp and rejects expired submissions in the student interface. Firestore rules independently compare the trusted request time with the assessment deadline, so bypassing the interface does not permit a late submission. Existing assessments without a deadline remain compatible. This is a deadline control for the existing one-submission, manually graded written assessment workflow; timed exams, attempt extensions, resubmission policy and secure auto-marking remain outstanding. Publish the latest `firestore.rules` before use and verify with live student/staff accounts.
+
+
+- **2026-11-12 — Assignment submission deadline enforcement:** assignment publishers can set an optional due date; the app stores an end-of-day Firestore timestamp and warns students when the deadline has passed. Firestore rules independently compare trusted request time with the assignment deadline and reject late submissions, including attempts made by bypassing the interface. Legacy assignments without a deadline remain compatible. This does not add resubmission, extensions, file attachments or automated grading. Publish the latest `firestore.rules` before use; build and live deadline-boundary tests remain pending.
