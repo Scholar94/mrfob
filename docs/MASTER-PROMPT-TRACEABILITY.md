@@ -159,3 +159,5 @@
 
 
 - **Illustrated measurement guidance (2026-11-12):** added a responsive front-view schematic identifying chest, waist and hip tape positions, with practical measurement instructions and a clear designer-confirmation disclaimer. This is a general guide only; profile-specific diagrams and out-of-range/anomaly checks remain future work.
+
+- **Measurement plausibility checks (2026-11-12):** customer measurement entry now displays non-blocking warnings for unusually small or large entered values using broad field-type ranges after conversion to centimetres. The checks are deliberately advisory rather than body-size rules; customers can continue and a designer must confirm measurements. They do not replace garment-specific fitting expertise or live Firestore testing.
