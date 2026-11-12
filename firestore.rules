@@ -348,6 +348,25 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteCertificates/{certificateId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.studentUid is string
+        && request.resource.data.courseId is string
+        && request.resource.data.certificateRef is string
+        && request.resource.data.certificateRef.size() > 0
+        && request.resource.data.status == 'issued'
+        && request.resource.data.issuedBy == request.auth.uid
+        && request.resource.data.issuedAt is timestamp
+        && request.resource.data.keys().hasOnly(['certificateRef','studentUid','studentId','studentName','courseId','courseTitle','windowId','windowTitle','status','issuedAt','issuedBy','createdAt'])
+        && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
+        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid';
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['issued','revoked'];
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteAttendance/{attendanceId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.studentUid is string
