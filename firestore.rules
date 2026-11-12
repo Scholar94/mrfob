@@ -425,6 +425,51 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteAssessments/{assessmentId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
+        && request.resource.data.courseId is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.questions is list
+        && request.resource.data.questions.size() > 0
+        && request.resource.data.questions.size() <= 30
+        && request.resource.data.published == true
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','questions','published','createdBy','createdAt','updatedAt']);
+      allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId);
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
+        || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /instituteAssessmentSubmissions/{submissionId} {
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && hasPaidCourseAccess(request.resource.data.courseId)
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.answers is list
+        && request.resource.data.answers.size() > 0
+        && exists(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId))
+        && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.courseId == request.resource.data.courseId
+        && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.published == true
+        && request.resource.data.keys().hasOnly(['assessmentId','courseId','assessmentTitle','studentUid','studentName','answers','status','submittedAt','createdAt','updatedAt'])
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId));
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','maxScore','feedback','gradedBy','gradedAt','updatedAt'])
+        && request.resource.data.status == 'graded'
+        && request.resource.data.score is number
+        && request.resource.data.maxScore is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= request.resource.data.maxScore
+        && request.resource.data.gradedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteInstructorAssignments/{assignmentId} {
       allow create, update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.instructorUid is string
