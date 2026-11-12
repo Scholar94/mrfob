@@ -234,3 +234,6 @@
 
 
 - **2026-11-12 — Institute attendance summaries:** the student attendance view now calculates the share of marked sessions recorded as present or late, and the staff register shows each paid enrolment's attended-session count and percentage alongside the selected day's status. The denominator is only the attendance records actually entered; this is not an assumed timetable/session count, and missing marks are not counted as absences. Build and live data validation remain pending.
+
+
+- **2026-11-12 — Student-facing course progress:** each paid learner's enrolled-course panel now summarizes completed lessons, total published lessons and a percentage progress indicator above the lesson list. The percentage is based only on lessons currently loaded for that paid course and the learner's self-marked completion records; it is not an independently assessed competency score. Build and live learner-data validation remain pending.
