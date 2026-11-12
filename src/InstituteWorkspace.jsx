@@ -22,6 +22,9 @@ export default function InstituteWorkspace() {
   const [attendance, setAttendance] = useState([]);
   const [lessonProgress, setLessonProgress] = useState([]);
   const [allLessonProgress, setAllLessonProgress] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [allCertificates, setAllCertificates] = useState([]);
+  const [certificateEnrollmentId, setCertificateEnrollmentId] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
@@ -53,20 +56,22 @@ export default function InstituteWorkspace() {
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
         const assignmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", en.courseId), where("published", "==", true)))));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const [submissionSnap, attendanceSnap, progressSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid)))]);
+        const [submissionSnap, attendanceSnap, progressSnap, certificateSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid)))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.date||"").localeCompare(a.date||"")));
         setLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.issuedAt?.seconds||0)-(a.issuedAt?.seconds||0)));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress"))]);
+        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates"))]);
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
   }
@@ -188,6 +193,27 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
   }
 
+  async function issueCertificate() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const enrollment = allEnrollments.find(item => item.id === certificateEnrollmentId);
+      if (!enrollment || enrollment.paymentStatus !== "paid") throw new Error("Select a student with verified paid-course access.");
+      const certificateId = enrollment.studentUid + "_" + enrollment.courseId;
+      if (allCertificates.some(item => item.id === certificateId)) throw new Error("A certificate has already been issued for this student and course.");
+      const certificateRef = "MFO-CERT-" + Date.now().toString(36).toUpperCase();
+      await setDoc(doc(db, "instituteCertificates", certificateId), {
+        certificateRef, studentUid: enrollment.studentUid, studentId: enrollment.studentId || "",
+        studentName: enrollment.studentName || enrollment.studentEmail || "Student",
+        courseId: enrollment.courseId, courseTitle: enrollment.courseTitle || "Fashion training",
+        windowId: enrollment.windowId || "", windowTitle: enrollment.windowTitle || "",
+        status: "issued", issuedAt: serverTimestamp(), issuedBy: user.uid, createdAt: serverTimestamp()
+      });
+      setCertificateEnrollmentId("");
+      setNotice("Certificate issued: " + certificateRef + ". Confirm course completion before issuing.");
+      await load();
+    } catch(e) { setError(e.message || "Could not issue certificate."); } finally { setBusy(false); }
+  }
+
   async function markAttendance(enrollment, status) {
     setBusy(true); setError(""); setNotice("");
     try {
@@ -280,6 +306,17 @@ export default function InstituteWorkspace() {
       {allEnrollments.map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
       {!allEnrollments.length&&<p className="staff-empty">No enrolled students are available for attendance marking.</p>}
     </section>}
+    {isAdmin && <section className="institute-window-list">
+      <h4>Certificates and completion status</h4>
+      <label>Paid student and course<select value={certificateEnrollmentId} onChange={e=>setCertificateEnrollmentId(e.target.value)}>
+        <option value="">Select a paid enrolment</option>
+        {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
+      </select></label>
+      <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
+      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p></article>):<p className="staff-empty">No certificates have been issued yet.</p>}
+      <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
+    </section>}
+    {!isAdmin && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p></article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
     {!isAdmin && <section className="institute-window-list"><h4>My attendance record</h4>{attendance.length?attendance.map(a=><article className="appointment-card" key={a.id}><strong>{a.courseTitle}</strong><span>{a.date} · {a.status}</span></article>):<p className="staff-empty">Your attendance records will appear here when the Institute marks attendance.</p>}</section>}
     {isAdmin && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
