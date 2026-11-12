@@ -12,14 +12,15 @@ service cloud.firestore {
     }
     function hasStaffRole(roles) { return isStaff() && roleOf(request.auth.uid) in roles; }
 
-    function validQuotationItems(items) {
+    function validQuotationItems(items, total) {
       return items is list && items.size() == 6
         && items[0] is map && items[0].keys().hasOnly(['label', 'amount']) && items[0].label == 'Garment / agreed scope' && items[0].amount is number && items[0].amount >= 0
         && items[1] is map && items[1].keys().hasOnly(['label', 'amount']) && items[1].label == 'Fabric' && items[1].amount is number && items[1].amount >= 0
         && items[2] is map && items[2].keys().hasOnly(['label', 'amount']) && items[2].label == 'Labour' && items[2].amount is number && items[2].amount >= 0
         && items[3] is map && items[3].keys().hasOnly(['label', 'amount']) && items[3].label == 'Design' && items[3].amount is number && items[3].amount >= 0
         && items[4] is map && items[4].keys().hasOnly(['label', 'amount']) && items[4].label == 'Accessories' && items[4].amount is number && items[4].amount >= 0
-        && items[5] is map && items[5].keys().hasOnly(['label', 'amount']) && items[5].label == 'Delivery' && items[5].amount is number && items[5].amount >= 0;
+        && items[5] is map && items[5].keys().hasOnly(['label', 'amount']) && items[5].label == 'Delivery' && items[5].amount is number && items[5].amount >= 0
+        && total is number && total == items[0].amount + items[1].amount + items[2].amount + items[3].amount + items[4].amount + items[5].amount;
     }
 
     match /roles/{userId} {
@@ -73,7 +74,7 @@ service cloud.firestore {
         && (!('dueDate' in request.resource.data) || request.resource.data.dueDate is string)
         && (!('amount' in request.resource.data) || (request.resource.data.amount is number && request.resource.data.amount > 0))
         && (!('amountPaid' in request.resource.data) || (request.resource.data.amountPaid is number && request.resource.data.amountPaid >= 0))
-        && (!('quotationItems' in request.resource.data) || validQuotationItems(request.resource.data.quotationItems))
+        && (!('quotationItems' in request.resource.data) || validQuotationItems(request.resource.data.quotationItems, request.resource.data.amount))
         && (!('quotationStatus' in request.resource.data) || request.resource.data.quotationStatus in ['sent', 'accepted', 'declined']))
         || (signedIn()
         && resource.data.customerUid == request.auth.uid
