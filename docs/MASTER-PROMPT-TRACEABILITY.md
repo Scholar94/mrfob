@@ -219,3 +219,6 @@
 
 
 - **2026-11-12 — Training intake administration:** Institute administrators can edit an existing training window's title, course, application dates, commencement, duration, modes, fee, capacity, timetable, venue and instructor label. The edit workflow preserves the existing reserved-application count and refuses a capacity reduction below the currently recorded reservations. Existing applications retain their original intake reference. This is a first administrative edit workflow; capacity reconciliation should be run for legacy windows before relying on the counter, and live Firestore authorization/transaction tests remain pending.
+
+
+- **2026-11-12 — Institute manager authorization alignment:** corrected Firestore rules so the Manager role, which is exposed as an Institute administrator in the workspace, can create/update courses and training windows, review applications, and create/update lessons. Previously, some of these UI controls were visible to managers but the corresponding rules allowed only Super Admin/Institute roles, causing avoidable permission-denied failures. Manager access remains bounded to the listed Institute collections and does not grant Super Admin-only deletion or certificate revocation. Publish the latest `firestore.rules` and verify each role with separate accounts during live authorization testing.
