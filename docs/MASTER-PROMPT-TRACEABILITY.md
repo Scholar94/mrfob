@@ -42,7 +42,7 @@
 | MP-24 | 24. Delivery and mandatory testing | Ten development phases; all 20 mandatory end-to-end tests with separate customer/designer/finance/instructor/admin accounts; source code, responsive site, PWA, DB/rules, Drive, four dashboards, setup/deployment guides, test report and free-tier guide | Partial — repository, deployed site, Firebase foundation, customer/admin portal and deployment workflow exist; complete phases, test coverage, dashboards, Drive integration and documentation remain outstanding |
 
 ## Existing working functionality to preserve
-- Firebase email/password customer registration and login, email verification and sign-out.
+- Firebase email/password customer registration and login, email verification, password-reset email request and sign-out.
 - Firestore role-based Super Admin/staff foundation.
 - Staff access management for current roles.
 - Customer directory, profile viewing/editing and order history.
@@ -55,7 +55,7 @@
 - Financial expense records, P&L-style summaries, period filters, charts, CSV and printable reports.
 - Existing deployed Firebase/GitHub Pages configuration and existing business records.
 
-## Implementation sequence (preserve all ten master phases)
+## Work log\n\n- **2026-11-12 — Account recovery:** added a password-reset request flow to the account portal using Firebase Authentication. It requests a reset email for the supplied address and uses a non-enumerating success message for unknown accounts. Code change is committed on the feature branch; deployment and live email delivery have not yet been verified.\n\n## Implementation sequence (preserve all ten master phases)
 
 ### Phase 0 — Baseline and traceability
 - Keep this register current.
