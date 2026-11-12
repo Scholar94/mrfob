@@ -73,10 +73,6 @@ export default function InstituteWorkspace() {
         const assessmentSubmissionSnap = await getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("studentUid", "==", user.uid)));
         setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
-        setSessions(sessionSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
-        setAllInstructorAssignments(instructorAssignmentSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(a=>a.active));
-        const instructorProfileSnap = await getDocs(collection(db, "instituteInstructorProfiles"));
-        setInstructorProfiles(instructorProfileSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
         const [submissionSnap, attendanceSnap, progressSnap, certificateSnap, sessionSets] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid))), Promise.all(active.map(en => getDocs(query(collection(db, "instituteSessions"), where("courseId", "==", en.courseId), where("published", "==", true)))))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -121,7 +117,7 @@ export default function InstituteWorkspace() {
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [lessonSnap, assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap, assessmentSnap, assessmentSubmissionSnap, sessionSnap, instructorAssignmentSnap] = await Promise.all([getDocs(collection(db, "instituteLessons")), getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates")), getDocs(collection(db, "instituteAssessments")), getDocs(collection(db, "instituteAssessmentSubmissions")), getDocs(collection(db, "instituteSessions")), getDocs(collection(db, "instituteInstructorAssignments"))]);
+        const [lessonSnap, assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap, assessmentSnap, assessmentSubmissionSnap, sessionSnap, instructorAssignmentSnap, instructorProfileSnap] = await Promise.all([getDocs(collection(db, "instituteLessons")), getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates")), getDocs(collection(db, "instituteAssessments")), getDocs(collection(db, "instituteAssessmentSubmissions")), getDocs(collection(db, "instituteSessions")), getDocs(collection(db, "instituteInstructorAssignments")), getDocs(collection(db, "instituteInstructorProfiles"))]);
         setLessons(lessonSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -131,6 +127,9 @@ export default function InstituteWorkspace() {
         setAllCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAssessments(assessmentSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
+        setSessions(sessionSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
+        setAllInstructorAssignments(instructorAssignmentSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(a=>a.active));
+        setInstructorProfiles(instructorProfileSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         const announcementSnap = await getDocs(collection(db, "instituteAnnouncements"));
         setAnnouncements(announcementSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
