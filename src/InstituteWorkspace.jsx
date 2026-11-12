@@ -18,6 +18,9 @@ export default function InstituteWorkspace() {
   const [lessons, setLessons] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [allEnrollments, setAllEnrollments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
@@ -50,11 +53,13 @@ export default function InstituteWorkspace() {
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
         const submissionSnap = await getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid)));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [assignmentSnap, submissionSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions"))]);
+        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance"))]);
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
@@ -178,6 +183,16 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
   }
 
+  async function markAttendance(enrollment, status) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      if (!attendanceDate) throw new Error("Choose the attendance date.");
+      const recordId = enrollment.studentUid + "_" + enrollment.courseId + "_" + attendanceDate;
+      await setDoc(doc(db, "instituteAttendance", recordId), { studentUid: enrollment.studentUid, studentId: enrollment.studentId || "", studentName: enrollment.studentName || enrollment.studentEmail || "Student", courseId: enrollment.courseId, courseTitle: enrollment.courseTitle || "", windowId: enrollment.windowId || "", date: attendanceDate, status, markedBy: user.uid, markedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setNotice("Attendance saved for " + (enrollment.studentName || enrollment.studentEmail || "student") + "."); await load();
+    } catch(e) { setError(e.message || "Could not save attendance."); } finally { setBusy(false); }
+  }
+
   async function changeWindowStatus(item, status) {
     setBusy(true); setError(""); setNotice("");
     try { await updateDoc(doc(db, "trainingWindows", item.id), { status, updatedAt: serverTimestamp() }); setNotice("Training window updated."); await load(); }
@@ -240,6 +255,13 @@ export default function InstituteWorkspace() {
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
+    {isAdmin && <section className="institute-window-list">
+      <h4>Student attendance register</h4>
+      <label>Attendance date<input type="date" value={attendanceDate} onChange={e=>setAttendanceDate(e.target.value)}/></label>
+      {allEnrollments.map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
+      {!allEnrollments.length&&<p className="staff-empty">No enrolled students are available for attendance marking.</p>}
+    </section>}
+    {!isAdmin && <section className="institute-window-list"><h4>My attendance record</h4>{attendance.length?attendance.map(a=><article className="appointment-card" key={a.id}><strong>{a.courseTitle}</strong><span>{a.date} · {a.status}</span></article>):<p className="staff-empty">Your attendance records will appear here when the Institute marks attendance.</p>}</section>}
     {isAdmin && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
       <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
