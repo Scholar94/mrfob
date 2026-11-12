@@ -1,0 +1,165 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where } from "firebase/firestore";
+import { db } from "./firebase.js";
+import { useAuth } from "./AuthProvider.jsx";
+
+const COURSE_TYPES = ["Basic Fashion Designing","Professional Fashion Designing","Advanced Fashion Designing","Pattern Drafting","Garment Construction","Industrial Tailoring","Bridal Wear Design","Men's Fashion Design","Women's Fashion Design","Fashion Business Management","Fashion Entrepreneurship","Traditional Nigerian Fashion","Fashion Finishing and Decoration"];
+const blankCourse = { title: "", category: "Professional Fashion Designing", description: "", mode: "Online and onsite", duration: "", fee: "", active: true };
+const blankWindow = { title: "", courseId: "", applicationOpen: "", applicationClose: "", commencement: "", duration: "", modes: ["Onsite"], fee: "", capacity: "", timetable: "", venue: "MR FOP FASHIONS, Ijebu Ode", instructorName: "" };
+
+export default function InstituteWorkspace() {
+  const { user, claims } = useAuth();
+  const isAdmin = !!(claims.superAdmin || claims.staffRole === "institute" || claims.staffRole === "manager");
+  const [courses, setCourses] = useState([]);
+  const [windows, setWindows] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [myApplications, setMyApplications] = useState([]);
+  const [courseForm, setCourseForm] = useState(blankCourse);
+  const [windowForm, setWindowForm] = useState(blankWindow);
+  const [applicationForm, setApplicationForm] = useState({ fullName: user?.displayName || "", phone: "", address: "", courseId: "", windowId: "", mode: "Onsite", experience: "", note: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function load() {
+    if (!user) return;
+    setError("");
+    try {
+      const [courseSnap, windowSnap, ownSnap] = await Promise.all([
+        getDocs(collection(db, "instituteCourses")),
+        getDocs(collection(db, "trainingWindows")),
+        getDocs(query(collection(db, "instituteApplications"), where("customerUid", "==", user.uid)))
+      ]);
+      setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.title || "").localeCompare(b.title || "")));
+      setWindows(windowSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.commencement || "").localeCompare(b.commencement || "")));
+      setMyApplications(ownSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      if (isAdmin) {
+        const all = await getDocs(collection(db, "instituteApplications"));
+        setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      }
+    } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
+  }
+
+  useEffect(() => { load(); }, [user?.uid, isAdmin]);
+
+  const availableWindows = useMemo(() => windows.filter(w => w.status !== "closed" && (!w.applicationClose || w.applicationClose >= new Date().toISOString().slice(0,10))), [windows]);
+
+  async function saveCourse(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      if (!courseForm.title.trim()) throw new Error("Enter a course title.");
+      const fee = Number(courseForm.fee || 0);
+      if (!Number.isFinite(fee) || fee < 0) throw new Error("Enter a valid course fee.");
+      await addDoc(collection(db, "instituteCourses"), { ...courseForm, title: courseForm.title.trim(), fee, active: true, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setCourseForm(blankCourse); setNotice("Course created successfully."); await load();
+    } catch(e) { setError(e.message || "Could not save course."); } finally { setBusy(false); }
+  }
+
+  async function saveWindow(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      if (!windowForm.title.trim() || !windowForm.courseId || !windowForm.applicationOpen || !windowForm.applicationClose || !windowForm.commencement) throw new Error("Complete the intake name, course and all application/commencement dates.");
+      if (windowForm.applicationClose < windowForm.applicationOpen) throw new Error("Application closing date cannot be before opening date.");
+      const capacity = Number(windowForm.capacity);
+      const fee = Number(windowForm.fee);
+      if (!Number.isInteger(capacity) || capacity < 1) throw new Error("Enter a whole-number student capacity.");
+      if (!Number.isFinite(fee) || fee < 0) throw new Error("Enter a valid training fee.");
+      await addDoc(collection(db, "trainingWindows"), { ...windowForm, title: windowForm.title.trim(), capacity, fee, status: "open", enrolledCount: 0, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setWindowForm(blankWindow); setNotice("Training window created successfully."); await load();
+    } catch(e) { setError(e.message || "Could not create training window."); } finally { setBusy(false); }
+  }
+
+  async function apply(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const course = courses.find(c => c.id === applicationForm.courseId);
+      const win = windows.find(w => w.id === applicationForm.windowId);
+      if (!course || !win) throw new Error("Select an available course and training window.");
+      if (win.status !== "open" || (win.applicationClose && win.applicationClose < new Date().toISOString().slice(0,10))) throw new Error("This training window is closed.");
+      if (Number(win.enrolledCount || 0) >= Number(win.capacity || 0)) throw new Error("This training window has reached its stated capacity. Please select another window.");
+      if (!applicationForm.fullName.trim() || !applicationForm.phone.trim() || !applicationForm.address.trim()) throw new Error("Enter your full name, telephone number and residential address.");
+      const ref = "MFO-INS-" + Date.now().toString(36).toUpperCase();
+      await addDoc(collection(db, "instituteApplications"), {
+        applicationRef: ref, customerUid: user.uid, fullName: applicationForm.fullName.trim(), email: user.email || "",
+        phone: applicationForm.phone.trim(), address: applicationForm.address.trim(), courseId: course.id, courseTitle: course.title,
+        windowId: win.id, windowTitle: win.title, mode: applicationForm.mode, experience: applicationForm.experience.trim(),
+        note: applicationForm.note.trim(), status: "pending", paymentStatus: "not_due", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setNotice("Application submitted. Your reference is " + ref + ". Admission is not confirmed until reviewed by the Institute.");
+      setApplicationForm(v => ({ ...v, experience: "", note: "" })); await load();
+    } catch(e) { setError(e.message || "Could not submit application."); } finally { setBusy(false); }
+  }
+
+  async function reviewApplication(item, status) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const update = { status, updatedAt: serverTimestamp(), reviewedBy: user.uid, reviewedAt: serverTimestamp() };
+      if (status === "admitted" && !item.studentId) update.studentId = "MFO-STU-" + Date.now().toString(36).toUpperCase();
+      await updateDoc(doc(db, "instituteApplications", item.id), update);
+      setNotice("Application " + status + "."); await load();
+    } catch(e) { setError(e.message || "Could not update application."); } finally { setBusy(false); }
+  }
+
+  async function changeWindowStatus(item, status) {
+    setBusy(true); setError(""); setNotice("");
+    try { await updateDoc(doc(db, "trainingWindows", item.id), { status, updatedAt: serverTimestamp() }); setNotice("Training window updated."); await load(); }
+    catch(e) { setError(e.message || "Could not update training window."); } finally { setBusy(false); }
+  }
+
+  if (!user) return null;
+  return <section className="institute-workspace">
+    <div className="customer-management-heading"><div><h3>MR FOP Fashion Institute</h3><p>Courses, training intakes and admission applications</p></div><button type="button" onClick={load}>Refresh institute</button></div>
+    {error && <p className="portal-error">{error}</p>}{notice && <p className="portal-success">{notice}</p>}
+    <div className="institute-course-grid">
+      {courses.filter(c => c.active !== false).map(c => <article className="institute-course-card" key={c.id}><span>COURSE</span><h4>{c.title}</h4><p>{c.description || c.category || "Professional fashion training"}</p><small>{c.mode || "Mode to be confirmed"} · {c.duration || "Duration to be confirmed"}</small><strong>{Number(c.fee || 0) ? "₦" + Number(c.fee).toLocaleString("en-NG") : "Fee to be confirmed"}</strong></article>)}
+      {!courses.length && <p className="staff-empty">Course information will appear here when the Institute publishes its first course.</p>}
+    </div>
+    <div className="institute-window-list"><h4>Available training windows</h4>
+      {availableWindows.map(w => <article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{courses.find(c => c.id === w.courseId)?.title || "Course"} · {w.modes?.join(", ") || "Mode not specified"}</span><p>Applications: {w.applicationOpen} to {w.applicationClose} · Commencement: {w.commencement}</p><p>Duration: {w.duration || "To be confirmed"} · Capacity: {w.enrolledCount || 0}/{w.capacity} · Fee: ₦{Number(w.fee || 0).toLocaleString("en-NG")}</p><p>{w.venue || "Venue to be confirmed"} {w.timetable ? "· " + w.timetable : ""}</p></article>)}
+      {!availableWindows.length && <p className="staff-empty">There are no open training windows at the moment.</p>}
+    </div>
+    {!isAdmin && <form className="portal-form institute-application-form" onSubmit={apply}>
+      <h4>Apply for fashion training</h4>
+      <label>Full name<input required value={applicationForm.fullName} onChange={e=>setApplicationForm({...applicationForm,fullName:e.target.value})}/></label>
+      <label>Telephone number<input required value={applicationForm.phone} onChange={e=>setApplicationForm({...applicationForm,phone:e.target.value})}/></label>
+      <label>Residential address<textarea required value={applicationForm.address} onChange={e=>setApplicationForm({...applicationForm,address:e.target.value})}/></label>
+      <label>Course<select required value={applicationForm.courseId} onChange={e=>setApplicationForm({...applicationForm,courseId:e.target.value,windowId:""})}><option value="">Choose a course</option>{courses.filter(c=>c.active!==false).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+      <label>Training window<select required value={applicationForm.windowId} onChange={e=>{const w=windows.find(x=>x.id===e.target.value);setApplicationForm({...applicationForm,windowId:e.target.value,mode:w?.modes?.[0] || "Onsite"});}}><option value="">Choose an open intake</option>{availableWindows.filter(w=>!applicationForm.courseId||w.courseId===applicationForm.courseId).map(w=><option key={w.id} value={w.id}>{w.title}</option>)}</select></label>
+      <label>Learning mode<select value={applicationForm.mode} onChange={e=>setApplicationForm({...applicationForm,mode:e.target.value})}><option>Onsite</option><option>Online</option></select></label>
+      <label>Previous experience<textarea value={applicationForm.experience} onChange={e=>setApplicationForm({...applicationForm,experience:e.target.value})}/></label>
+      <label>Additional information<textarea value={applicationForm.note} onChange={e=>setApplicationForm({...applicationForm,note:e.target.value})}/></label>
+      <button className="portal-submit" disabled={busy || !courses.length || !availableWindows.length}>{busy?"Submitting…":"Submit training application"}</button>
+    </form>}
+    {!isAdmin && <div className="institute-window-list"><h4>My applications</h4>{myApplications.length?myApplications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef}</strong><span>{a.courseTitle} · {a.windowTitle}</span><p>Admission: {a.status} · Payment: {a.paymentStatus}</p>{a.studentId&&<p>Student ID: {a.studentId}</p>}</article>):<p className="staff-empty">You have not submitted an application yet.</p>}</div>}
+    {isAdmin && <>
+      <div className="institute-admin-grid">
+        <form className="portal-form" onSubmit={saveCourse}><h4>Create a course</h4>
+          <label>Course title<input required value={courseForm.title} onChange={e=>setCourseForm({...courseForm,title:e.target.value})} placeholder="e.g. Advanced Pattern Drafting"/></label>
+          <label>Suggested course category<select value={courseForm.category} onChange={e=>setCourseForm({...courseForm,category:e.target.value})}>{COURSE_TYPES.map(x=><option key={x}>{x}</option>)}</select></label>
+          <label>Description<textarea value={courseForm.description} onChange={e=>setCourseForm({...courseForm,description:e.target.value})}/></label>
+          <label>Learning modes<input value={courseForm.mode} onChange={e=>setCourseForm({...courseForm,mode:e.target.value})}/></label>
+          <label>Duration<input value={courseForm.duration} onChange={e=>setCourseForm({...courseForm,duration:e.target.value})}/></label>
+          <label>Indicative fee (₦)<input type="number" min="0" step="0.01" value={courseForm.fee} onChange={e=>setCourseForm({...courseForm,fee:e.target.value})}/></label>
+          <button className="portal-submit" disabled={busy}>Create course</button>
+        </form>
+        <form className="portal-form" onSubmit={saveWindow}><h4>Create a training window</h4>
+          <label>Intake name<input required value={windowForm.title} onChange={e=>setWindowForm({...windowForm,title:e.target.value})} placeholder="e.g. January–March intake"/></label>
+          <label>Course<select required value={windowForm.courseId} onChange={e=>setWindowForm({...windowForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+          <label>Applications open<input type="date" required value={windowForm.applicationOpen} onChange={e=>setWindowForm({...windowForm,applicationOpen:e.target.value})}/></label>
+          <label>Applications close<input type="date" required value={windowForm.applicationClose} onChange={e=>setWindowForm({...windowForm,applicationClose:e.target.value})}/></label>
+          <label>Commencement date<input type="date" required value={windowForm.commencement} onChange={e=>setWindowForm({...windowForm,commencement:e.target.value})}/></label>
+          <label>Duration<input value={windowForm.duration} onChange={e=>setWindowForm({...windowForm,duration:e.target.value})}/></label>
+          <label>Learning modes<select value={windowForm.modes[0]} onChange={e=>setWindowForm({...windowForm,modes:[e.target.value]})}><option>Onsite</option><option>Online</option><option>Online and onsite</option></select></label>
+          <label>Training fee (₦)<input type="number" min="0" step="0.01" required value={windowForm.fee} onChange={e=>setWindowForm({...windowForm,fee:e.target.value})}/></label>
+          <label>Maximum student capacity<input type="number" min="1" step="1" required value={windowForm.capacity} onChange={e=>setWindowForm({...windowForm,capacity:e.target.value})}/></label>
+          <label>Venue<input value={windowForm.venue} onChange={e=>setWindowForm({...windowForm,venue:e.target.value})}/></label>
+          <label>Timetable<input value={windowForm.timetable} onChange={e=>setWindowForm({...windowForm,timetable:e.target.value})}/></label>
+          <label>Instructor name<input value={windowForm.instructorName} onChange={e=>setWindowForm({...windowForm,instructorName:e.target.value})}/></label>
+          <button className="portal-submit" disabled={busy || !courses.length}>Create training window</button>
+        </form>
+      </div>
+      <div className="institute-window-list"><h4>Manage training windows</h4>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
+      <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
+    </>}
+  </section>;
+}
