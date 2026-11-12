@@ -303,6 +303,25 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not publish announcement."); } finally { setBusy(false); }
   }
 
+  function printCertificate(certificate) {
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const issuedDate = certificate.issuedAt?.toDate ? certificate.issuedAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
+    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    if (!printWindow) { setError("Your browser blocked the certificate window. Allow pop-ups for this site and try again."); return; }
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Certificate - ${escapeHtml(certificate.certificateRef)}</title><style>
+      @page { size: landscape; margin: 12mm; }
+      * { box-sizing: border-box; } body { margin: 0; padding: 24px; color: #20252b; font-family: Georgia, 'Times New Roman', serif; }
+      .certificate { min-height: 175mm; border: 9px double #8a6b36; padding: 24px 42px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; position: relative; }
+      .brand { font: bold 18px Arial,sans-serif; letter-spacing: 5px; color: #6d253b; } .eyebrow { margin-top: 26px; font: 12px Arial,sans-serif; letter-spacing: 4px; }
+      h1 { margin: 12px 0; font-size: 42px; color: #6d253b; } .intro { font-size: 18px; } .student { margin: 18px 0 10px; font-size: 34px; border-bottom: 1px solid #a58a58; padding: 0 30px 8px; }
+      .course { max-width: 850px; font-size: 25px; font-weight: bold; } .details { margin-top: 28px; display: flex; justify-content: space-between; width: 100%; font: 12px Arial,sans-serif; }
+      .ref { position: absolute; bottom: 12px; right: 18px; font: 10px Arial,sans-serif; color: #555; } .status { margin-top: 18px; font: 11px Arial,sans-serif; letter-spacing: 2px; }
+      @media print { body { padding: 0; } .certificate { min-height: 180mm; } }
+    </style></head><body><main class="certificate"><div class="brand">MR FOP FASHIONS</div><div class="eyebrow">FASHION INSTITUTE</div><h1>Certificate of Completion</h1><p class="intro">This is to certify that</p><div class="student">${escapeHtml(certificate.studentName || "Student")}</div><p class="intro">has successfully completed the training programme in</p><div class="course">${escapeHtml(certificate.courseTitle || "Fashion Training")}</div><div class="details"><span>Student ID: ${escapeHtml(certificate.studentId || "—")}</span><span>Issued: ${escapeHtml(issuedDate)}</span><span>Intake: ${escapeHtml(certificate.windowTitle || "—")}</span></div><div class="status">CERTIFICATE STATUS: ${escapeHtml(String(certificate.status || "issued").toUpperCase())}</div><div class="ref">Verification reference: ${escapeHtml(certificate.certificateRef)}</div></main><script>window.addEventListener("load",()=>window.print());</script></body></html>`);
+    printWindow.document.close();
+  }
+
   async function issueCertificate() {
     setBusy(true); setError(""); setNotice("");
     try {
@@ -446,10 +465,10 @@ export default function InstituteWorkspace() {
         {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
       <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
-      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p></article>):<p className="staff-empty">No certificates have been issued yet.</p>}
+      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button></article>):<p className="staff-empty">No certificates have been issued yet.</p>}
       <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
     </section>}
-    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p></article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
+    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p>{c.status==="issued"&&<button type="button" onClick={()=>printCertificate(c)}>Print certificate</button>}</article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My attendance record</h4>{attendance.length?attendance.map(a=><article className="appointment-card" key={a.id}><strong>{a.courseTitle}</strong><span>{a.date} · {a.status}</span></article>):<p className="staff-empty">Your attendance records will appear here when the Institute marks attendance.</p>}</section>}
     {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssessment}>
       <h4>Publish a student assessment</h4>
