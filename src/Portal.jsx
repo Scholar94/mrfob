@@ -74,6 +74,7 @@ export default function Portal({ onClose }) {
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
+  const [appointmentEdits, setAppointmentEdits] = useState({});
   const [payments, setPayments] = useState([]);
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
@@ -351,6 +352,32 @@ export default function Portal({ onClose }) {
       setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
       setMessage("Appointment status updated.");
     } catch (err) { setError(err.message || "Could not update appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function proposeAppointmentAlternative(item) {
+    if (!claims.superAdmin || !item?.id) return;
+    const edit = appointmentEdits[item.id] || {};
+    if (!edit.proposedDate || !edit.proposedTime) { setError("Enter both an alternative date and time."); return; }
+    if (edit.proposedDate < localDateString()) { setError("An alternative appointment date cannot be in the past."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const patch = { status: "alternative_proposed", proposedDate: edit.proposedDate, proposedTime: edit.proposedTime, adminMessage: (edit.adminMessage || "").trim(), updatedAt: serverTimestamp() };
+      await updateDoc(doc(db, "appointments", item.id), patch);
+      setAppointments(items => items.map(row => row.id === item.id ? { ...row, ...patch, updatedAt: new Date() } : row));
+      setMessage("Alternative appointment proposed. The customer must accept it before it is treated as confirmed.");
+    } catch (err) { setError(err.message || "Could not propose an alternative appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function acceptAppointmentAlternative(item) {
+    if (!user || !item?.id || item.customerUid !== user.uid || item.status !== "alternative_proposed") return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "appointments", item.id), { appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
+      setAppointments(items => items.map(row => row.id === item.id ? { ...row, appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed" } : row));
+      setMessage("You accepted the proposed appointment time.");
+    } catch (err) { setError(err.message || "Could not accept the proposed appointment."); }
     finally { setBusy(false); }
   }
 
@@ -762,7 +789,7 @@ export default function Portal({ onClose }) {
         {appointmentsLoading ? <p className="staff-empty">Loading appointments…</p> : appointments.length ? <div className="appointment-list">{appointments.map(item=><article className="appointment-card" key={item.id}>
           <div><strong>{item.service}</strong><span>{item.customerName || item.customerEmail || "Customer"}</span></div>
           <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}
-          {claims.superAdmin ? <label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label> : <span className="appointment-status-text">Status: {item.status || "pending"}</span>}
+          {claims.superAdmin ? <><label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><div className="appointment-alternative-form"><strong>Propose another date and time</strong><label>Alternative date<input type="date" min={localDateString()} value={appointmentEdits[item.id]?.proposedDate ?? item.proposedDate ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedDate:e.target.value}}))}/></label><label>Alternative time<input type="time" value={appointmentEdits[item.id]?.proposedTime ?? item.proposedTime ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedTime:e.target.value}}))}/></label><label>Message to customer<textarea value={appointmentEdits[item.id]?.adminMessage ?? item.adminMessage ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],adminMessage:e.target.value}}))} placeholder="Explain why an alternative is suggested"/></label><button type="button" disabled={busy} onClick={()=>proposeAppointmentAlternative(item)}>Send alternative proposal</button></div></> : <><span className="appointment-status-text">Status: {String(item.status || "pending").replaceAll("_"," ")}</span>{item.status === "alternative_proposed" && <div className="appointment-alternative-proposal"><strong>Alternative time proposed</strong><p>{item.proposedDate} at {item.proposedTime}</p>{item.adminMessage&&<p>{item.adminMessage}</p>}<button type="button" disabled={busy} onClick={()=>acceptAppointmentAlternative(item)}>Accept proposed time</button></div>}</>}
         </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
       </section>
       {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
