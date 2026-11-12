@@ -504,6 +504,39 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteInstructorProfiles/{instructorUid} {
+      allow create: if signedIn()
+        && request.auth.uid == instructorUid
+        && roleOf(instructorUid) == 'instructor'
+        && request.resource.data.instructorUid == instructorUid
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() > 0
+        && request.resource.data.phone is string
+        && request.resource.data.qualifications is string
+        && request.resource.data.specialization is string
+        && request.resource.data.bio is string
+        && request.resource.data.availability is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['instructorUid','fullName','phone','qualifications','specialization','bio','availability','createdAt','updatedAt']);
+      allow read: if signedIn() && (request.auth.uid == instructorUid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow update: if signedIn()
+        && request.auth.uid == instructorUid
+        && roleOf(instructorUid) == 'instructor'
+        && request.resource.data.instructorUid == resource.data.instructorUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','phone','qualifications','specialization','bio','availability','updatedAt'])
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() > 0
+        && request.resource.data.phone is string
+        && request.resource.data.qualifications is string
+        && request.resource.data.specialization is string
+        && request.resource.data.bio is string
+        && request.resource.data.availability is string
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteInstructorAssignments/{assignmentId} {
       allow create, update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.instructorUid is string
