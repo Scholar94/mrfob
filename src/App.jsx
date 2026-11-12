@@ -39,7 +39,7 @@ export default function App() {
       <a className="brand" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a>
       <button className="mobile-menu" onClick={() => setMenu(!menu)} aria-label="Toggle navigation">{menu ? <X/> : <Menu/>}</button>
       <nav className={menu ? "nav nav-open" : "nav"}>
-        <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a>
+        <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#how-to-order" onClick={close}>How to Order</a>
         <a href="#institute" onClick={close}>Fashion Institute</a><a href="#story" onClick={close}>Our Story</a>
         <a href="#contact" onClick={close}>Contact</a>
         <button className="account-cta" onClick={() => {setPortalOpen(true);close();}}><UserRound size={15}/> My Account</button>
@@ -91,11 +91,33 @@ export default function App() {
           <article><span>03</span><h3>Production coordination</h3><p>Talk with our team about specifications, quantities, fitting arrangements and proposed timelines before confirming a project.</p><a href={wa} target="_blank" rel="noreferrer">Plan your production <ArrowUpRight size={15}/></a></article>
         </div>
       </section>
+      <section className="how-to-order section-pad" id="how-to-order">
+        <div className="section-heading"><div><p className="eyebrow"><i/> YOUR JOURNEY WITH MR FOP</p><h2>From first idea to <em>final fitting.</em></h2></div><p>A simple, guided process helps us understand what you need before a garment or project is confirmed.</p></div>
+        <div className="order-steps">
+          <article><span>01</span><h3>Tell us your idea</h3><p>Choose a collection or describe the garment, occasion, quantity and style you have in mind.</p></article>
+          <article><span>02</span><h3>Discuss details</h3><p>Our team can discuss fabric, colour, measurements, reference designs and whether an in-person fitting is needed.</p></article>
+          <article><span>03</span><h3>Review your quotation</h3><p>For a custom request, we review the requirements and provide a quotation for your approval. A request is not a confirmed price or completion date.</p></article>
+          <article><span>04</span><h3>Confirm and create</h3><p>After the agreed details and payment arrangements are confirmed, the order can move into production.</p></article>
+          <article><span>05</span><h3>Fitting and collection</h3><p>We coordinate any required fitting, agreed adjustments and collection or delivery arrangements with you.</p></article>
+        </div>
+        <div className="order-steps-action"><p>Ready to discuss a bespoke or group order?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Discuss your order <ArrowUpRight size={17}/></a></div>
+      </section>
+      <section className="faq section-pad" id="faq">
+        <div className="section-heading"><div><p className="eyebrow"><i/> GOOD TO KNOW</p><h2>Frequently asked <em>questions.</em></h2></div><p>Helpful information before you place a request or visit the fashion house.</p></div>
+        <div className="faq-list">
+          <details><summary>How do I place a bespoke clothing order?</summary><p>Open My Account to submit a custom order request, or contact the team on WhatsApp. Share the garment type, fabric and colour preferences, quantity, measurement arrangement and your preferred date. The team will review the request and provide a quotation where applicable.</p></details>
+          <details><summary>Is the price or completion date confirmed when I submit a request?</summary><p>No. A submitted request is an enquiry for review. The price, production schedule and collection or delivery arrangements must be discussed and confirmed by the company before the order is treated as confirmed.</p></details>
+          <details><summary>Can I book an appointment for measurements or fitting?</summary><p>Yes. Use My Account to request an appointment and select your preferred date and time. Your appointment remains pending until the company confirms it or proposes an alternative.</p></details>
+          <details><summary>Do I need to visit the fashion house?</summary><p>It depends on the garment and the measurement information available. Some requests may require an in-person measurement or fitting. The team will advise you during the order discussion.</p></details>
+          <details><summary>Do you handle uniforms and group orders?</summary><p>Yes. You can enquire about corporate uniforms, coordinated group clothing and bulk tailoring. Project specifications, quantities, pricing and proposed timelines are reviewed before acceptance.</p></details>
+          <details><summary>How can I enquire about fashion training?</summary><p>Contact the team through WhatsApp or submit a Fashion Institute enquiry from your customer account. Course availability, mode, fees and admission details should be confirmed directly with the institute.</p></details>
+        </div>
+      </section>
       <section className="promise section-pad"><div><p className="eyebrow"><i/> WHY MR FOP</p><h2>Good style is seen.<br/><em>Great fit is felt.</em></h2></div>
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
       </section>
       <section className="contact section-pad" id="contact"><div><p className="eyebrow light"><i/> YOUR NEXT LOOK STARTS HERE</p><h2>Let's create<br/><em>something remarkable.</em></h2></div>
-        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><div className="contact-detail"><Phone size={15}/> +234 805 547 2913</div></div>
+        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><div className="contact-detail"><Phone size={15}/> +234 805 547 2913</div><div className="contact-detail"><MessageCircle size={15}/> mrfopvi@gmail.com</div><div className="contact-detail contact-address"><span>VISIT US</span><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store,<br/>Ijebu Ode, Ogun State, Nigeria.</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</p></div></div>
       </section>
     </main>
     <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
