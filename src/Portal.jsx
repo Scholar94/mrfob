@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -35,6 +35,16 @@ export default function Portal({ onClose }) {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
   const [myOrders, setMyOrders] = useState([]);
+  const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
+  const [measurements, setMeasurements] = useState([]);
+  const [measurementsLoading, setMeasurementsLoading] = useState(false);
+  const [trainingForm, setTrainingForm] = useState({ course: "Fashion Design", mode: "Onsite practical training", message: "" });
+  const [trainingEnquiries, setTrainingEnquiries] = useState([]);
+  const [trainingLoading, setTrainingLoading] = useState(false);
+  const [allMeasurements, setAllMeasurements] = useState([]);
+  const [allTrainingEnquiries, setAllTrainingEnquiries] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
@@ -118,6 +128,101 @@ export default function Portal({ onClose }) {
       const snapshot = await getDocs(query(collection(db, "orders"), where("customerUid", "==", user.uid)));
       setMyOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load your orders."); }
+  }
+
+  async function loadMyProfile() {
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setProfileLoading(true);
+    try {
+      const snapshot = await getDoc(doc(db, "users", user.uid));
+      const data = snapshot.exists() ? snapshot.data() : {};
+      setProfileForm({ displayName: data.displayName || user.displayName || "", phone: data.phone || "", address: data.address || "" });
+    } catch (err) { setError(err.message || "Could not load your profile."); }
+    finally { setProfileLoading(false); }
+  }
+
+  async function saveMyProfile(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const displayName = profileForm.displayName.trim();
+      if (!displayName) throw new Error("Enter your full name.");
+      await updateDoc(doc(db, "users", user.uid), { displayName, phone: profileForm.phone.trim(), address: profileForm.address.trim(), updatedAt: serverTimestamp() });
+      if (auth.currentUser) await updateProfile(auth.currentUser, { displayName });
+      setMessage("Your profile has been updated successfully.");
+    } catch (err) { setError(err.message || "Could not update your profile."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadMeasurements() {
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setMeasurementsLoading(true);
+    try {
+      const snapshot = await getDocs(query(collection(db, "measurements"), where("customerUid", "==", user.uid)));
+      setMeasurements(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load your measurement records."); }
+    finally { setMeasurementsLoading(false); }
+  }
+
+  async function saveMeasurement(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const fields = ["chest","waist","hip","shoulder","sleeve","length","neck","inseam"];
+      const values = {};
+      fields.forEach(key => { const raw = measurementForm[key].trim(); if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank."); values[key] = raw ? Number(raw) : null; });
+      if (!fields.some(key => values[key] !== null)) throw new Error("Enter at least one measurement.");
+      await addDoc(collection(db, "measurements"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", ...values, notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setMeasurementForm({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
+      setMessage("Your measurement record has been saved securely.");
+      await loadMeasurements();
+    } catch (err) { setError(err.message || "Could not save your measurements."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadTrainingEnquiries() {
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setTrainingLoading(true);
+    try {
+      const snapshot = await getDocs(query(collection(db, "trainingEnquiries"), where("customerUid", "==", user.uid)));
+      setTrainingEnquiries(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load your training enquiries."); }
+    finally { setTrainingLoading(false); }
+  }
+
+  async function submitTrainingEnquiry(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await addDoc(collection(db, "trainingEnquiries"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", customerEmail: user.email || "", course: trainingForm.course, mode: trainingForm.mode, message: trainingForm.message.trim(), status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setTrainingForm({ course: "Fashion Design", mode: "Onsite practical training", message: "" });
+      setMessage("Your Fashion Institute enquiry has been submitted.");
+      await loadTrainingEnquiries();
+    } catch (err) { setError(err.message || "Could not submit your training enquiry."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadAdminCustomerServices() {
+    if (!claims.superAdmin) return;
+    try {
+      const [measurementSnapshot, trainingSnapshot] = await Promise.all([getDocs(collection(db, "measurements")), getDocs(collection(db, "trainingEnquiries"))]);
+      setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load customer measurement and training records."); }
+  }
+
+  async function updateTrainingStatus(id, status) {
+    if (!claims.superAdmin || !id) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "trainingEnquiries", id), { status, updatedAt: serverTimestamp() });
+      setAllTrainingEnquiries(items => items.map(item => item.id === id ? { ...item, status } : item));
+      setMessage("Training enquiry status updated.");
+    } catch (err) { setError(err.message || "Could not update the training enquiry."); }
+    finally { setBusy(false); }
   }
 
   async function createOrder(e) {
@@ -489,7 +594,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); } else if (claims.staffRole) loadOrders(); else if (user) loadMyOrders(); if (user) { loadAppointments(); loadPayments(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadPayments(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   const financeNow=new Date();
   const financeBounds=(()=>{let a=new Date(financeNow.getFullYear(),financeNow.getMonth(),1),b=new Date(financeNow.getFullYear(),financeNow.getMonth()+1,0,23,59,59,999);if(financePeriod==="today"){a=new Date();a.setHours(0,0,0,0);b=new Date();b.setHours(23,59,59,999);}else if(financePeriod==="yesterday"){a=new Date();a.setDate(a.getDate()-1);a.setHours(0,0,0,0);b=new Date(a);b.setHours(23,59,59,999);}else if(financePeriod==="week"){a=new Date();a.setDate(a.getDate()-(a.getDay()+6)%7);a.setHours(0,0,0,0);b=new Date(a);b.setDate(b.getDate()+6);b.setHours(23,59,59,999);}else if(financePeriod==="lastMonth"){a=new Date(financeNow.getFullYear(),financeNow.getMonth()-1,1);b=new Date(financeNow.getFullYear(),financeNow.getMonth(),0,23,59,59,999);}else if(financePeriod==="year"){a=new Date(financeNow.getFullYear(),0,1);b=new Date(financeNow.getFullYear(),11,31,23,59,59,999);}else if(financePeriod==="custom"){a=new Date(financeStart+"T00:00:00");b=new Date(financeEnd+"T23:59:59.999");if(!financeStart||!financeEnd||Number.isNaN(a.getTime())||Number.isNaN(b.getTime())||a>b){a=new Date(8640000000000000);b=new Date(0);}}else if(financePeriod==="all"){a=new Date(0);b=new Date(8640000000000000);}return {start:a,end:b};})();
@@ -514,9 +619,42 @@ export default function Portal({ onClose }) {
       {error && <p className="portal-error" role="alert">{error}</p>}{message && <p className="portal-success" role="status">{message}</p>}
       <div className="portal-role"><ShieldCheck/><span>{claims.superAdmin ? "Super Administrator" : claims.staffRole ? "Staff · " + claims.staffRole : "Customer account"}</span></div>
       <h3 className="dashboard-title">{claims.superAdmin ? "Administration overview" : claims.staffRole ? "Staff workspace" : "My customer dashboard"}</h3>
-      <div className="dashboard-grid">
-        {(claims.superAdmin ? [["Customers","Customer accounts"],["Orders","Order management"],["Measurements","Customer measurement records"],["Institute","Training enquiries"]] : claims.staffRole ? [["My work","Tasks assigned to your role"],["Orders","Role-permitted orders"],["Updates","Work status and updates"]] : [["My profile","Your contact information"],["My orders","Order history and status"],["My measurements","Saved fitting details"],["Training","Fashion Institute enquiries"]]).map(([title,desc])=><article className="dashboard-tile" key={title}><strong>{title}</strong><span>{desc}</span><small>Available in the next build step</small></article>)}
-      </div>
+      {!claims.staffRole && !claims.superAdmin && <div className="dashboard-grid customer-dashboard-summary">
+        <article className="dashboard-tile"><strong>{myOrders.length}</strong><span>Orders on your account</span><small>My Orders</small></article>
+        <article className="dashboard-tile"><strong>{appointments.length}</strong><span>Appointment requests</span><small>My Appointments</small></article>
+        <article className="dashboard-tile"><strong>{payments.length}</strong><span>Payment transactions</span><small>My Payments</small></article>
+        <article className="dashboard-tile"><strong>{products.filter(item=>item.active!==false).length}</strong><span>Products available to browse</span><small>Product Catalogue</small></article>
+      </div>}
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>My Profile</h3><p>Keep your contact information up to date</p></div><button type="button" onClick={loadMyProfile} disabled={profileLoading}>{profileLoading ? "Loading…" : "Refresh profile"}</button></div>
+        <form className="portal-form" onSubmit={saveMyProfile}>
+          <label>Full name<input required value={profileForm.displayName} onChange={e=>setProfileForm({...profileForm,displayName:e.target.value})}/></label>
+          <label>Email address<input type="email" value={user.email || ""} disabled/></label>
+          <label>Phone number<input value={profileForm.phone} onChange={e=>setProfileForm({...profileForm,phone:e.target.value})} placeholder="Your contact number"/></label>
+          <label>Address<textarea value={profileForm.address} onChange={e=>setProfileForm({...profileForm,address:e.target.value})} placeholder="Your delivery or contact address"/></label>
+          <button className="portal-submit" disabled={busy || profileLoading}>{busy ? "Saving…" : "Save my profile"}</button>
+        </form>
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Enter values in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
+        <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
+          <div className="measurement-grid">{[["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve"],["length","Garment length"],["neck","Neck"],["inseam","Inseam"]].map(([key,label])=><label key={key}>{label} (cm)<input type="number" min="0.1" step="0.1" value={measurementForm[key]} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder="cm"/></label>)}</div>
+          <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurements"}</button>
+        </form>
+        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>Saved measurements</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>Fashion Institute</h3><p>Enquire about courses and practical training</p></div><button type="button" onClick={loadTrainingEnquiries} disabled={trainingLoading}>{trainingLoading ? "Loading…" : "Refresh enquiries"}</button></div>
+        <form className="portal-form appointment-form" onSubmit={submitTrainingEnquiry}>
+          <h4>Submit a training enquiry</h4>
+          <label>Course of interest<select value={trainingForm.course} onChange={e=>setTrainingForm({...trainingForm,course:e.target.value})}><option>Fashion Design</option><option>Fashion Illustration</option><option>Pattern Drafting</option><option>Garment Construction</option><option>Fashion Business</option><option>Other</option></select></label>
+          <label>Training option<select value={trainingForm.mode} onChange={e=>setTrainingForm({...trainingForm,mode:e.target.value})}><option>Onsite practical training</option><option>Online training</option><option>Weekend classes</option><option>One-to-one coaching</option></select></label>
+          <label>Additional information<textarea value={trainingForm.message} onChange={e=>setTrainingForm({...trainingForm,message:e.target.value})} placeholder="Tell us about your goals or questions"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Submitting…" : "Send training enquiry"}</button>
+        </form>
+        {trainingLoading ? <p className="staff-empty">Loading your enquiries…</p> : trainingEnquiries.length ? <div className="appointment-list">{trainingEnquiries.map(item=><article className="appointment-card" key={item.id}><strong>{item.course}</strong><span>{item.mode}</span>{item.message&&<p>{item.message}</p>}<span className="appointment-status-text">Status: {item.status || "pending"}</span></article>)}</div> : <p className="staff-empty">You have not submitted a training enquiry yet.</p>}
+      </section>}
       {(claims.superAdmin || claims.staffRole) && <section className="order-management">
         <div className="customer-management-heading"><div><h3>Order Management</h3><p>Create orders and monitor production and payment</p></div><button type="button" onClick={loadOrders} disabled={ordersLoading}>{ordersLoading ? "Loading…" : "Refresh orders"}</button></div>
         {claims.superAdmin && <form className="portal-form order-create-form" onSubmit={createOrder}>
@@ -535,7 +673,7 @@ export default function Portal({ onClose }) {
           {claims.superAdmin ? <div className="order-controls"><label>Production status<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}><option value="received">Received</option><option value="confirmed">Confirmed</option><option value="in_production">In production</option><option value="ready">Ready for collection</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span></div>}
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
         <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
         {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
@@ -565,7 +703,7 @@ export default function Portal({ onClose }) {
         </form>}
         {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString("en-NG") : ""}{payment.note ? " · " + payment.note : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
       {claims.superAdmin && <section className="pos-management">
         <div className="customer-management-heading"><div><h3>Sales & Point of Sale</h3><p>Create sales, issue receipts and update stock automatically</p></div><button type="button" onClick={loadSales} disabled={salesLoading}>{salesLoading ? "Loading…" : "Refresh sales"}</button></div>
         <form className="portal-form pos-form" onSubmit={completeSale}>
@@ -645,9 +783,17 @@ export default function Portal({ onClose }) {
         <h4>Order history</h4>
         {customerOrders.length ? customerOrders.map(order=><article className="customer-order" key={order.id}><strong>{order.orderNumber || order.id}</strong><span>{order.status || "Status not set"}</span><small>{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : "Date not recorded"}</small></article>) : <p className="staff-empty">No orders found for this customer yet.</p>}
       </section>}
+      {claims.superAdmin && <section className="customer-management">
+        <div className="customer-management-heading"><div><h3>Customer Measurements</h3><p>Private fitting records submitted by customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh records</button></div>
+        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
+      </section>}
+      {claims.superAdmin && <section className="customer-management">
+        <div className="customer-management-heading"><div><h3>Fashion Institute Enquiries</h3><p>Review course and training enquiries from customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh enquiries</button></div>
+        {allTrainingEnquiries.length ? <div className="appointment-list">{allTrainingEnquiries.map(item=><article className="appointment-card" key={item.id}><div><strong>{item.customerName || "Customer"}</strong><span>{item.customerEmail || item.customerUid}</span></div><p>{item.course} · {item.mode}</p>{item.message&&<p>{item.message}</p>}<label className="appointment-status">Enquiry status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateTrainingStatus(item.id,e.target.value)}><option value="pending">Pending</option><option value="contacted">Contacted</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="completed">Completed</option></select></label></article>)}</div> : <p className="staff-empty">No training enquiries have been received.</p>}
+      </section>}
       {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button></article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
-      <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Available tools will follow your assigned role." : "Your customer account is ready. Customer order and measurement tools will be added in the next development steps."}</div>
+      <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
     </> : <>
       <h2>{mode === "register" ? "Create your customer account" : "Welcome back"}</h2>
