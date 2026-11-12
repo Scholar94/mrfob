@@ -117,7 +117,7 @@ export default function Portal({ onClose }) {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
   const [appointmentEdits, setAppointmentEdits] = useState({});
-  const [payments, setPayments] = useState([]);
+  const [payments, setPayments] = useState([]);\n  const [paymentDeclarations, setPaymentDeclarations] = useState([]);\n  const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });\n  const [declarationsLoading, setDeclarationsLoading] = useState(false);\n  const [declarationReviewNotes, setDeclarationReviewNotes] = useState({});
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -538,6 +538,91 @@ export default function Portal({ onClose }) {
       const snapshot = await getDocs(source);
       setPayments(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load payment history."); }
+  }
+
+  async function loadPaymentDeclarations() {
+    if (!user) return;
+    setDeclarationsLoading(true);
+    try {
+      const source = claims.superAdmin || claims.staffRole
+        ? collection(db, "paymentDeclarations")
+        : query(collection(db, "paymentDeclarations"), where("customerUid", "==", user.uid));
+      const snapshot = await getDocs(source);
+      setPaymentDeclarations(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load payment declarations."); }
+    finally { setDeclarationsLoading(false); }
+  }
+
+  async function submitPaymentDeclaration(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const order = myOrders.find(item => item.id === declarationForm.orderId);
+      const amount = Number(declarationForm.amount);
+      const reference = declarationForm.reference.trim();
+      if (!order) throw new Error("Select one of your orders.");
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter the amount you transferred.");
+      if (!reference) throw new Error("Enter the bank transfer narration or transaction reference.");
+      if (!declarationForm.transferDate) throw new Error("Select the transfer date.");
+      await addDoc(collection(db, "paymentDeclarations"), {
+        orderId: order.id, orderNumber: order.orderNumber || order.id,
+        customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "",
+        amount, currency: "NGN", method: "Bank transfer", reference,
+        transferDate: declarationForm.transferDate, payerName: declarationForm.payerName.trim(),
+        note: declarationForm.note.trim(), status: "pending",
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setDeclarationForm({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
+      setMessage("Your transfer declaration has been submitted for review. It is not yet a confirmed payment.");
+      await loadPaymentDeclarations();
+    } catch (err) { setError(err.message || "Could not submit your transfer declaration."); }
+    finally { setBusy(false); }
+  }
+
+  async function reviewPaymentDeclaration(item, decision) {
+    if (!claims.superAdmin || !item?.id || item.status !== "pending") return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const reviewNote = String(declarationReviewNotes[item.id] || "").trim();
+      const declarationRef = doc(db, "paymentDeclarations", item.id);
+      const orderRef = doc(db, "orders", item.orderId);
+      if (decision === "verified") {
+        const existing = await getDocs(query(collection(db, "payments"), where("orderId", "==", item.orderId)));
+        const alreadyPaid = existing.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
+        const order = orders.find(row => row.id === item.orderId) || (await getDoc(orderRef)).data();
+        if (!order) throw new Error("The linked order could not be found.");
+        const paymentRef = doc(collection(db, "payments"));
+        await runTransaction(db, async transaction => {
+          const declarationSnap = await transaction.get(declarationRef);
+          const orderSnap = await transaction.get(orderRef);
+          if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
+          if (!orderSnap.exists() || orderSnap.data().customerUid !== item.customerUid) throw new Error("The linked order could not be verified.");
+          const newPaid = alreadyPaid + Number(item.amount);
+          const quoted = Number(orderSnap.data().amount || 0);
+          const paymentStatus = quoted > 0 && newPaid >= quoted ? "paid" : "part_paid";
+          transaction.set(paymentRef, {
+            orderId: item.orderId, orderNumber: item.orderNumber || item.orderId,
+            customerUid: item.customerUid, customerName: item.customerName || "",
+            amount: Number(item.amount), currency: "NGN", method: item.method || "Bank transfer",
+            reference: item.reference || "", note: "Verified from customer transfer declaration " + item.id,
+            declarationId: item.id, createdAt: serverTimestamp(), createdBy: user.uid
+          });
+          transaction.update(orderRef, { paymentStatus, updatedAt: serverTimestamp() });
+          transaction.update(declarationRef, { status: "verified", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
+        });
+        setMessage("Transfer declaration verified and added to the payment ledger.");
+      } else {
+        await runTransaction(db, async transaction => {
+          const declarationSnap = await transaction.get(declarationRef);
+          if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
+          transaction.update(declarationRef, { status: "rejected", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
+        });
+        setMessage("Transfer declaration rejected. The customer can see the review note.");
+      }
+      await Promise.all([loadPaymentDeclarations(), loadPayments(), loadOrders()]);
+    } catch (err) { setError(err.message || "Could not review this payment declaration."); }
+    finally { setBusy(false); }
   }
 
   async function recordPayment(e) {
@@ -976,7 +1061,26 @@ export default function Portal({ onClose }) {
           <label>Note<textarea value={paymentForm.note} onChange={e=>setPaymentForm({...paymentForm,note:e.target.value})} placeholder="Optional payment note"/></label>
           <button className="portal-submit" disabled={busy || orders.length===0}>{busy ? "Saving…" : "Record payment"}</button>
         </form>}
+        {claims.superAdmin && <section className="payment-declaration-admin">
+          <div className="customer-management-heading"><div><h3>Customer Transfer Declarations</h3><p>Verify the funds in your bank independently before approving a declaration</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
+          {paymentDeclarations.filter(item=>item.status==="pending").length ? paymentDeclarations.filter(item=>item.status==="pending").map(item=><article className="payment-declaration-review" key={item.id}><div><strong>{item.orderNumber} · {item.customerName || "Customer"}</strong><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></div><p>Transfer date: {item.transferDate} · Reference: {item.reference}</p><p>Payer: {item.payerName || "Not supplied"}{item.note ? " · "+item.note : ""}</p><label>Review note<textarea value={declarationReviewNotes[item.id] || ""} onChange={e=>setDeclarationReviewNotes({...declarationReviewNotes,[item.id]:e.target.value})} placeholder="Optional note to customer"/></label><div className="verification-actions"><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"verified")}>Verify and record payment</button><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"rejected")}>Reject declaration</button></div></article>) : <p className="staff-empty">No declarations are awaiting review.</p>}
+          {paymentDeclarations.filter(item=>item.status!=="pending").map(item=><article className="payment-declaration-history" key={item.id}><strong>{item.orderNumber} · ₦{Number(item.amount||0).toLocaleString("en-NG")}</strong><span>{item.status}{item.reviewNote ? " · "+item.reviewNote : ""}</span></article>)}
+        </section>}
         {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
+      </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="payment-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>Declare a Bank Transfer</h3><p>Tell us about a transfer you have made so the team can verify it</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
+        <p className="payment-declaration-notice">Submitting this form does not confirm receipt of funds. Do not submit passwords, PINs, OTPs or full card details. Do not upload bank statements here.</p>
+        <form className="portal-form" onSubmit={submitPaymentDeclaration}>
+          <label>Order<select required value={declarationForm.orderId} onChange={e=>setDeclarationForm({...declarationForm,orderId:e.target.value})}><option value="">Select your order</option>{myOrders.map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.item}</option>)}</select></label>
+          <label>Amount transferred (₦)<input required type="number" min="0.01" step="0.01" value={declarationForm.amount} onChange={e=>setDeclarationForm({...declarationForm,amount:e.target.value})} placeholder="0.00"/></label>
+          <label>Transfer date<input required type="date" value={declarationForm.transferDate} onChange={e=>setDeclarationForm({...declarationForm,transferDate:e.target.value})}/></label>
+          <label>Bank transaction reference / narration<input required maxLength="120" value={declarationForm.reference} onChange={e=>setDeclarationForm({...declarationForm,reference:e.target.value})} placeholder="Reference shown by your bank"/></label>
+          <label>Name on the sending account<input maxLength="100" value={declarationForm.payerName} onChange={e=>setDeclarationForm({...declarationForm,payerName:e.target.value})} placeholder="Account holder name"/></label>
+          <label>Additional note (optional)<textarea maxLength="500" value={declarationForm.note} onChange={e=>setDeclarationForm({...declarationForm,note:e.target.value})} placeholder="Any useful transfer detail"/></label>
+          <button className="portal-submit" disabled={busy || !myOrders.length}>{busy ? "Submitting…" : "Submit transfer declaration"}</button>
+        </form>
+        {paymentDeclarations.length ? <div className="payment-declaration-list">{paymentDeclarations.map(item=><article key={item.id}><div><strong>{item.orderNumber}</strong><span>₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.transferDate}</span></div><b className={"declaration-status "+item.status}>{item.status === "verified" ? "Verified" : item.status === "rejected" ? "Rejected" : "Pending review"}</b><small>Reference: {item.reference}{item.reviewNote ? " · Review note: "+item.reviewNote : ""}</small></article>)}</div> : <p className="staff-empty">No transfer declarations submitted yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString("en-NG") : ""}{payment.note ? " · " + payment.note : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
       {claims.superAdmin && <section className="pos-management">
