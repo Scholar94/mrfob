@@ -285,12 +285,29 @@ export default function Portal({ onClose }) {
   }
 
   async function loadAdminCustomerServices() {
-    if (!claims.superAdmin) return;
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) return;
     try {
       const [measurementSnapshot, trainingSnapshot] = await Promise.all([getDocs(collection(db, "measurements")), getDocs(collection(db, "trainingEnquiries"))]);
       setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load customer measurement and training records."); }
+  }
+
+  async function reviewMeasurement(id, verificationStatus, verificationNote) {
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) || !id) return;
+    if (!["pending", "verified", "revision-needed"].includes(verificationStatus)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const reviewedAt = serverTimestamp();
+      await updateDoc(doc(db, "measurements", id), {
+        verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000),
+        verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff",
+        verifiedAt: reviewedAt, updatedAt: serverTimestamp()
+      });
+      setAllMeasurements(items => items.map(item => item.id === id ? { ...item, verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000), verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff" } : item));
+      setMessage("Measurement review saved.");
+    } catch (err) { setError(err.message || "Could not save the measurement review."); }
+    finally { setBusy(false); }
   }
 
   async function updateTrainingStatus(id, status) {
@@ -995,9 +1012,9 @@ export default function Portal({ onClose }) {
         <h4>Order history</h4>
         {customerOrders.length ? customerOrders.map(order=><article className="customer-order" key={order.id}><strong>{order.orderNumber || order.id}</strong><span>{order.status || "Status not set"}</span><small>{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : "Date not recorded"}</small></article>) : <p className="staff-empty">No orders found for this customer yet.</p>}
       </section>}
-      {claims.superAdmin && <section className="customer-management">
+      {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Measurements</h3><p>Private fitting records submitted by customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh records</button></div>
-        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
+        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<p><strong>Designer review:</strong> {item.verificationStatus || "Awaiting review"}</p>{item.verificationNote&&<p>{item.verificationNote}</p>}<label>Review status<select value={item.verificationStatus || "pending"} disabled={busy} onChange={e=>reviewMeasurement(item.id,e.target.value,item.verificationNote || "")}><option value="pending">Awaiting review</option><option value="verified">Verified by designer</option><option value="revision-needed">Revision needed</option></select></label><label>Designer notes<textarea defaultValue={item.verificationNote || ""} maxLength={1000} id={"measurement-note-"+item.id}/></label><button type="button" disabled={busy} onClick={()=>reviewMeasurement(item.id,item.verificationStatus || "pending",document.getElementById("measurement-note-"+item.id)?.value || "")}>Save review</button></article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
       </section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Fashion Institute Enquiries</h3><p>Review course and training enquiries from customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh enquiries</button></div>
