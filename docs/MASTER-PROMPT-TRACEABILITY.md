@@ -57,6 +57,8 @@
 
 ## Work log
 
+- **2026-11-12 — Customer quotation workflow:** Added admin quotation amount/notes and send action; customer accept/decline controls; awaiting quotation approval status; Firestore rules constrain admin and owner updates. Build verification pending.
+
 - **2026-11-12 — Appointment alternative workflow:** Added admin proposal date/time/message and customer acceptance; accepting copies the proposal into the appointment date/time and marks it confirmed. Firestore rules limit admin changes and allow only the appointment owner to accept a pending alternative. Automated collision prevention and notifications are not claimed. Build verification pending.
 
 - **2026-11-12 — Full production stage selector:** replaced the short order status list with all 18 production stages from the master prompt, including designer review, measurement, quotation/deposit, preparation, cutting, sewing, finishing, QC, fitting, alterations, collection, dispatch and delivery. Customer-request orders without a quotation now display “Awaiting quotation” instead of a misleading ₦0. Code committed on the feature branch; build verification for this change is pending.
@@ -141,3 +143,6 @@
 
 
 - **Appointment workflow update (2026-11-12):** Added administrator alternative date/time proposals and customer acceptance. Security rules constrain who can propose and accept. Conflict prevention and calendars remain outstanding.
+
+
+- **Quotation workflow update (2026-11-12):** Super Admin can prepare a price and notes for a customer order request and send the quotation. Customers can accept or decline it from My Orders. Firestore rules restrict quotation creation/changes to Super Admin and response to the owning customer. This is not yet a full deposit ledger: payment transactions remain separately recorded and balances are not automatically reconciled.
