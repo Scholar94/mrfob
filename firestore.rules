@@ -59,7 +59,8 @@ service cloud.firestore {
         && request.resource.data.status == resource.data.status
         && request.resource.data.paymentStatus == resource.data.paymentStatus)
         || (isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'amount', 'quotationNote', 'quotationStatus', 'quotationSentAt', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'amount', 'quotationNote', 'quotationStatus', 'quotationSentAt', 'dueDate', 'updatedAt'])
+        && (!('dueDate' in request.resource.data) || request.resource.data.dueDate is string)
         && (!('amount' in request.resource.data) || (request.resource.data.amount is number && request.resource.data.amount > 0))
         && (!('quotationStatus' in request.resource.data) || request.resource.data.quotationStatus in ['sent', 'accepted', 'declined']))
         || (signedIn()
