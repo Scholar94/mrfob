@@ -411,7 +411,7 @@ service cloud.firestore {
         && request.resource.data.status in ['present','absent','late','excused']
         && request.resource.data.markedBy == request.auth.uid
         && request.resource.data.updatedAt is timestamp;
-      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
     }
 
