@@ -37,7 +37,14 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if signedIn() && (
         (request.resource.data.customerUid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['customerUid', 'item', 'description', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'orderNumber', 'item', 'description', 'category', 'fabric', 'colour', 'quantity', 'measurementMethod', 'preferredDate', 'deliveryMethod', 'instructions', 'status', 'paymentStatus', 'createdAt', 'updatedAt'])
+          && request.resource.data.item is string && request.resource.data.item.size() > 0
+          && request.resource.data.item.size() <= 120
+          && request.resource.data.quantity is int && request.resource.data.quantity >= 1 && request.resource.data.quantity <= 50
+          && request.resource.data.status == 'received'
+          && request.resource.data.paymentStatus == 'unquoted'
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
         ) || (isSuperAdmin()
           && request.resource.data.keys().hasOnly(['orderNumber', 'customerUid', 'customerName', 'customerEmail', 'item', 'description', 'amount', 'currency', 'dueDate', 'status', 'paymentStatus', 'createdAt', 'updatedAt', 'createdBy'])
           && request.resource.data.createdBy == request.auth.uid
@@ -46,7 +53,12 @@ service cloud.firestore {
         )
       );
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if (isSuperAdmin()
+      allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.paymentStatus == resource.data.paymentStatus)
+        || (isSuperAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt']))
         || (hasStaffRole(['manager', 'sales', 'tailor'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
