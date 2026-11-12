@@ -12,17 +12,27 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(firebaseReady);
   useEffect(() => {
     if (!firebaseReady || !auth || !db) { setLoading(false); return; }
-    return onAuthStateChanged(auth, async current => {
+    let active = true;
+    const unsubscribe = onAuthStateChanged(auth, async current => {
+      if (!active) return;
+      setLoading(true);
       setUser(current);
       if (current) {
         try {
           const roleSnap = await getDoc(doc(db, "roles", current.uid));
+          if (!active || auth.currentUser?.uid !== current.uid) return;
           const role = roleSnap.exists() ? roleSnap.data().role : "customer";
           setClaims({ role, superAdmin: role === "superAdmin", staffRole: role === "customer" || role === "superAdmin" ? null : role });
-        } catch { setClaims({ role: "customer", superAdmin: false, staffRole: null }); }
-      } else setClaims({});
-      setLoading(false);
+        } catch {
+          if (!active || auth.currentUser?.uid !== current.uid) return;
+          setClaims({ role: "customer", superAdmin: false, staffRole: null });
+        }
+      } else {
+        setClaims({});
+      }
+      if (active) setLoading(false);
     });
+    return () => { active = false; unsubscribe(); };
   }, []);
   return <AuthContext.Provider value={{ user, claims, loading, configured: firebaseReady }}>{children}</AuthContext.Provider>;
 }
