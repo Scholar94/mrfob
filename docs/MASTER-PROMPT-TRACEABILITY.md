@@ -237,3 +237,6 @@
 
 
 - **2026-11-12 — Student-facing course progress:** each paid learner's enrolled-course panel now summarizes completed lessons, total published lessons and a percentage progress indicator above the lesson list. The percentage is based only on lessons currently loaded for that paid course and the learner's self-marked completion records; it is not an independently assessed competency score. Build and live learner-data validation remain pending.
+
+
+- **2026-11-12 — Expected delivery date administration:** Super Admin can revise an order's expected delivery date from Order Management and save the change explicitly. The customer order view already displays the date, so a saved update is reflected on refresh. Firestore rules limit this additional order-field update to Super Admin and validate the date field type; this does not promise automatic customer notifications or guarantee the delivery date. Build and live permission/customer-refresh tests remain pending.
