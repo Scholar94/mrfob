@@ -186,3 +186,6 @@
 
 
 - **2026-11-12 — Fashion Institute certificate issuance:** added an administrator workflow to issue a uniquely referenced course-completion certificate only to a student with a paid enrollment record. Students can view their issued certificates and status in their Institute workspace. Issuance remains a manual staff decision; the interface explicitly requires staff to confirm completion and assessments before issuing. Added owner-scoped certificate reads and Institute/Manager/Super Admin create permissions in Firestore; only Super Admin can revoke or delete. The latest `firestore.rules` must be published in Firebase before the feature can be used. Build/deployment and live authorization verification remain pending.
+
+
+- **2026-11-12 — Fashion Institute announcements:** added a staff publishing workflow for all-student or course-specific announcements, with optional expiry dates. Paid students see announcements for their enrolled courses and general Institute notices; course-specific reads are guarded by paid-enrollment checks in Firestore rules. Institute/Manager/Super Admin can publish and manage announcements; only Super Admin can delete. Publish the latest `firestore.rules` in Firebase before enabling this feature. Build and live authorization verification remain pending.
