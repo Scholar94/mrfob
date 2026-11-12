@@ -489,7 +489,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','questions','published','createdBy','createdAt','updatedAt']);
+        && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','dueAt','questions','published','createdBy','createdAt','updatedAt']);
       allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
@@ -506,6 +506,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId))
         && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.courseId == request.resource.data.courseId
         && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.published == true
+        && (!get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.keys().hasAny(['dueAt']) || get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.dueAt == null || request.time <= get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.dueAt)
         && request.resource.data.answers.size() == get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.questions.size()
         && request.resource.data.keys().hasOnly(['assessmentId','courseId','assessmentTitle','studentUid','studentName','answers','status','submittedAt','createdAt','updatedAt'])
         && request.resource.data.createdAt is timestamp
