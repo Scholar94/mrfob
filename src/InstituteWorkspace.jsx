@@ -75,20 +75,20 @@ export default function InstituteWorkspace() {
         setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= new Date().toISOString().slice(0,10)).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
       if (isInstructor) {
-        const assignedSnap = await getDocs(query(collection(db, "instituteInstructorAssignments"), where("instructorUid", "==", user.uid), where("active", "==", true)));
-        const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const assignedSnap = await getDocs(query(collection(db, "instituteInstructorAssignments"), where("instructorUid", "==", user.uid)));
+        const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active === true);
         setInstructorAssignments(assigned);
         const courseIds = [...new Set(assigned.map(a => a.courseId))];
         const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets] = await Promise.all([
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", courseId))))),
-          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteEnrollments"), where("courseId", "==", courseId), where("paymentStatus", "==", "paid"))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteEnrollments"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSubmissions"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
-        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid")));
         setSubmissions(submissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
       }
