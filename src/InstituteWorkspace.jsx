@@ -197,6 +197,29 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not create training window."); } finally { setBusy(false); }
   }
 
+  async function reconcileTrainingCapacity() {
+    if (!isAdmin) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      for (const windowItem of windows) {
+        const windowRef = doc(db, "trainingWindows", windowItem.id);
+        await runTransaction(db, async transaction => {
+          const latestWindow = await transaction.get(windowRef);
+          if (!latestWindow.exists()) return;
+          const applicationQuery = query(collection(db, "instituteApplications"), where("windowId", "==", windowItem.id));
+          const applicationSnap = await transaction.get(applicationQuery);
+          const reservedPlaces = applicationSnap.docs.filter(application => application.data().status !== "rejected").length;
+          const currentCount = Number(latestWindow.data().enrolledCount || 0);
+          if (currentCount !== reservedPlaces) {
+            transaction.update(windowRef, { enrolledCount: reservedPlaces, updatedAt: serverTimestamp() });
+          }
+        });
+      }
+      setNotice("Training-window capacity counters reconciled against all non-rejected applications. Review each window's available places before reopening applications.");
+      await load();
+    } catch(e) { setError(e.message || "Could not reconcile training-window capacity."); } finally { setBusy(false); }
+  }
+
   async function apply(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -579,7 +602,7 @@ export default function InstituteWorkspace() {
           <button className="portal-submit" disabled={busy || !courses.length}>Create training window</button>
         </form>
       </div>
-      <div className="institute-window-list"><h4>Manage training windows</h4>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
+      <div className="institute-window-list"><h4>Manage training windows</h4><button type="button" className="portal-secondary" disabled={busy||!windows.length} onClick={reconcileTrainingCapacity}>Reconcile capacity counters from application records</button>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
