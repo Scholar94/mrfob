@@ -13,7 +13,10 @@ export default function InstituteWorkspace() {
   const [courses, setCourses] = useState([]);
   const [windows, setWindows] = useState([]);
   const [applications, setApplications] = useState([]);
-  const [myApplications, setMyApplications] = useState([]);\n  const [enrollments, setEnrollments] = useState([]);\n  const [lessons, setLessons] = useState([]);\n  const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
+  const [myApplications, setMyApplications] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [windowForm, setWindowForm] = useState(blankWindow);
   const [applicationForm, setApplicationForm] = useState({ fullName: user?.displayName || "", phone: "", address: "", courseId: "", windowId: "", mode: "Onsite", experience: "", note: "" });
