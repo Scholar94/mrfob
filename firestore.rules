@@ -192,9 +192,20 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
-      allow update: if signedIn() && resource.data.customerUid == request.auth.uid
-        && request.resource.data.customerUid == resource.data.customerUid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'updatedAt']);
+      allow update: if signedIn() && (
+        (resource.data.customerUid == request.auth.uid
+          && request.resource.data.customerUid == resource.data.customerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'updatedAt']))
+        || ((isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
+          && request.resource.data.customerUid == resource.data.customerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verificationStatus', 'verificationNote', 'verifiedByUid', 'verifiedByName', 'verifiedAt', 'updatedAt'])
+          && request.resource.data.verificationStatus in ['pending', 'verified', 'revision-needed']
+          && request.resource.data.verificationNote is string
+          && request.resource.data.verificationNote.size() <= 1000
+          && request.resource.data.verifiedByUid == request.auth.uid
+          && request.resource.data.verifiedAt is timestamp
+          && request.resource.data.updatedAt is timestamp)
+      );
       allow delete: if isSuperAdmin() || hasStaffRole(['manager', 'tailor']);
     }
 
