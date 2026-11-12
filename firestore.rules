@@ -138,14 +138,29 @@ service cloud.firestore {
     }
 
     match /measurements/{measurementId} {
-      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'createdAt', 'updatedAt'])
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
-      allow update, delete: if isSuperAdmin() || hasStaffRole(['manager', 'tailor']);
+      allow update: if signedIn() && resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'updatedAt']);
+      allow delete: if isSuperAdmin() || hasStaffRole(['manager', 'tailor']);
     }
 
     match /trainingEnquiries/{enquiryId} {
-      allow create: if signedIn() && request.resource.data.customerUid == request.auth.uid;
-      allow read, update: if isSuperAdmin() || hasStaffRole(['manager', 'institute']);
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'course', 'mode', 'message', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'institute']));
+      allow update: if (isSuperAdmin() || hasStaffRole(['manager', 'institute']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'contacted', 'accepted', 'declined', 'completed'];
       allow delete: if isSuperAdmin();
     }
 
