@@ -243,6 +243,11 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    function isActiveInstituteCourse(courseId) {
+      return exists(/databases/$(database)/documents/instituteCourses/$(courseId))
+        && get(/databases/$(database)/documents/instituteCourses/$(courseId)).data.active != false;
+    }
+
     match /instituteCourses/{courseId} {
       allow read: if true;
       allow create: if isSuperAdmin() || hasStaffRole(['institute','manager']);
@@ -327,7 +332,7 @@ service cloud.firestore {
     }
 
     match /instituteAssignments/{assignmentId} {
-      allow create: if isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid);
+      allow create: if isActiveInstituteCourse(request.resource.data.courseId) && (isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid));
       allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(resource.data.courseId) && request.resource.data.courseId == resource.data.courseId);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
@@ -385,7 +390,7 @@ service cloud.firestore {
     match /instituteAnnouncements/{announcementId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.courseId is string
-        && (request.resource.data.courseId == 'all' || exists(/databases/$(database)/documents/instituteCourses/$(request.resource.data.courseId)))
+        && (request.resource.data.courseId == 'all' || isActiveInstituteCourse(request.resource.data.courseId))
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.message is string
@@ -423,7 +428,7 @@ service cloud.firestore {
     match /instituteSessions/{sessionId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.courseId is string
-        && exists(/databases/$(database)/documents/instituteCourses/$(request.resource.data.courseId))
+        && isActiveInstituteCourse(request.resource.data.courseId)
         && request.resource.data.instructorUid is string
         && exists(/databases/$(database)/documents/instituteInstructorAssignments/$(request.resource.data.instructorUid + '_' + request.resource.data.courseId))
         && get(/databases/$(database)/documents/instituteInstructorAssignments/$(request.resource.data.instructorUid + '_' + request.resource.data.courseId)).data.active == true
@@ -472,7 +477,8 @@ service cloud.firestore {
     }
 
     match /instituteAssessments/{assessmentId} {
-      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
+      allow create: if (isActiveInstituteCourse(request.resource.data.courseId))
+        && (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
         && request.resource.data.courseId is string
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
@@ -556,6 +562,7 @@ service cloud.firestore {
 
     match /instituteInstructorAssignments/{assignmentId} {
       allow create, update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && (request.resource.data.active != true || isActiveInstituteCourse(request.resource.data.courseId))
         && request.resource.data.instructorUid is string
         && roleOf(request.resource.data.instructorUid) == 'instructor'
         && request.resource.data.courseId is string
