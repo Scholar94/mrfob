@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-12 — Fashion Institute assignments and submissions:** Institute/Manager/Super Admin can publish course assignments with instructions, optional due date and maximum score. Paid students enrolled in the assignment's course can read and submit one text response; students can read their own submission, while authorized Institute staff can review and grade with a bounded score and feedback. Payment verification and enrollment activation are now Super Admin-only in Firestore rules; Institute staff can process admissions but cannot grant paid access. Added `instituteAssignments` and `instituteSubmissions` rules. This is text-based submission only; file uploads, plagiarism checks, late-submission policy, edit/resubmission and notification workflows are not included. Latest Firestore rules must be published in Firebase. Build, deployment and live authorization tests pending.
+
+
 - **2026-11-12 — Customer quotation workflow:** Added admin quotation amount/notes and send action; customer accept/decline controls; awaiting quotation approval status; Firestore rules constrain admin and owner updates. Build verification pending.
 
 - **2026-11-12 — Appointment alternative workflow:** Added admin proposal date/time/message and customer acceptance; accepting copies the proposal into the appointment date/time and marks it confirmed. Firestore rules limit admin changes and allow only the appointment owner to accept a pending alternative. Automated collision prevention and notifications are not claimed. Build verification pending.
