@@ -5,6 +5,27 @@ import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "luci
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
+const PRODUCTION_STAGES = [
+  ["received", "Order received"],
+  ["designer_review", "Designer review"],
+  ["awaiting_measurements", "Awaiting measurements"],
+  ["measurements_completed", "Measurements completed"],
+  ["awaiting_quotation_approval", "Awaiting quotation approval"],
+  ["awaiting_deposit", "Awaiting deposit"],
+  ["confirmed", "Order confirmed"],
+  ["fabric_preparation", "Fabric preparation"],
+  ["cutting", "Cutting"],
+  ["sewing", "Sewing"],
+  ["finishing", "Finishing"],
+  ["quality_control", "Quality control"],
+  ["ready_for_fitting", "Ready for fitting"],
+  ["alterations", "Alterations"],
+  ["completed", "Production completed"],
+  ["ready_for_collection", "Ready for collection"],
+  ["dispatched", "Dispatched"],
+  ["delivered", "Delivered"]
+];
+
 function localDateString(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -717,13 +738,13 @@ export default function Portal({ onClose }) {
           <button className="portal-submit" disabled={busy || customers.length===0}>{busy ? "Saving…" : "Create order"}</button>
         </form>}
         {ordersLoading ? <p className="staff-empty">Loading orders…</p> : orders.length ? <div className="order-list">{orders.map(order=><article className="order-card" key={order.id}>
-          <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
+          <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
           <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>
-          {claims.superAdmin ? <div className="order-controls"><label>Production status<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}><option value="received">Received</option><option value="confirmed">Confirmed</option><option value="in_production">In production</option><option value="ready">Ready for collection</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span></div>}
+          {claims.superAdmin ? <div className="order-controls"><label>Production stage<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}>{PRODUCTION_STAGES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span></div>}
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
         <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
         {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
