@@ -348,6 +348,25 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteAnnouncements/{announcementId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.courseId is string
+        && (request.resource.data.courseId == 'all' || exists(/databases/$(database)/documents/instituteCourses/$(request.resource.data.courseId)))
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.audience in ['all_students','paid_course_students']
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['courseId','title','message','expiresOn','audience','createdBy','createdAt','updatedAt']);
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager'])
+        || (signedIn() && (resource.data.courseId == 'all' || hasPaidCourseAccess(resource.data.courseId)));
+      allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']);
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteCertificates/{certificateId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.studentUid is string
