@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where, setDoc } from "firebase/firestore";
+import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, updateDoc, doc, where, setDoc } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -31,6 +31,8 @@ export default function InstituteWorkspace() {
   const [announcements, setAnnouncements] = useState([]);
   const [instructorAssignments, setInstructorAssignments] = useState([]);
   const [allInstructorAssignments, setAllInstructorAssignments] = useState([]);
+  const [instructorProfiles, setInstructorProfiles] = useState([]);
+  const [myInstructorProfile, setMyInstructorProfile] = useState({ fullName: "", phone: "", qualifications: "", specialization: "", bio: "", availability: "" });
   const [sessions, setSessions] = useState([]);
   const [sessionForm, setSessionForm] = useState({ courseId: "", instructorUid: "", title: "", startsAt: "", endsAt: "", mode: "Onsite", venue: "MR FOP FASHIONS, Ijebu Ode", meetingUrl: "", notes: "" });
   const [instructorForm, setInstructorForm] = useState({ instructorUid: "", courseId: "" });
@@ -73,6 +75,8 @@ export default function InstituteWorkspace() {
         setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         setSessions(sessionSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
         setAllInstructorAssignments(instructorAssignmentSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(a=>a.active));
+        const instructorProfileSnap = await getDocs(collection(db, "instituteInstructorProfiles"));
+        setInstructorProfiles(instructorProfileSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
         const [submissionSnap, attendanceSnap, progressSnap, certificateSnap, sessionSets] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid))), Promise.all(active.map(en => getDocs(query(collection(db, "instituteSessions"), where("courseId", "==", en.courseId), where("published", "==", true)))))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -89,6 +93,8 @@ export default function InstituteWorkspace() {
         setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= new Date().toISOString().slice(0,10)).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
       if (isInstructor) {
+        const profileSnap = await getDoc(doc(db, "instituteInstructorProfiles", user.uid));
+        if (profileSnap.exists()) setMyInstructorProfile({ fullName: "", phone: "", qualifications: "", specialization: "", bio: "", availability: "", ...profileSnap.data() });
         const assignedSnap = await getDocs(query(collection(db, "instituteInstructorAssignments"), where("instructorUid", "==", user.uid)));
         const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active === true);
         setInstructorAssignments(assigned);
@@ -295,6 +301,25 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not assign instructor."); } finally { setBusy(false); }
   }
 
+  async function saveInstructorProfile(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const fullName = myInstructorProfile.fullName.trim();
+      if (!fullName) throw new Error("Enter your professional name.");
+      if (myInstructorProfile.phone && !/^[+0-9()\s-]{7,25}$/.test(myInstructorProfile.phone)) throw new Error("Enter a valid contact telephone number.");
+      const profile = {
+        instructorUid: user.uid, fullName, phone: myInstructorProfile.phone.trim(),
+        qualifications: myInstructorProfile.qualifications.trim().slice(0,500),
+        specialization: myInstructorProfile.specialization.trim().slice(0,300),
+        bio: myInstructorProfile.bio.trim().slice(0,1500),
+        availability: myInstructorProfile.availability.trim().slice(0,500),
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, "instituteInstructorProfiles", user.uid), { ...profile, createdAt: myInstructorProfile.createdAt || serverTimestamp() }, { merge: true });
+      setMyInstructorProfile(profile); setNotice("Instructor profile saved.");
+    } catch(e) { setError(e.message || "Could not save instructor profile."); } finally { setBusy(false); }
+  }
+
   async function scheduleSession(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -441,6 +466,7 @@ export default function InstituteWorkspace() {
         <label>Course<select required value={instructorForm.courseId} onChange={e=>setInstructorForm({...instructorForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
         <button className="portal-submit" disabled={busy||!courses.length}>Assign instructor</button>
       </form>
+      <div className="institute-window-list"><h4>Instructor directory</h4>{instructorProfiles.length?instructorProfiles.map(p=><article className="appointment-card" key={p.id}><strong>{p.fullName || p.id}</strong><span>{p.specialization || "Specialisation not provided"} · {p.phone || "No contact provided"}</span>{p.qualifications&&<p>Qualifications: {p.qualifications}</p>}{p.bio&&<p>{p.bio}</p>}{p.availability&&<p>Availability: {p.availability}</p>}</article>):<p className="staff-empty">Instructor profiles will appear here when instructors complete their profiles.</p>}</div>
       <form className="portal-form" onSubmit={scheduleSession}>
         <h4>Schedule an instructor-led training session</h4>
         <label>Course<select required value={sessionForm.courseId} onChange={e=>setSessionForm({...sessionForm,courseId:e.target.value,instructorUid:""})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
@@ -492,6 +518,16 @@ export default function InstituteWorkspace() {
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
+    {isInstructor && <form className="portal-form" onSubmit={saveInstructorProfile}>
+      <h4>My professional instructor profile</h4>
+      <label>Professional name<input required maxLength="120" value={myInstructorProfile.fullName} onChange={e=>setMyInstructorProfile({...myInstructorProfile,fullName:e.target.value})} placeholder={user.displayName || "Your name"}/></label>
+      <label>Contact telephone<input type="tel" maxLength="25" value={myInstructorProfile.phone} onChange={e=>setMyInstructorProfile({...myInstructorProfile,phone:e.target.value})}/></label>
+      <label>Qualifications and certifications<textarea rows="2" maxLength="500" value={myInstructorProfile.qualifications} onChange={e=>setMyInstructorProfile({...myInstructorProfile,qualifications:e.target.value})}/></label>
+      <label>Teaching specialisation<input maxLength="300" value={myInstructorProfile.specialization} onChange={e=>setMyInstructorProfile({...myInstructorProfile,specialization:e.target.value})} placeholder="e.g. Pattern drafting, garment construction"/></label>
+      <label>Professional biography<textarea rows="4" maxLength="1500" value={myInstructorProfile.bio} onChange={e=>setMyInstructorProfile({...myInstructorProfile,bio:e.target.value})}/></label>
+      <label>Availability<textarea rows="2" maxLength="500" value={myInstructorProfile.availability} onChange={e=>setMyInstructorProfile({...myInstructorProfile,availability:e.target.value})} placeholder="e.g. Weekdays, 10:00 AM–4:00 PM"/></label>
+      <button className="portal-submit" disabled={busy}>Save instructor profile</button>
+    </form>}
     {isInstructor && <section className="institute-window-list"><h4>My teaching timetable</h4>{sessions.filter(s=>s.instructorUid===user.uid).length?sessions.filter(s=>s.instructorUid===user.uid).map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Open meeting link</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">No teaching sessions have been scheduled for your assigned courses.</p>}</section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My course timetable</h4>{sessions.filter(s=>s.status!=="cancelled").length?sessions.filter(s=>s.status!=="cancelled").map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Join session</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">Your course timetable will appear here when the Institute schedules sessions.</p>}</section>}
     {isInstructor && <section className="institute-window-list">
