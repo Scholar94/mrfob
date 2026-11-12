@@ -94,7 +94,7 @@ export default function InstituteWorkspace() {
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSubmissions"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessments"), where("courseId", "==", courseId))))),
-          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("courseId", "==", courseId))))
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("courseId", "==", courseId)))))
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
