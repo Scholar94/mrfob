@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, updateDoc, doc, where, setDoc } from "firebase/firestore";
+import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, updateDoc, doc, where, setDoc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -202,18 +202,35 @@ export default function InstituteWorkspace() {
     try {
       const course = courses.find(c => c.id === applicationForm.courseId);
       const win = windows.find(w => w.id === applicationForm.windowId);
-      if (!course || !win) throw new Error("Select an available course and training window.");
-      if (win.status !== "open" || (win.applicationClose && win.applicationClose < new Date().toISOString().slice(0,10))) throw new Error("This training window is closed.");
-      if (Number(win.enrolledCount || 0) >= Number(win.capacity || 0)) throw new Error("This training window has reached its stated capacity. Please select another window.");
+      if (!course || !win || course.active === false) throw new Error("Select an active course and available training window.");
       if (!applicationForm.fullName.trim() || !applicationForm.phone.trim() || !applicationForm.address.trim()) throw new Error("Enter your full name, telephone number and residential address.");
       const ref = "MFO-INS-" + Date.now().toString(36).toUpperCase();
-      await addDoc(collection(db, "instituteApplications"), {
+      const applicationRef = doc(collection(db, "instituteApplications"));
+      const windowRef = doc(db, "trainingWindows", win.id);
+      const applicationData = {
         applicationRef: ref, customerUid: user.uid, fullName: applicationForm.fullName.trim(), email: user.email || "",
         phone: applicationForm.phone.trim(), address: applicationForm.address.trim(), courseId: course.id, courseTitle: course.title,
         windowId: win.id, windowTitle: win.title, mode: applicationForm.mode, experience: applicationForm.experience.trim(),
         note: applicationForm.note.trim(), status: "pending", paymentStatus: "not_due", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      };
+      await runTransaction(db, async transaction => {
+        const latestWindowSnap = await transaction.get(windowRef);
+        if (!latestWindowSnap.exists()) throw new Error("This training window no longer exists.");
+        const latestWindow = latestWindowSnap.data();
+        const today = new Date().toISOString().slice(0,10);
+        if (latestWindow.status !== "open" || (latestWindow.applicationOpen && latestWindow.applicationOpen > today) || (latestWindow.applicationClose && latestWindow.applicationClose < today)) {
+          throw new Error("This training window is not currently accepting applications.");
+        }
+        if (latestWindow.courseId !== course.id) throw new Error("The selected course does not match this training window.");
+        const count = Number(latestWindow.enrolledCount || 0);
+        const capacity = Number(latestWindow.capacity || 0);
+        if (!Number.isInteger(count) || !Number.isInteger(capacity) || capacity < 1 || count >= capacity) {
+          throw new Error("This training window has reached its stated capacity. Please select another window.");
+        }
+        transaction.update(windowRef, { enrolledCount: count + 1, lastApplicationId: applicationRef.id, updatedAt: serverTimestamp() });
+        transaction.set(applicationRef, applicationData);
       });
-      setNotice("Application submitted. Your reference is " + ref + ". Admission is not confirmed until reviewed by the Institute.");
+      setNotice("Application submitted and a place has been reserved. Your reference is " + ref + ". Admission is not confirmed until reviewed by the Institute.");
       setApplicationForm(v => ({ ...v, experience: "", note: "" })); await load();
     } catch(e) { setError(e.message || "Could not submit application."); } finally { setBusy(false); }
   }
@@ -221,10 +238,25 @@ export default function InstituteWorkspace() {
   async function reviewApplication(item, status) {
     setBusy(true); setError(""); setNotice("");
     try {
-      const update = { status, updatedAt: serverTimestamp(), reviewedBy: user.uid, reviewedAt: serverTimestamp() };
-      if (status === "admitted" && !item.studentId) update.studentId = "MFO-STU-" + Date.now().toString(36).toUpperCase();
-      await updateDoc(doc(db, "instituteApplications", item.id), update);
-      setNotice("Application " + status + "."); await load();
+      if (item.status === "rejected" && status !== "rejected") throw new Error("A rejected application cannot be reopened against a released intake place. The applicant must submit a new application.");
+      const applicationRef = doc(db, "instituteApplications", item.id);
+      if (status === "rejected" && item.status !== "rejected") {
+        const windowRef = doc(db, "trainingWindows", item.windowId);
+        await runTransaction(db, async transaction => {
+          const [applicationSnap, windowSnap] = await Promise.all([transaction.get(applicationRef), transaction.get(windowRef)]);
+          if (!applicationSnap.exists() || !windowSnap.exists()) throw new Error("The application or its training window could not be found.");
+          if (applicationSnap.data().status === "rejected") throw new Error("This application has already been rejected and its place released.");
+          const count = Number(windowSnap.data().enrolledCount || 0);
+          if (!Number.isInteger(count) || count < 1) throw new Error("The intake reservation count needs administrator reconciliation before this application can be rejected.");
+          transaction.update(applicationRef, { status, updatedAt: serverTimestamp(), reviewedBy: user.uid, reviewedAt: serverTimestamp() });
+          transaction.update(windowRef, { enrolledCount: count - 1, updatedAt: serverTimestamp() });
+        });
+      } else {
+        const update = { status, updatedAt: serverTimestamp(), reviewedBy: user.uid, reviewedAt: serverTimestamp() };
+        if (status === "admitted" && !item.studentId) update.studentId = "MFO-STU-" + Date.now().toString(36).toUpperCase();
+        await updateDoc(applicationRef, update);
+      }
+      setNotice(status === "rejected" ? "Application rejected and its intake place released." : "Application " + status + "."); await load();
     } catch(e) { setError(e.message || "Could not update application."); } finally { setBusy(false); }
   }
 
