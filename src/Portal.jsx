@@ -320,8 +320,8 @@ export default function Portal({ onClose }) {
     try {
       const title=expenseForm.title.trim(), amount=Number(expenseForm.amount);
       if(!title) throw new Error("Enter an expense description."); if(!Number.isFinite(amount)||amount<=0) throw new Error("Enter an expense amount greater than zero.");
-      const payload={title,category:expenseForm.category,amount,currency:"NGN",expenseDate:expenseForm.expenseDate,method:expenseForm.method,note:expenseForm.note.trim(),updatedAt:serverTimestamp()};
-      if(expenseEditingId){await updateDoc(doc(db,"expenses",expenseEditingId),payload);setMessage("Expense updated successfully.");}else{await addDoc(collection(db,"expenses"),{...payload,createdAt:serverTimestamp(),createdBy:user.uid});setMessage("Business expense recorded successfully.");}
+      const payload={title,category:expenseForm.category,amount,currency:"NGN",expenseDate:expenseForm.expenseDate,method:expenseForm.method,note:expenseForm.note.trim()};
+      if(expenseEditingId){await updateDoc(doc(db,"expenses",expenseEditingId),{...payload,updatedAt:serverTimestamp()});setMessage("Expense updated successfully.");}else{await addDoc(collection(db,"expenses"),{...payload,createdAt:serverTimestamp(),createdBy:user.uid});setMessage("Business expense recorded successfully.");}
       setExpenseEditingId("");setExpenseForm({title:"",category:"Operations",amount:"",expenseDate:new Date().toISOString().slice(0,10),method:"Cash",note:""});await loadExpenses();
     } catch(err){setError(err.message||"Could not save expense.");} finally{setBusy(false);}
   }
