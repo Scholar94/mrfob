@@ -188,7 +188,7 @@ service cloud.firestore {
     match /measurements/{measurementId} {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'createdAt', 'updatedAt'])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
