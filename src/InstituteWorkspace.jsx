@@ -18,6 +18,10 @@ export default function InstituteWorkspace() {
   const [lessons, setLessons] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+  const [assessmentSubmissions, setAssessmentSubmissions] = useState([]);
+  const [assessmentForm, setAssessmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", questions: "" });
+  const [assessmentDrafts, setAssessmentDrafts] = useState({});
   const [allEnrollments, setAllEnrollments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [lessonProgress, setLessonProgress] = useState([]);
@@ -60,6 +64,10 @@ export default function InstituteWorkspace() {
         const sets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", en.courseId), where("published", "==", true)))));
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
         const assignmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", en.courseId), where("published", "==", true)))));
+        const assessmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssessments"), where("courseId", "==", en.courseId), where("published", "==", true)))));
+        const assessmentSubmissionSnap = await getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("studentUid", "==", user.uid)));
+        setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
         const [submissionSnap, attendanceSnap, progressSnap, certificateSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid)))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -79,29 +87,35 @@ export default function InstituteWorkspace() {
         const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active === true);
         setInstructorAssignments(assigned);
         const courseIds = [...new Set(assigned.map(a => a.courseId))];
-        const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets] = await Promise.all([
+        const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets, assessmentSets, assessmentSubmissionSets] = await Promise.all([
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteEnrollments"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSubmissions"), where("courseId", "==", courseId))))),
-          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessments"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("courseId", "==", courseId))))
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid")));
         setSubmissions(submissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAssessmentSubmissions(assessmentSubmissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates"))]);
+        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap, assessmentSnap, assessmentSubmissionSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates")), getDocs(collection(db, "instituteAssessments")), getDocs(collection(db, "instituteAssessmentSubmissions"))]);
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAssessments(assessmentSnap.docs.map(d => ({ id:d.id, ...d.data() })));
+        setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
         const announcementSnap = await getDocs(collection(db, "instituteAnnouncements"));
         setAnnouncements(announcementSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
@@ -223,6 +237,41 @@ export default function InstituteWorkspace() {
       await updateDoc(doc(db,"instituteSubmissions",item.id), { status, score, maxScore:max, feedback, gradedBy:user.uid, gradedAt:serverTimestamp(), updatedAt:serverTimestamp() });
       setNotice("Submission graded."); await load();
     } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
+  }
+
+  async function createAssessment(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const questions = assessmentForm.questions.split("\\n").map(q => q.trim()).filter(Boolean);
+      if (!assessmentForm.courseId || !assessmentForm.title.trim() || !questions.length) throw new Error("Choose a course, enter an assessment title and add at least one question (one per line).");
+      if (questions.length > 30) throw new Error("An assessment can contain up to 30 questions.");
+      const course = courses.find(c => c.id === assessmentForm.courseId);
+      await addDoc(collection(db, "instituteAssessments"), { courseId:course.id, courseTitle:course.title, title:assessmentForm.title.trim(), instructions:assessmentForm.instructions.trim(), dueDate:assessmentForm.dueDate || "", questions, published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setAssessmentForm({ courseId:"", title:"", instructions:"", dueDate:"", questions:"" }); setNotice("Assessment published. Responses will be manually graded by authorized teaching staff."); await load();
+    } catch(e) { setError(e.message || "Could not publish assessment."); } finally { setBusy(false); }
+  }
+
+  async function submitAssessment(item) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const answers = item.questions.map((q,i) => (assessmentDrafts[item.id + "_" + i] || "").trim());
+      if (answers.some(a => !a)) throw new Error("Answer every question before submitting.");
+      if (assessmentSubmissions.some(s => s.assessmentId === item.id && s.studentUid === user.uid)) throw new Error("You have already submitted this assessment.");
+      const submissionId = user.uid + "_" + item.id;
+      await setDoc(doc(db, "instituteAssessmentSubmissions", submissionId), { assessmentId:item.id, courseId:item.courseId, assessmentTitle:item.title, studentUid:user.uid, studentName:user.displayName || user.email || "Student", answers, status:"submitted", submittedAt:serverTimestamp(), createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setNotice("Assessment submitted successfully."); await load();
+    } catch(e) { setError(e.message || "Could not submit assessment."); } finally { setBusy(false); }
+  }
+
+  async function gradeAssessment(item) {
+    const scoreText = window.prompt("Enter assessment score (0 to " + (item.answers.length * 10) + "). Each question is provisionally worth 10 points.");
+    if (scoreText === null) return;
+    const score = Number(scoreText); const maxScore = item.answers.length * 10;
+    if (!Number.isFinite(score) || score < 0 || score > maxScore) { setError("Enter a valid score within the assessment maximum."); return; }
+    const feedback = window.prompt("Optional assessment feedback") || "";
+    setBusy(true); setError(""); setNotice("");
+    try { await updateDoc(doc(db, "instituteAssessmentSubmissions", item.id), { status:"graded", score, maxScore, feedback, gradedBy:user.uid, gradedAt:serverTimestamp(), updatedAt:serverTimestamp() }); setNotice("Assessment graded."); await load(); }
+    catch(e) { setError(e.message || "Could not grade assessment."); } finally { setBusy(false); }
   }
 
   async function assignInstructor(e) {
@@ -402,6 +451,17 @@ export default function InstituteWorkspace() {
     </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p></article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My attendance record</h4>{attendance.length?attendance.map(a=><article className="appointment-card" key={a.id}><strong>{a.courseTitle}</strong><span>{a.date} · {a.status}</span></article>):<p className="staff-empty">Your attendance records will appear here when the Institute marks attendance.</p>}</section>}
+    {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssessment}>
+      <h4>Publish a student assessment</h4>
+      <label>Course<select required value={assessmentForm.courseId} onChange={e=>setAssessmentForm({...assessmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? courses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : courses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+      <label>Assessment title<input required value={assessmentForm.title} onChange={e=>setAssessmentForm({...assessmentForm,title:e.target.value})}/></label>
+      <label>Instructions<textarea rows="3" value={assessmentForm.instructions} onChange={e=>setAssessmentForm({...assessmentForm,instructions:e.target.value})}/></label>
+      <label>Due date (optional)<input type="date" value={assessmentForm.dueDate} onChange={e=>setAssessmentForm({...assessmentForm,dueDate:e.target.value})}/></label>
+      <label>Questions (one question per line)<textarea required rows="7" value={assessmentForm.questions} onChange={e=>setAssessmentForm({...assessmentForm,questions:e.target.value})} placeholder="Explain the basic tools used in garment construction.&#10;Describe the steps in taking body measurements."/></label>
+      <button className="portal-submit" disabled={busy||!courses.length}>Publish assessment</button>
+    </form>}
+    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My assessments</h4>{assessments.map(a=>{const prior=assessmentSubmissions.find(s=>s.assessmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle}{a.dueDate?" · Due "+a.dueDate:""}</span>{a.instructions&&<p>{a.instructions}</p>}{prior?<div><p>Submission: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}{prior.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}</div>:<div>{a.questions.map((q,i)=><label key={i}>Q{i+1}. {q}<textarea rows="3" value={assessmentDrafts[a.id+"_"+i]||""} onChange={e=>setAssessmentDrafts(v=>({...v,[a.id+"_"+i]:e.target.value}))}/></label>)}<button type="button" disabled={busy} onClick={()=>submitAssessment(a)}>Submit assessment</button></div>}</article>})}{!assessments.length&&<p className="staff-empty">No assessments are available for your paid courses.</p>}</section>}
+    {(isAdmin || isInstructor) && <section className="institute-window-list"><h4>Assessment submissions & grading</h4>{assessmentSubmissions.length?assessmentSubmissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assessmentTitle}</strong><span>{sub.studentName} · {sub.status}</span>{sub.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}{sub.status==="graded"?<p>Score: {sub.score}/{sub.maxScore} · {sub.feedback}</p>:<button type="button" disabled={busy} onClick={()=>gradeAssessment(sub)}>Grade assessment</button>}</article>):<p className="staff-empty">No assessment submissions yet.</p>}</section>}
     {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
       <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? courses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : courses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
