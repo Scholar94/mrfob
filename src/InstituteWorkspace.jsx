@@ -24,6 +24,8 @@ export default function InstituteWorkspace() {
   const [allLessonProgress, setAllLessonProgress] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [allCertificates, setAllCertificates] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementForm, setAnnouncementForm] = useState({ courseId: "all", title: "", message: "", expiresOn: "" });
   const [certificateEnrollmentId, setCertificateEnrollmentId] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
@@ -61,6 +63,13 @@ export default function InstituteWorkspace() {
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.date||"").localeCompare(a.date||"")));
         setLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.issuedAt?.seconds||0)-(a.issuedAt?.seconds||0)));
+        const announcementSets = await Promise.all([
+          getDocs(query(collection(db, "instituteAnnouncements"), where("courseId", "==", "all"))),
+          ...active.map(en => getDocs(query(collection(db, "instituteAnnouncements"), where("courseId", "==", en.courseId))))
+        ]);
+        const announcementMap = new Map();
+        announcementSets.forEach(s => s.docs.forEach(d => announcementMap.set(d.id, { id: d.id, ...d.data() })));
+        setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= new Date().toISOString().slice(0,10)).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
@@ -72,6 +81,8 @@ export default function InstituteWorkspace() {
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const announcementSnap = await getDocs(collection(db, "instituteAnnouncements"));
+        setAnnouncements(announcementSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
     } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
   }
@@ -193,6 +204,23 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
   }
 
+  async function publishAnnouncement(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const title = announcementForm.title.trim();
+      const message = announcementForm.message.trim();
+      if (!title || !message) throw new Error("Enter an announcement title and message.");
+      if (announcementForm.expiresOn && announcementForm.expiresOn < new Date().toISOString().slice(0,10)) throw new Error("The expiry date cannot be in the past.");
+      await addDoc(collection(db, "instituteAnnouncements"), {
+        courseId: announcementForm.courseId || "all", title, message,
+        expiresOn: announcementForm.expiresOn || "", audience: announcementForm.courseId === "all" ? "all_students" : "paid_course_students",
+        createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setAnnouncementForm({ courseId: "all", title: "", message: "", expiresOn: "" });
+      setNotice("Institute announcement published."); await load();
+    } catch(e) { setError(e.message || "Could not publish announcement."); } finally { setBusy(false); }
+  }
+
   async function issueCertificate() {
     setBusy(true); setError(""); setNotice("");
     try {
@@ -243,6 +271,10 @@ export default function InstituteWorkspace() {
   return <section className="institute-workspace">
     <div className="customer-management-heading"><div><h3>MR FOP Fashion Institute</h3><p>Courses, training intakes and admission applications</p></div><button type="button" onClick={load}>Refresh institute</button></div>
     {error && <p className="portal-error">{error}</p>}{notice && <p className="portal-success">{notice}</p>}
+    <section className="institute-window-list">
+      <h4>Institute announcements</h4>
+      {announcements.length ? announcements.map(a=><article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseId==="all"?"All students":courses.find(c=>c.id===a.courseId)?.title || "Course announcement"} · {a.createdAt?.toDate ? a.createdAt.toDate().toLocaleDateString() : "Recently published"}</span><p>{a.message}</p>{a.expiresOn&&<small>Available until {a.expiresOn}</small>}</article>) : <p className="staff-empty">There are no current announcements.</p>}
+    </section>
     <div className="institute-course-grid">
       {courses.filter(c => c.active !== false).map(c => <article className="institute-course-card" key={c.id}><span>COURSE</span><h4>{c.title}</h4><p>{c.description || c.category || "Professional fashion training"}</p><small>{c.mode || "Mode to be confirmed"} · {c.duration || "Duration to be confirmed"}</small><strong>{Number(c.fee || 0) ? "₦" + Number(c.fee).toLocaleString("en-NG") : "Fee to be confirmed"}</strong></article>)}
       {!courses.length && <p className="staff-empty">Course information will appear here when the Institute publishes its first course.</p>}
@@ -265,6 +297,14 @@ export default function InstituteWorkspace() {
     </form>}
     {!isAdmin && <div className="institute-window-list"><h4>My applications</h4>{myApplications.length?myApplications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef}</strong><span>{a.courseTitle} · {a.windowTitle}</span><p>Admission: {a.status} · Payment: {a.paymentStatus}</p>{a.studentId&&<p>Student ID: {a.studentId}</p>}</article>):<p className="staff-empty">You have not submitted an application yet.</p>}</div>}
     {isAdmin && <>
+      <form className="portal-form" onSubmit={publishAnnouncement}>
+        <h4>Publish an Institute announcement</h4>
+        <label>Audience<select value={announcementForm.courseId} onChange={e=>setAnnouncementForm({...announcementForm,courseId:e.target.value})}><option value="all">All paid students</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title} students</option>)}</select></label>
+        <label>Announcement title<input required maxLength="120" value={announcementForm.title} onChange={e=>setAnnouncementForm({...announcementForm,title:e.target.value})}/></label>
+        <label>Message<textarea required rows="4" maxLength="3000" value={announcementForm.message} onChange={e=>setAnnouncementForm({...announcementForm,message:e.target.value})}/></label>
+        <label>Expiry date (optional)<input type="date" value={announcementForm.expiresOn} onChange={e=>setAnnouncementForm({...announcementForm,expiresOn:e.target.value})}/></label>
+        <button className="portal-submit" disabled={busy}>Publish announcement</button>
+      </form>
       <div className="institute-admin-grid">
         <form className="portal-form" onSubmit={saveCourse}><h4>Create a course</h4>
           <label>Course title<input required value={courseForm.title} onChange={e=>setCourseForm({...courseForm,title:e.target.value})} placeholder="e.g. Advanced Pattern Drafting"/></label>
