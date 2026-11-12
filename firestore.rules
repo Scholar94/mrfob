@@ -335,6 +335,26 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteAttendance/{attendanceId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.studentUid is string
+        && request.resource.data.courseId is string
+        && request.resource.data.date is string
+        && request.resource.data.status in ['present','absent','late','excused']
+        && request.resource.data.markedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['studentUid','studentId','studentName','courseId','courseTitle','windowId','date','status','markedBy','markedAt','updatedAt']);
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.studentUid == resource.data.studentUid
+        && request.resource.data.courseId == resource.data.courseId
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.status in ['present','absent','late','excused']
+        && request.resource.data.markedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow delete: if isSuperAdmin();
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
