@@ -126,6 +126,8 @@ export default function Portal({ onClose }) {
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
+  const [paymentInstructions, setPaymentInstructions] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
+  const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
   const [declarationReviewNotes, setDeclarationReviewNotes] = useState({});
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
@@ -564,6 +566,37 @@ export default function Portal({ onClose }) {
     } catch (err) { setError(err.message || "Could not load payment history."); }
   }
 
+  async function loadPaymentInstructions() {
+    if (!user) return;
+    try {
+      const snapshot = await getDoc(doc(db, "publicSettings", "paymentInstructions"));
+      const data = snapshot.exists() ? snapshot.data() : {};
+      const safe = { bankName: data.bankName || "", accountName: data.accountName || "", accountNumber: data.accountNumber || "", instructions: data.instructions || "" };
+      setPaymentInstructions(safe);
+      setPaymentInstructionsDraft(safe);
+    } catch (err) { setError(err.message || "Could not load payment instructions."); }
+  }
+
+  async function savePaymentInstructions(e) {
+    e.preventDefault();
+    if (!claims.superAdmin) return;
+    const next = {
+      bankName: paymentInstructionsDraft.bankName.trim(),
+      accountName: paymentInstructionsDraft.accountName.trim(),
+      accountNumber: paymentInstructionsDraft.accountNumber.trim(),
+      instructions: paymentInstructionsDraft.instructions.trim()
+    };
+    if (next.accountNumber && !/^\\d{10}$/.test(next.accountNumber)) { setError("Enter a valid 10-digit Nigerian bank account number, or leave it blank."); return; }
+    if (next.accountNumber && (!next.bankName || !next.accountName)) { setError("Enter the bank name and account name when an account number is supplied."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await setDoc(doc(db, "publicSettings", "paymentInstructions"), { ...next, updatedAt: serverTimestamp(), updatedBy: user.uid });
+      setPaymentInstructions(next);
+      setMessage("Customer bank transfer instructions have been saved.");
+    } catch (err) { setError(err.message || "Could not save payment instructions."); }
+    finally { setBusy(false); }
+  }
+
   async function loadPaymentDeclarations() {
     if (!user) return;
     setDeclarationsLoading(true);
@@ -992,7 +1025,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadPayments(); loadPaymentDeclarations(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadPayments(); loadPaymentDeclarations(); loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   const financeNow=new Date();
   const financeBounds=(()=>{let a=new Date(financeNow.getFullYear(),financeNow.getMonth(),1),b=new Date(financeNow.getFullYear(),financeNow.getMonth()+1,0,23,59,59,999);if(financePeriod==="today"){a=new Date();a.setHours(0,0,0,0);b=new Date();b.setHours(23,59,59,999);}else if(financePeriod==="yesterday"){a=new Date();a.setDate(a.getDate()-1);a.setHours(0,0,0,0);b=new Date(a);b.setHours(23,59,59,999);}else if(financePeriod==="week"){a=new Date();a.setDate(a.getDate()-(a.getDay()+6)%7);a.setHours(0,0,0,0);b=new Date(a);b.setDate(b.getDate()+6);b.setHours(23,59,59,999);}else if(financePeriod==="lastMonth"){a=new Date(financeNow.getFullYear(),financeNow.getMonth()-1,1);b=new Date(financeNow.getFullYear(),financeNow.getMonth(),0,23,59,59,999);}else if(financePeriod==="year"){a=new Date(financeNow.getFullYear(),0,1);b=new Date(financeNow.getFullYear(),11,31,23,59,59,999);}else if(financePeriod==="custom"){a=new Date(financeStart+"T00:00:00");b=new Date(financeEnd+"T23:59:59.999");if(!financeStart||!financeEnd||Number.isNaN(a.getTime())||Number.isNaN(b.getTime())||a>b){a=new Date(8640000000000000);b=new Date(0);}}else if(financePeriod==="all"){a=new Date(0);b=new Date(8640000000000000);}return {start:a,end:b};})();
@@ -1138,6 +1171,16 @@ export default function Portal({ onClose }) {
           <label>Note<textarea value={paymentForm.note} onChange={e=>setPaymentForm({...paymentForm,note:e.target.value})} placeholder="Optional payment note"/></label>
           <button className="portal-submit" disabled={busy || orders.length===0}>{busy ? "Saving…" : "Record payment"}</button>
         </form>}
+        {claims.superAdmin && <section className="payment-instructions-admin">
+          <div className="customer-management-heading"><div><h3>Customer Bank Transfer Instructions</h3><p>Manage the business account details customers see before declaring a transfer</p></div></div>
+          <form className="portal-form" onSubmit={savePaymentInstructions}>
+            <label>Bank name<input maxLength="80" value={paymentInstructionsDraft.bankName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,bankName:e.target.value})} placeholder="e.g. Access Bank"/></label>
+            <label>Account name<input maxLength="100" value={paymentInstructionsDraft.accountName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountName:e.target.value})} placeholder="Registered account name"/></label>
+            <label>Account number<input inputMode="numeric" maxLength="10" value={paymentInstructionsDraft.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountNumber:e.target.value.replace(/\\D/g,"").slice(0,10)})} placeholder="10-digit account number"/></label>
+            <label>Additional transfer instructions<textarea maxLength="600" value={paymentInstructionsDraft.instructions} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,instructions:e.target.value})} placeholder="Payment reference, deposit guidance or other customer instructions"/></label>
+            <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save bank instructions"}</button>
+          </form>
+        </section>}
         {claims.superAdmin && <section className="payment-declaration-admin">
           <div className="customer-management-heading"><div><h3>Customer Transfer Declarations</h3><p>Verify the funds in your bank independently before approving a declaration</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
           {paymentDeclarations.filter(item=>item.status==="pending").length ? paymentDeclarations.filter(item=>item.status==="pending").map(item=><article className="payment-declaration-review" key={item.id}><div><strong>{item.orderNumber} · {item.customerName || "Customer"}</strong><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></div><p>Transfer date: {item.transferDate} · Reference: {item.reference}</p><p>Payer: {item.payerName || "Not supplied"}{item.note ? " · "+item.note : ""}</p><label>Review note<textarea value={declarationReviewNotes[item.id] || ""} onChange={e=>setDeclarationReviewNotes({...declarationReviewNotes,[item.id]:e.target.value})} placeholder="Optional note to customer"/></label><div className="verification-actions"><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"verified")}>Verify and record payment</button><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"rejected")}>Reject declaration</button></div></article>) : <p className="staff-empty">No declarations are awaiting review.</p>}
@@ -1147,6 +1190,7 @@ export default function Portal({ onClose }) {
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management customer-self-service">
         <div className="customer-management-heading"><div><h3>Declare a Bank Transfer</h3><p>Tell us about a transfer you have made so the team can verify it</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
+        {(paymentInstructions.bankName || paymentInstructions.accountNumber || paymentInstructions.instructions) && <div className="customer-bank-instructions"><h4>Official bank transfer details</h4>{paymentInstructions.bankName && <p><span>Bank</span><b>{paymentInstructions.bankName}</b></p>}{paymentInstructions.accountName && <p><span>Account name</span><b>{paymentInstructions.accountName}</b></p>}{paymentInstructions.accountNumber && <p><span>Account number</span><b>{paymentInstructions.accountNumber}</b></p>}{paymentInstructions.instructions && <p className="bank-extra-instructions">{paymentInstructions.instructions}</p>}<small>Confirm these details before making a transfer. MR FOP FASHIONS will independently verify payments.</small></div>}
         <p className="payment-declaration-notice">Submitting this form does not confirm receipt of funds. Do not submit passwords, PINs, OTPs or full card details. Do not upload bank statements here.</p>
         <form className="portal-form" onSubmit={submitPaymentDeclaration}>
           <label>Order<select required value={declarationForm.orderId} onChange={e=>setDeclarationForm({...declarationForm,orderId:e.target.value})}><option value="">Select your order</option>{myOrders.map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.item}</option>)}</select></label>
