@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where, setDoc } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -13,7 +13,7 @@ export default function InstituteWorkspace() {
   const [courses, setCourses] = useState([]);
   const [windows, setWindows] = useState([]);
   const [applications, setApplications] = useState([]);
-  const [myApplications, setMyApplications] = useState([]);
+  const [myApplications, setMyApplications] = useState([]);\n  const [enrollments, setEnrollments] = useState([]);\n  const [lessons, setLessons] = useState([]);\n  const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [windowForm, setWindowForm] = useState(blankWindow);
   const [applicationForm, setApplicationForm] = useState({ fullName: user?.displayName || "", phone: "", address: "", courseId: "", windowId: "", mode: "Onsite", experience: "", note: "" });
@@ -33,6 +33,13 @@ export default function InstituteWorkspace() {
       setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.title || "").localeCompare(b.title || "")));
       setWindows(windowSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.commencement || "").localeCompare(b.commencement || "")));
       setMyApplications(ownSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      if (!isAdmin) {
+        const enrollmentSnap = await getDocs(query(collection(db, "instituteEnrollments"), where("studentUid", "==", user.uid), where("paymentStatus", "==", "paid")));
+        const active = enrollmentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setEnrollments(active);
+        const sets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", en.courseId)))));
+        setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
+      }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
@@ -100,6 +107,27 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not update application."); } finally { setBusy(false); }
   }
 
+
+  async function verifyTrainingPayment(item) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      if (item.status !== "admitted") throw new Error("Only admitted applicants can have training payment verified.");
+      const enrollmentId = item.customerUid + "_" + item.courseId;
+      await setDoc(doc(db, "instituteEnrollments", enrollmentId), { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      await updateDoc(doc(db, "instituteApplications", item.id), { paymentStatus:"paid", paymentVerifiedBy:user.uid, paymentVerifiedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action."); await load();
+    } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
+  }
+  async function createLesson(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      if (!lessonForm.courseId || !lessonForm.title.trim()) throw new Error("Select a course and enter a lesson title.");
+      if ((lessonForm.videoUrl.trim() && !lessonForm.videoUrl.startsWith("https://")) || (lessonForm.resourceUrl.trim() && !lessonForm.resourceUrl.startsWith("https://"))) throw new Error("Learning links must use HTTPS.");
+      await addDoc(collection(db, "instituteLessons"), { courseId:lessonForm.courseId, title:lessonForm.title.trim(), module:lessonForm.module.trim(), type:lessonForm.type, content:lessonForm.content.trim(), videoUrl:lessonForm.videoUrl.trim(), resourceUrl:lessonForm.resourceUrl.trim(), sequence:Number(lessonForm.sequence||1), published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setLessonForm(v=>({...v,title:"",module:"",content:"",videoUrl:"",resourceUrl:""})); setNotice("Lesson published to eligible enrolled students."); await load();
+    } catch(e) { setError(e.message || "Could not publish lesson."); } finally { setBusy(false); }
+  }
+
   async function changeWindowStatus(item, status) {
     setBusy(true); setError(""); setNotice("");
     try { await updateDoc(doc(db, "trainingWindows", item.id), { status, updatedAt: serverTimestamp() }); setNotice("Training window updated."); await load(); }
@@ -159,7 +187,20 @@ export default function InstituteWorkspace() {
         </form>
       </div>
       <div className="institute-window-list"><h4>Manage training windows</h4>{windows.map(w=><article className="appointment-card" key={w.id}><strong>{w.title}</strong><span>{w.courseTitle || courses.find(c=>c.id===w.courseId)?.title}</span><p>{w.applicationOpen} – {w.applicationClose} · Starts {w.commencement} · Capacity {w.enrolledCount||0}/{w.capacity}</p><label>Window status<select value={w.status||"open"} onChange={e=>changeWindowStatus(w,e.target.value)} disabled={busy}><option value="open">Open</option><option value="closed">Closed</option><option value="completed">Completed</option></select></label></article>)}</div>
-      <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
+      <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
+
+    {isAdmin && <form className="portal-form" onSubmit={createLesson}><h4>Publish a course lesson</h4>
+      <label>Course<select required value={lessonForm.courseId} onChange={e=>setLessonForm({...lessonForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(x=><option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
+      <label>Lesson title<input required value={lessonForm.title} onChange={e=>setLessonForm({...lessonForm,title:e.target.value})}/></label>
+      <label>Module / topic<input value={lessonForm.module} onChange={e=>setLessonForm({...lessonForm,module:e.target.value})}/></label>
+      <label>Lesson type<select value={lessonForm.type} onChange={e=>setLessonForm({...lessonForm,type:e.target.value})}><option>Text lesson</option><option>Video lesson</option><option>Reading resource</option></select></label>
+      <label>Lesson content<textarea rows="5" value={lessonForm.content} onChange={e=>setLessonForm({...lessonForm,content:e.target.value})}/></label>
+      <label>Video URL (HTTPS)<input type="url" value={lessonForm.videoUrl} onChange={e=>setLessonForm({...lessonForm,videoUrl:e.target.value})}/></label>
+      <label>Resource URL (HTTPS)<input type="url" value={lessonForm.resourceUrl} onChange={e=>setLessonForm({...lessonForm,resourceUrl:e.target.value})}/></label>
+      <label>Sequence number<input type="number" min="1" step="1" value={lessonForm.sequence} onChange={e=>setLessonForm({...lessonForm,sequence:e.target.value})}/></label>
+      <button className="portal-submit" disabled={busy||!courses.length}>Publish lesson</button>
+    </form>}
+    {!isAdmin && <div className="institute-window-list"><h4>My enrolled courses & lessons</h4>{enrollments.map(en=><article className="appointment-card" key={en.id}><strong>{en.courseTitle}</strong><span>{en.studentId} · {en.windowTitle}</span>{lessons.filter(l=>l.courseId===en.courseId).map(l=><div className="institute-lesson" key={l.id}><b>{l.sequence}. {l.title}</b>{l.module&&<small>{l.module}</small>}{l.content&&<p>{l.content}</p>}{l.videoUrl&&<p><a href={l.videoUrl} target="_blank" rel="noreferrer">Open video lesson</a></p>}{l.resourceUrl&&<p><a href={l.resourceUrl} target="_blank" rel="noreferrer">Open learning resource</a></p>}</div>)}</article>)}{!enrollments.length&&<p className="staff-empty">Course lessons become available after admission and payment verification by the Institute.</p>}</div>}
   </section>;
 }
