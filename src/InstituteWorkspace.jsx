@@ -51,10 +51,9 @@ export default function InstituteWorkspace() {
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
         const assignmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", en.courseId)))));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const submissionSnap = await getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid)));
+        const [submissionSnap, attendanceSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid)))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.date||"").localeCompare(a.date||"")));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
@@ -62,6 +61,8 @@ export default function InstituteWorkspace() {
         const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance"))]);
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
   }
@@ -132,7 +133,7 @@ export default function InstituteWorkspace() {
     try {
       if (item.status !== "admitted") throw new Error("Only admitted applicants can have training payment verified.");
       const enrollmentId = item.customerUid + "_" + item.courseId;
-      await setDoc(doc(db, "instituteEnrollments", enrollmentId), { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      await setDoc(doc(db, "instituteEnrollments", enrollmentId), { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", studentName:item.fullName||"", studentEmail:item.email||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:serverTimestamp() });
       await updateDoc(doc(db, "instituteApplications", item.id), { paymentStatus:"paid", paymentVerifiedBy:user.uid, paymentVerifiedAt:serverTimestamp(), updatedAt:serverTimestamp() });
       setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action."); await load();
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
