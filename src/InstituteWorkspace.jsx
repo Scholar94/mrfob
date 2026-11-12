@@ -25,6 +25,9 @@ export default function InstituteWorkspace() {
   const [certificates, setCertificates] = useState([]);
   const [allCertificates, setAllCertificates] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [instructorAssignments, setInstructorAssignments] = useState([]);
+  const [instructorForm, setInstructorForm] = useState({ instructorUid: "", courseId: "" });
+  const isInstructor = claims.staffRole === "instructor";
   const [announcementForm, setAnnouncementForm] = useState({ courseId: "all", title: "", message: "", expiresOn: "" });
   const [certificateEnrollmentId, setCertificateEnrollmentId] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
@@ -50,7 +53,7 @@ export default function InstituteWorkspace() {
       setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.title || "").localeCompare(b.title || "")));
       setWindows(windowSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.commencement || "").localeCompare(b.commencement || "")));
       setMyApplications(ownSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-      if (!isAdmin) {
+      if (!isAdmin && !isInstructor) {
         const enrollmentSnap = await getDocs(query(collection(db, "instituteEnrollments"), where("studentUid", "==", user.uid), where("paymentStatus", "==", "paid")));
         const active = enrollmentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setEnrollments(active);
@@ -70,6 +73,10 @@ export default function InstituteWorkspace() {
         const announcementMap = new Map();
         announcementSets.forEach(s => s.docs.forEach(d => announcementMap.set(d.id, { id: d.id, ...d.data() })));
         setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= new Date().toISOString().slice(0,10)).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+      }
+      if (isInstructor) {
+        const assignedSnap = await getDocs(query(collection(db, "instituteInstructorAssignments"), where("instructorUid", "==", user.uid), where("active", "==", true)));
+        setInstructorAssignments(assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
@@ -204,6 +211,18 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not grade submission."); } finally { setBusy(false); }
   }
 
+  async function assignInstructor(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const instructorUid = instructorForm.instructorUid.trim();
+      const courseId = instructorForm.courseId;
+      if (!instructorUid || !courseId) throw new Error("Enter the instructor Firebase user UID and select a course.");
+      const assignmentId = instructorUid + "_" + courseId;
+      await setDoc(doc(db, "instituteInstructorAssignments", assignmentId), { instructorUid, courseId, courseTitle: courses.find(c => c.id === courseId)?.title || "", active: true, assignedBy: user.uid, assignedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setInstructorForm({ instructorUid: "", courseId: "" }); setNotice("Instructor assigned to the selected course."); await load();
+    } catch(e) { setError(e.message || "Could not assign instructor."); } finally { setBusy(false); }
+  }
+
   async function publishAnnouncement(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -297,6 +316,13 @@ export default function InstituteWorkspace() {
     </form>}
     {!isAdmin && <div className="institute-window-list"><h4>My applications</h4>{myApplications.length?myApplications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef}</strong><span>{a.courseTitle} · {a.windowTitle}</span><p>Admission: {a.status} · Payment: {a.paymentStatus}</p>{a.studentId&&<p>Student ID: {a.studentId}</p>}</article>):<p className="staff-empty">You have not submitted an application yet.</p>}</div>}
     {isAdmin && <>
+      <form className="portal-form" onSubmit={assignInstructor}>
+        <h4>Assign an instructor to a course</h4>
+        <p>Enter the instructor Firebase Authentication UID. Firestore rules verify the Instructor role.</p>
+        <label>Instructor user UID<input required value={instructorForm.instructorUid} onChange={e=>setInstructorForm({...instructorForm,instructorUid:e.target.value})}/></label>
+        <label>Course<select required value={instructorForm.courseId} onChange={e=>setInstructorForm({...instructorForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+        <button className="portal-submit" disabled={busy||!courses.length}>Assign instructor</button>
+      </form>
       <form className="portal-form" onSubmit={publishAnnouncement}>
         <h4>Publish an Institute announcement</h4>
         <label>Audience<select value={announcementForm.courseId} onChange={e=>setAnnouncementForm({...announcementForm,courseId:e.target.value})}><option value="all">All paid students</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title} students</option>)}</select></label>
@@ -335,6 +361,10 @@ export default function InstituteWorkspace() {
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
+    {isInstructor && <section className="institute-window-list">
+      <h4>My instructor assignments</h4>
+      {instructorAssignments.length ? instructorAssignments.map(a => <article className="appointment-card" key={a.id}><strong>{a.courseTitle || courses.find(c=>c.id===a.courseId)?.title || "Assigned course"}</strong><span>Course ID: {a.courseId}</span><p>Assignment status: {a.active ? "Active" : "Inactive"}</p></article>) : <p className="staff-empty">No courses have been assigned to this instructor account yet.</p>}
+    </section>}
     {isAdmin && <section className="institute-window-list">
       <h4>Student learning progress</h4>
       {allEnrollments.map(en=>{const courseLessons=lessons.filter(l=>l.courseId===en.courseId);const done=allLessonProgress.filter(p=>p.studentUid===en.studentUid&&p.courseId===en.courseId&&p.completed).length;return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.courseTitle} · {done}/{courseLessons.length} lessons completed</span><p>{courseLessons.length ? Math.round(Math.min(done,courseLessons.length)/courseLessons.length*100)+"% lesson completion" : "No lessons published yet."}</p></article>})}
