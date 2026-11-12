@@ -598,30 +598,29 @@ export default function Portal({ onClose }) {
       const declarationRef = doc(db, "paymentDeclarations", item.id);
       const orderRef = doc(db, "orders", item.orderId);
       if (decision === "verified") {
-        const existing = await getDocs(query(collection(db, "payments"), where("orderId", "==", item.orderId)));
-        const alreadyPaid = existing.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
-        const order = orders.find(row => row.id === item.orderId) || (await getDoc(orderRef)).data();
-        if (!order) throw new Error("The linked order could not be found.");
         const paymentRef = doc(collection(db, "payments"));
         await runTransaction(db, async transaction => {
           const declarationSnap = await transaction.get(declarationRef);
           const orderSnap = await transaction.get(orderRef);
           if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
           if (!orderSnap.exists() || orderSnap.data().customerUid !== item.customerUid) throw new Error("The linked order could not be verified.");
-          const newPaid = alreadyPaid + Number(item.amount);
+          const ledgerQuery = query(collection(db, "payments"), where("orderId", "==", item.orderId));
+          const ledgerSnap = await transaction.get(ledgerQuery);
+          const alreadyPaid = ledgerSnap.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
+          const newPaid = alreadyPaid + Number(declarationSnap.data().amount || 0);
           const quoted = Number(orderSnap.data().amount || 0);
-          const paymentStatus = quoted > 0 && newPaid >= quoted ? "paid" : "part_paid";
+          const paymentStatus = quoted > 0 && newPaid >= quoted ? "paid" : newPaid > 0 ? "part_paid" : "unpaid";
           transaction.set(paymentRef, {
             orderId: item.orderId, orderNumber: item.orderNumber || item.orderId,
             customerUid: item.customerUid, customerName: item.customerName || "",
-            amount: Number(item.amount), currency: "NGN", method: item.method || "Bank transfer",
-            reference: item.reference || "", note: "Verified from customer transfer declaration " + item.id,
+            amount: Number(declarationSnap.data().amount), currency: "NGN", method: declarationSnap.data().method || "Bank transfer",
+            reference: declarationSnap.data().reference || "", note: "Verified from customer transfer declaration " + item.id,
             declarationId: item.id, createdAt: serverTimestamp(), createdBy: user.uid
           });
           transaction.update(orderRef, { paymentStatus, updatedAt: serverTimestamp() });
           transaction.update(declarationRef, { status: "verified", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
         });
-        setMessage("Transfer declaration verified and added to the payment ledger.");
+        setMessage("Transfer declaration verified and added to the payment ledger. The order payment status has been reconciled.");
       } else {
         await runTransaction(db, async transaction => {
           const declarationSnap = await transaction.get(declarationRef);
@@ -644,16 +643,29 @@ export default function Portal({ onClose }) {
       const amount = Number(paymentForm.amount);
       if (!order) throw new Error("Select an order.");
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a payment amount greater than zero.");
-      await addDoc(collection(db, "payments"), {
-        orderId: order.id, orderNumber: order.orderNumber || order.id,
-        customerUid: order.customerUid, customerName: order.customerName || "",
-        amount, currency: "NGN", method: paymentForm.method,
-        reference: paymentForm.reference.trim(), note: paymentForm.note.trim(),
-        createdAt: serverTimestamp(), createdBy: user.uid
+      const orderRef = doc(db, "orders", order.id);
+      const paymentRef = doc(collection(db, "payments"));
+      await runTransaction(db, async transaction => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) throw new Error("The selected order no longer exists.");
+        const ledgerQuery = query(collection(db, "payments"), where("orderId", "==", order.id));
+        const ledgerSnap = await transaction.get(ledgerQuery);
+        const paidBefore = ledgerSnap.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
+        const paidAfter = paidBefore + amount;
+        const quoted = Number(orderSnap.data().amount || 0);
+        const paymentStatus = quoted > 0 && paidAfter >= quoted ? "paid" : "part_paid";
+        transaction.set(paymentRef, {
+          orderId: order.id, orderNumber: order.orderNumber || order.id,
+          customerUid: orderSnap.data().customerUid, customerName: orderSnap.data().customerName || "",
+          amount, currency: "NGN", method: paymentForm.method,
+          reference: paymentForm.reference.trim(), note: paymentForm.note.trim(),
+          createdAt: serverTimestamp(), createdBy: user.uid
+        });
+        transaction.update(orderRef, { paymentStatus, updatedAt: serverTimestamp() });
       });
       setPaymentForm({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
-      setMessage("Payment transaction recorded successfully.");
-      await loadPayments();
+      setMessage("Payment transaction recorded and the order payment status reconciled successfully.");
+      await Promise.all([loadPayments(), loadOrders()]);
     } catch (err) { setError(err.message || "Could not record payment."); }
     finally { setBusy(false); }
   }
