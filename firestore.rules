@@ -335,6 +335,19 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteLessonProgress/{progressId} {
+      allow create, update: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && hasPaidCourseAccess(request.resource.data.courseId)
+        && request.resource.data.lessonId is string
+        && request.resource.data.completed == true
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['studentUid','courseId','lessonId','lessonTitle','completed','completedAt','updatedAt']);
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteAttendance/{attendanceId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.studentUid is string
