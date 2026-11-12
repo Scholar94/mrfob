@@ -26,6 +26,18 @@ const PRODUCTION_STAGES = [
   ["delivered", "Delivered"]
 ];
 
+const MEASUREMENT_PROFILES = {
+  "General body profile": [["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["neck","Neck"]],
+  "Men’s shirt": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["neck","Neck"],["sleeve","Sleeve length"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["shirtLength","Shirt length"],["acrossBack","Across back"]],
+  "Trousers": [["waist","Waist"],["hip","Hip"],["inseam","Inside leg"],["outseam","Outside leg"],["thigh","Thigh"],["knee","Knee"],["ankle","Ankle opening"],["frontRise","Front rise"],["backRise","Back rise"]],
+  "Dress / Gown": [["bust","Bust"],["underBust","Under bust"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["armhole","Armhole"],["bustPoint","Bust point"],["dressLength","Dress length"]],
+  "Skirt": [["waist","Waist"],["hip","Hip"],["waistToHip","Waist to hip"],["skirtLength","Skirt length"]],
+  "Jacket": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["jacketLength","Jacket length"],["acrossBack","Across back"]],
+  "Blouse": [["bust","Bust"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["armhole","Armhole"],["blouseLength","Blouse length"]]
+};
+const ALL_MEASUREMENT_FIELDS = [...new Set(Object.values(MEASUREMENT_PROFILES).flat().map(([key]) => key))];
+
+
 function productionStageLabel(value) {
   return PRODUCTION_STAGES.find(([stage]) => stage === value)?.[1] || String(value || "Order received").replaceAll("_", " ");
 }
@@ -64,7 +76,7 @@ export default function Portal({ onClose }) {
   const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
   const [profileLoading, setProfileLoading] = useState(false);
-  const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", unit: "cm", notes: "" });
+  const [measurementForm, setMeasurementForm] = useState({ profileName: "My measurements", garmentType: "General body profile", chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", bicep: "", wrist: "", armhole: "", shirtLength: "", acrossBack: "", outseam: "", thigh: "", knee: "", ankle: "", frontRise: "", backRise: "", bust: "", underBust: "", bustPoint: "", dressLength: "", waistToHip: "", skirtLength: "", jacketLength: "", blouseLength: "", unit: "cm", notes: "" });
   const [measurements, setMeasurements] = useState([]);
   const [measurementsLoading, setMeasurementsLoading] = useState(false);
   const [trainingForm, setTrainingForm] = useState({ course: "Fashion Design", mode: "Onsite practical training", message: "" });
@@ -222,16 +234,31 @@ export default function Portal({ onClose }) {
     if (!user || claims.superAdmin || claims.staffRole) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const fields = ["chest","waist","hip","shoulder","sleeve","length","neck","inseam"];
       const values = {};
-      fields.forEach(key => { const raw = measurementForm[key].trim(); if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank."); values[key] = raw ? Number((measurementForm.unit === "in" ? Number(raw) * 2.54 : Number(raw)).toFixed(1)) : null; });
-      if (!fields.some(key => values[key] !== null)) throw new Error("Enter at least one measurement.");
-      await addDoc(collection(db, "measurements"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", ...values, notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      setMeasurementForm({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", unit: "cm", notes: "" });
-      setMessage("Your measurement record has been saved securely.");
+      ALL_MEASUREMENT_FIELDS.forEach(key => {
+        const raw = String(measurementForm[key] ?? "").trim();
+        if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank.");
+        values[key] = raw ? Number((measurementForm.unit === "in" ? Number(raw) * 2.54 : Number(raw)).toFixed(1)) : null;
+      });
+      const activeFields = MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"];
+      if (!activeFields.some(([key]) => values[key] !== null)) throw new Error("Enter at least one measurement for this garment profile.");
+      const profileName = measurementForm.profileName.trim() || measurementForm.garmentType;
+      await addDoc(collection(db, "measurements"), {
+        customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "",
+        profileName, garmentType: measurementForm.garmentType, ...values,
+        notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setMeasurementForm(current => ({ ...current, profileName: "My measurements", ...Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, ""])), unit: "cm", notes: "" }));
+      setMessage("Your garment measurement profile has been saved. Values are stored in centimetres.");
       await loadMeasurements();
     } catch (err) { setError(err.message || "Could not save your measurements."); }
     finally { setBusy(false); }
+  }
+
+  function reuseMeasurementProfile(item) {
+    const values = Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, item[key] == null ? "" : String(item[key])]));
+    setMeasurementForm(current => ({ ...current, ...values, profileName: (item.profileName || item.garmentType || "Saved profile") + " (copy)", garmentType: item.garmentType || "General body profile", unit: "cm", notes: item.notes || "" }));
+    setMessage("Saved measurements loaded into the form. Review and save to create a new profile.");
   }
 
   async function loadTrainingEnquiries() {
@@ -817,11 +844,20 @@ export default function Portal({ onClose }) {
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Values are stored consistently in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
         <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
+          <label>Profile name<input value={measurementForm.profileName} maxLength={60} onChange={e=>setMeasurementForm({...measurementForm,profileName:e.target.value})} placeholder="e.g. Office shirt measurements"/></label>
+          <label>Garment profile<select value={measurementForm.garmentType} onChange={e=>setMeasurementForm({...measurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
+          <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
+          <div className="measurement-grid">{(MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"]).map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key] || ""} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
+          <p className="portal-hint">Enter measurements taken with a flexible tape measure. Keep the tape comfortably fitted, not tight. A designer should confirm measurements before garment production.</p>
+          <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurement profile"}</button>
+        </form>
+        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.profileName || item.garmentType || "Saved measurements"}</strong><span>{item.garmentType || "General profile"} · {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{ALL_MEASUREMENT_FIELDS.filter(key=>item[key]!==null&&item[key]!==undefined&&item[key]!=="").map(key=><span key={key}>{key.replace(/[A-Z]/g,"         <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
           <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label><div className="measurement-grid">{[["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve"],["length","Garment length"],["neck","Neck"],["inseam","Inseam"]].map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key]} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
           <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
           <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurements"}</button>
         </form>
-        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>Saved measurements</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}
+        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>Saved measurements</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}").replace(/^./,c=>c.toUpperCase())}: {item[key]} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<button type="button" onClick={()=>reuseMeasurementProfile(item)}>Reuse this profile</button></article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>Fashion Institute</h3><p>Enquire about courses and practical training</p></div><button type="button" onClick={loadTrainingEnquiries} disabled={trainingLoading}>{trainingLoading ? "Loading…" : "Refresh enquiries"}</button></div>
