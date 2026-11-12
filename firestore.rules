@@ -71,6 +71,21 @@ service cloud.firestore {
         || (hasStaffRole(['manager', 'sales', 'tailor'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
       allow delete: if isSuperAdmin();
+
+      match /events/{eventId} {
+        allow create: if isSuperAdmin()
+          && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'changedByUid', 'changedByName', 'createdAt'])
+          && request.resource.data.changedByUid == request.auth.uid
+          && request.resource.data.fromStatus is string
+          && request.resource.data.toStatus in ['received', 'designer_review', 'awaiting_measurements', 'measurements_completed', 'awaiting_quotation_approval', 'awaiting_deposit', 'confirmed', 'fabric_preparation', 'cutting', 'sewing', 'finishing', 'quality_control', 'ready_for_fitting', 'alterations', 'completed', 'ready_for_collection', 'dispatched', 'delivered']
+          && request.resource.data.stageLabel is string
+          && request.resource.data.createdAt is timestamp;
+        allow read: if signedIn() && (
+          isSuperAdmin() || isStaff() ||
+          get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
+        );
+        allow update, delete: if false;
+      }
     }
 
     match /appointments/{appointmentId} {
