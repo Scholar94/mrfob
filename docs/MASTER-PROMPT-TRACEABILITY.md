@@ -57,6 +57,8 @@
 
 ## Work log
 
+- **2026-11-12 — Appointment alternative workflow:** Added admin proposal date/time/message and customer acceptance; accepting copies the proposal into the appointment date/time and marks it confirmed. Firestore rules limit admin changes and allow only the appointment owner to accept a pending alternative. Automated collision prevention and notifications are not claimed. Build verification pending.
+
 - **2026-11-12 — Full production stage selector:** replaced the short order status list with all 18 production stages from the master prompt, including designer review, measurement, quotation/deposit, preparation, cutting, sewing, finishing, QC, fitting, alterations, collection, dispatch and delivery. Customer-request orders without a quotation now display “Awaiting quotation” instead of a misleading ₦0. Code committed on the feature branch; build verification for this change is pending.
 \n\n- **2026-11-12 — Measurement units:** customer measurement entry now accepts centimetres or inches and converts inch values to centimetres before saving, keeping historical and new records in one consistent storage unit. Feature-branch build passed on 2026-11-12; Firestore publication and live workflow verification remain pending.\n- **2026-11-12 — Feature build validation:** added a GitHub Actions workflow to build feature branches without deploying them to the live site. After removing npm cache configuration (the repository has no lockfile), run 43242216998 completed successfully on 2026-11-12.\n\n- **2026-11-12 — Customer custom-order request:** added a customer request form with garment category, item, fabric/colour preferences, quantity, measurement arrangement, preferred date request, delivery preference and instructions. Added Firestore validation for customer-owned submissions and limited owner edits; requests are unquoted and do not confirm a price or completion date. Code and rules are committed on the feature branch; Firestore rules publication and live customer submission remain unverified.\n- **2026-11-12 — Account recovery:** added a password-reset request flow to the account portal using Firebase Authentication. It requests a reset email for the supplied address and uses a non-enumerating success message for unknown accounts. Code change is committed on the feature branch; deployment and live email delivery have not yet been verified.\n\n## Implementation sequence (preserve all ten master phases)
 
@@ -136,3 +138,6 @@
 7. Distinguish code-reviewed, build-verified and live-tested statuses.
 8. If a requirement cannot be implemented within the free infrastructure, document the exact limitation and implement the best safe free alternative without falsely marking the original requirement complete.
 9. Final acceptance is blocked until every feasible requirement is implemented and the mandatory tests are passed or transparently recorded as blocked by an owner dependency.
+
+
+- **Appointment workflow update (2026-11-12):** Added administrator alternative date/time proposals and customer acceptance. Security rules constrain who can propose and accept. Conflict prevention and calendars remain outstanding.
