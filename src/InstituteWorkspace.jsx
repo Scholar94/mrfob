@@ -30,6 +30,9 @@ export default function InstituteWorkspace() {
   const [allCertificates, setAllCertificates] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [instructorAssignments, setInstructorAssignments] = useState([]);
+  const [allInstructorAssignments, setAllInstructorAssignments] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [sessionForm, setSessionForm] = useState({ courseId: "", instructorUid: "", title: "", startsAt: "", endsAt: "", mode: "Onsite", venue: "MR FOP FASHIONS, Ijebu Ode", meetingUrl: "", notes: "" });
   const [instructorForm, setInstructorForm] = useState({ instructorUid: "", courseId: "" });
   const isInstructor = claims.staffRole === "instructor";
   const [announcementForm, setAnnouncementForm] = useState({ courseId: "all", title: "", message: "", expiresOn: "" });
@@ -68,12 +71,15 @@ export default function InstituteWorkspace() {
         const assessmentSubmissionSnap = await getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("studentUid", "==", user.uid)));
         setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessmentSubmissions(assessmentSubmissionSnap.docs.map(d => ({ id:d.id, ...d.data() })));
+        setSessions(sessionSnap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
+        setAllInstructorAssignments(instructorAssignmentSnap.docs.map(d => ({ id:d.id, ...d.data() })).filter(a=>a.active));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const [submissionSnap, attendanceSnap, progressSnap, certificateSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid)))]);
+        const [submissionSnap, attendanceSnap, progressSnap, certificateSnap, sessionSets] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteCertificates"), where("studentUid", "==", user.uid))), ...active.map(en => getDocs(query(collection(db, "instituteSessions"), where("courseId", "==", en.courseId), where("published", "==", true))))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.date||"").localeCompare(a.date||"")));
         setLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setCertificates(certificateSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.issuedAt?.seconds||0)-(a.issuedAt?.seconds||0)));
+        setSessions(sessionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
         const announcementSets = await Promise.all([
           getDocs(query(collection(db, "instituteAnnouncements"), where("courseId", "==", "all"))),
           ...active.map(en => getDocs(query(collection(db, "instituteAnnouncements"), where("courseId", "==", en.courseId))))
@@ -87,14 +93,15 @@ export default function InstituteWorkspace() {
         const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active === true);
         setInstructorAssignments(assigned);
         const courseIds = [...new Set(assigned.map(a => a.courseId))];
-        const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets, assessmentSets, assessmentSubmissionSets] = await Promise.all([
+        const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets, assessmentSets, assessmentSubmissionSets, sessionSets] = await Promise.all([
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteEnrollments"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSubmissions"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))),
           Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessments"), where("courseId", "==", courseId))))),
-          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("courseId", "==", courseId)))))
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssessmentSubmissions"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSessions"), where("courseId", "==", courseId)))) )
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
@@ -103,11 +110,12 @@ export default function InstituteWorkspace() {
         setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessmentSubmissions(assessmentSubmissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setSessions(sessionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>(a.startsAt||"").localeCompare(b.startsAt||"")));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [lessonSnap, assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap, assessmentSnap, assessmentSubmissionSnap] = await Promise.all([getDocs(collection(db, "instituteLessons")), getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates")), getDocs(collection(db, "instituteAssessments")), getDocs(collection(db, "instituteAssessmentSubmissions"))]);
+        const [lessonSnap, assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap, certificateSnap, assessmentSnap, assessmentSubmissionSnap, sessionSnap, instructorAssignmentSnap] = await Promise.all([getDocs(collection(db, "instituteLessons")), getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress")), getDocs(collection(db, "instituteCertificates")), getDocs(collection(db, "instituteAssessments")), getDocs(collection(db, "instituteAssessmentSubmissions")), getDocs(collection(db, "instituteSessions")), getDocs(collection(db, "instituteInstructorAssignments"))]);
         setLessons(lessonSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -287,6 +295,33 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not assign instructor."); } finally { setBusy(false); }
   }
 
+  async function scheduleSession(e) {
+    e.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      const course = courses.find(c => c.id === sessionForm.courseId);
+      const assignment = allInstructorAssignments.find(a => a.courseId === sessionForm.courseId && a.instructorUid === sessionForm.instructorUid && a.active);
+      if (!course || !assignment) throw new Error("Choose a course and an instructor actively assigned to it.");
+      if (!sessionForm.title.trim() || !sessionForm.startsAt || !sessionForm.endsAt) throw new Error("Enter a session title, start time and end time.");
+      if (new Date(sessionForm.endsAt) <= new Date(sessionForm.startsAt)) throw new Error("The session end time must be later than its start time.");
+      if (sessionForm.mode === "Online" && sessionForm.meetingUrl && !/^https:\/\//i.test(sessionForm.meetingUrl)) throw new Error("Online meeting links must use HTTPS.");
+      await addDoc(collection(db, "instituteSessions"), {
+        courseId: course.id, courseTitle: course.title, instructorUid: assignment.instructorUid,
+        title: sessionForm.title.trim(), startsAt: sessionForm.startsAt, endsAt: sessionForm.endsAt,
+        mode: sessionForm.mode, venue: sessionForm.venue.trim(), meetingUrl: sessionForm.meetingUrl.trim(),
+        notes: sessionForm.notes.trim(), status: "scheduled", published: true,
+        createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setSessionForm({ courseId: "", instructorUid: "", title: "", startsAt: "", endsAt: "", mode: "Onsite", venue: "MR FOP FASHIONS, Ijebu Ode", meetingUrl: "", notes: "" });
+      setNotice("Training session scheduled and published to enrolled students."); await load();
+    } catch(e) { setError(e.message || "Could not schedule training session."); } finally { setBusy(false); }
+  }
+
+  async function updateSessionStatus(session, status) {
+    setBusy(true); setError(""); setNotice("");
+    try { await updateDoc(doc(db, "instituteSessions", session.id), { status, updatedAt: serverTimestamp() }); setNotice("Session status updated."); await load(); }
+    catch(e) { setError(e.message || "Could not update session status."); } finally { setBusy(false); }
+  }
+
   async function publishAnnouncement(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -406,6 +441,19 @@ export default function InstituteWorkspace() {
         <label>Course<select required value={instructorForm.courseId} onChange={e=>setInstructorForm({...instructorForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
         <button className="portal-submit" disabled={busy||!courses.length}>Assign instructor</button>
       </form>
+      <form className="portal-form" onSubmit={scheduleSession}>
+        <h4>Schedule an instructor-led training session</h4>
+        <label>Course<select required value={sessionForm.courseId} onChange={e=>setSessionForm({...sessionForm,courseId:e.target.value,instructorUid:""})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+        <label>Assigned instructor<select required value={sessionForm.instructorUid} onChange={e=>setSessionForm({...sessionForm,instructorUid:e.target.value})}><option value="">Choose instructor</option>{allInstructorAssignments.filter(a=>a.courseId===sessionForm.courseId&&a.active).map(a=><option key={a.id} value={a.instructorUid}>{a.instructorName || a.instructorUid}</option>)}</select></label>
+        <label>Session title<input required maxLength="120" value={sessionForm.title} onChange={e=>setSessionForm({...sessionForm,title:e.target.value})} placeholder="e.g. Practical pattern drafting"/></label>
+        <label>Start date and time<input required type="datetime-local" value={sessionForm.startsAt} onChange={e=>setSessionForm({...sessionForm,startsAt:e.target.value})}/></label>
+        <label>End date and time<input required type="datetime-local" value={sessionForm.endsAt} onChange={e=>setSessionForm({...sessionForm,endsAt:e.target.value})}/></label>
+        <label>Delivery mode<select value={sessionForm.mode} onChange={e=>setSessionForm({...sessionForm,mode:e.target.value})}><option>Onsite</option><option>Online</option></select></label>
+        {sessionForm.mode==="Onsite"?<label>Venue<input value={sessionForm.venue} onChange={e=>setSessionForm({...sessionForm,venue:e.target.value})}/></label>:<label>Secure meeting link (HTTPS)<input type="url" value={sessionForm.meetingUrl} onChange={e=>setSessionForm({...sessionForm,meetingUrl:e.target.value})}/></label>}
+        <label>Session notes<textarea rows="3" maxLength="1500" value={sessionForm.notes} onChange={e=>setSessionForm({...sessionForm,notes:e.target.value})}/></label>
+        <button className="portal-submit" disabled={busy||!allInstructorAssignments.some(a=>a.courseId===sessionForm.courseId&&a.active)}>Schedule and publish session</button>
+      </form>
+      <div className="institute-window-list"><h4>Manage scheduled sessions</h4>{sessions.length?sessions.map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.instructorName || s.instructorUid}</span><p>{s.startsAt} – {s.endsAt} · {s.mode==="Online"?"Online":s.venue}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Open meeting link</a></p>}{s.notes&&<p>{s.notes}</p>}<label>Session status<select value={s.status||"scheduled"} onChange={e=>updateSessionStatus(s,e.target.value)} disabled={busy}><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label></article>):<p className="staff-empty">No sessions scheduled yet.</p>}</div>
       <form className="portal-form" onSubmit={publishAnnouncement}>
         <h4>Publish an Institute announcement</h4>
         <label>Audience<select value={announcementForm.courseId} onChange={e=>setAnnouncementForm({...announcementForm,courseId:e.target.value})}><option value="all">All paid students</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title} students</option>)}</select></label>
@@ -444,6 +492,8 @@ export default function InstituteWorkspace() {
       <div className="institute-window-list"><h4>Admission applications</h4>{applications.length?applications.map(a=><article className="appointment-card" key={a.id}><strong>{a.applicationRef} · {a.fullName}</strong><span>{a.email} · {a.phone}</span><p>{a.courseTitle} · {a.windowTitle} · {a.mode}</p><p>{a.address}</p>{a.experience&&<p>Experience: {a.experience}</p>}{a.note&&<p>{a.note}</p>}<p>Status: {a.status} · Payment: {a.paymentStatus}</p><div className="finance-form-actions"><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"admitted")}>Admit</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"rejected")}>Reject</button><button type="button" disabled={busy} onClick={()=>reviewApplication(a,"more_information")}>Request information</button></div>{a.studentId&&<p>Student ID: {a.studentId}</p>}{claims.superAdmin&&a.status==="admitted"&&a.paymentStatus!=="paid"&&<button type="button" disabled={busy} onClick={()=>verifyTrainingPayment(a)}>Verify received training payment & activate access</button>}{a.paymentStatus==="paid"&&<p>Course access activated.</p>}</article>):<p className="staff-empty">No applications received.</p>}</div>
     </>}
 
+    {isInstructor && <section className="institute-window-list"><h4>My teaching timetable</h4>{sessions.filter(s=>s.instructorUid===user.uid).length?sessions.filter(s=>s.instructorUid===user.uid).map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Open meeting link</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">No teaching sessions have been scheduled for your assigned courses.</p>}</section>}
+    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My course timetable</h4>{sessions.filter(s=>s.status!=="cancelled").length?sessions.filter(s=>s.status!=="cancelled").map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Join session</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">Your course timetable will appear here when the Institute schedules sessions.</p>}</section>}
     {isInstructor && <section className="institute-window-list">
       <h4>My instructor assignments</h4>
       {instructorAssignments.length ? instructorAssignments.map(a => <article className="appointment-card" key={a.id}><strong>{a.courseTitle || courses.find(c=>c.id===a.courseId)?.title || "Assigned course"}</strong><span>Course ID: {a.courseId}</span><p>Assignment status: {a.active ? "Active" : "Inactive"}</p></article>) : <p className="staff-empty">No courses have been assigned to this instructor account yet.</p>}
