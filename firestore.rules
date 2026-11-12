@@ -271,15 +271,19 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['applicationRef','customerUid','fullName','email','phone','address','courseId','courseTitle','windowId','windowTitle','mode','experience','note','status','paymentStatus','createdAt','updatedAt']);
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
-      allow update: if (isSuperAdmin() || hasStaffRole(['institute']))
+      allow update: if isSuperAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','paymentStatus','paymentVerifiedBy','paymentVerifiedAt','updatedAt'])
         && request.resource.data.status in ['pending','admitted','rejected','more_information']
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        || (hasStaffRole(['institute'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','updatedAt'])
+          && request.resource.data.status in ['pending','admitted','rejected','more_information']
+          && request.resource.data.updatedAt is timestamp);
       allow delete: if isSuperAdmin();
     }
 
     match /instituteEnrollments/{enrollmentId} {
-      allow create, update: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow create, update: if isSuperAdmin();
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
       allow delete: if isSuperAdmin();
     }
@@ -289,6 +293,36 @@ service cloud.firestore {
       return signedIn()
         && exists(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId))
         && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid';
+    }
+
+    match /instituteAssignments/{assignmentId} {
+      allow create: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow update: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager'])
+        || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /instituteSubmissions/{submissionId} {
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && hasPaidCourseAccess(request.resource.data.courseId)
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.answer is string
+        && request.resource.data.assignmentId is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['assignmentId','courseId','assignmentTitle','studentUid','studentName','answer','status','submittedAt','createdAt','updatedAt']);
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','maxScore','feedback','gradedBy','gradedAt','updatedAt'])
+        && request.resource.data.status == 'graded'
+        && request.resource.data.score is number
+        && request.resource.data.maxScore is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= request.resource.data.maxScore
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
     }
 
     match /instituteLessons/{lessonId} {
