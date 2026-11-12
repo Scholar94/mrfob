@@ -75,7 +75,8 @@ service cloud.firestore {
 
       match /events/{eventId} {
         allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
-          && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'changedByUid', 'changedByName', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'stageNote', 'changedByUid', 'changedByName', 'createdAt'])
+          && (!('stageNote' in request.resource.data) || (request.resource.data.stageNote is string && request.resource.data.stageNote.size() <= 500))
           && request.resource.data.changedByUid == request.auth.uid
           && request.resource.data.fromStatus is string
           && request.resource.data.toStatus in ['received', 'designer_review', 'awaiting_measurements', 'measurements_completed', 'awaiting_quotation_approval', 'awaiting_deposit', 'confirmed', 'fabric_preparation', 'cutting', 'sewing', 'finishing', 'quality_control', 'ready_for_fitting', 'alterations', 'completed', 'ready_for_collection', 'dispatched', 'delivered']
