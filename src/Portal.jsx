@@ -353,8 +353,21 @@ export default function Portal({ onClose }) {
     finally { setAppointmentsLoading(false); }
   }
 
+  function hasConfirmedAppointmentConflict(date, time, excludeId = "") {
+    return appointments.some(item =>
+      item.id !== excludeId &&
+      item.status === "confirmed" &&
+      item.appointmentDate === date &&
+      item.appointmentTime === time
+    );
+  }
+
   async function bookAppointment(e) {
     e.preventDefault();
+    if (hasConfirmedAppointmentConflict(appointmentForm.appointmentDate, appointmentForm.appointmentTime)) {
+      setError("That date and time already has a confirmed appointment. Please choose another slot or contact the team.");
+      return;
+    }
     if (!user || !appointmentForm.appointmentDate || !appointmentForm.appointmentTime) return;
     setBusy(true); setError(""); setMessage("");
     try {
@@ -387,6 +400,10 @@ export default function Portal({ onClose }) {
     const edit = appointmentEdits[item.id] || {};
     if (!edit.proposedDate || !edit.proposedTime) { setError("Enter both an alternative date and time."); return; }
     if (edit.proposedDate < localDateString()) { setError("An alternative appointment date cannot be in the past."); return; }
+    if (hasConfirmedAppointmentConflict(edit.proposedDate, edit.proposedTime, item.id)) {
+      setError("That proposed slot already has another confirmed appointment. Choose a different date or time.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const patch = { status: "alternative_proposed", proposedDate: edit.proposedDate, proposedTime: edit.proposedTime, adminMessage: (edit.adminMessage || "").trim(), updatedAt: serverTimestamp() };
@@ -399,6 +416,10 @@ export default function Portal({ onClose }) {
 
   async function acceptAppointmentAlternative(item) {
     if (!user || !item?.id || item.customerUid !== user.uid || item.status !== "alternative_proposed") return;
+    if (hasConfirmedAppointmentConflict(item.proposedDate, item.proposedTime, item.id)) {
+      setError("That proposed slot is no longer available because another appointment has been confirmed. Please contact the team for another time.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       await updateDoc(doc(db, "appointments", item.id), { appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
