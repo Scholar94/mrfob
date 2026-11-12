@@ -37,6 +37,29 @@ const MEASUREMENT_PROFILES = {
 };
 const ALL_MEASUREMENT_FIELDS = [...new Set(Object.values(MEASUREMENT_PROFILES).flat().map(([key]) => key))];
 
+const MEASUREMENT_FIELD_GUIDANCE = {
+  chest: "circumference", waist: "circumference", hip: "circumference", neck: "circumference",
+  bust: "circumference", underBust: "circumference", bicep: "circumference", wrist: "circumference",
+  thigh: "circumference", knee: "circumference", ankle: "circumference",
+  shoulder: "span", acrossBack: "span", armhole: "circumference",
+  sleeve: "length", length: "length", inseam: "length", outseam: "length",
+  shirtLength: "length", dressLength: "length", skirtLength: "length", jacketLength: "length",
+  blouseLength: "length", waistToHip: "length", frontRise: "length", backRise: "length", bustPoint: "length"
+};
+function getMeasurementWarnings(form) {
+  const fields = MEASUREMENT_PROFILES[form.garmentType] || MEASUREMENT_PROFILES["General body profile"];
+  return fields.flatMap(([key, label]) => {
+    const raw = String(form[key] ?? "").trim();
+    if (!raw || !Number.isFinite(Number(raw)) || Number(raw) <= 0) return [];
+    const cm = Number(form.unit === "in" ? Number(raw) * 2.54 : raw);
+    const kind = MEASUREMENT_FIELD_GUIDANCE[key] || "length";
+    const limits = kind === "circumference" ? [20, 220] : kind === "span" ? [5, 100] : [5, 220];
+    if (cm < limits[0] || cm > limits[1]) return [`${label} (${cm.toFixed(1)} cm) looks unusual. Please check the tape position, unit and entry.`];
+    return [];
+  });
+}
+
+
 
 function productionStageLabel(value) {
   return PRODUCTION_STAGES.find(([stage]) => stage === value)?.[1] || String(value || "Order received").replaceAll("_", " ");
@@ -865,6 +888,7 @@ export default function Portal({ onClose }) {
           <label>Garment profile<select value={measurementForm.garmentType} onChange={e=>setMeasurementForm({...measurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
           <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
           <div className="measurement-grid">{(MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"]).map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key] || ""} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
+          {getMeasurementWarnings(measurementForm).length > 0 && <aside className="measurement-warning" role="status"><strong>Please double-check these entries</strong><ul>{getMeasurementWarnings(measurementForm).map((warning,index)=><li key={index}>{warning}</li>)}</ul><small>These are broad data-entry checks, not body-size standards. You may continue, but a designer should verify every measurement.</small></aside>}
           <aside className="measurement-guide" aria-label="How to take body measurements">
             <div className="measurement-guide-art">
               <svg viewBox="0 0 220 250" role="img" aria-labelledby="measureGuideTitle measureGuideDesc">
