@@ -586,7 +586,7 @@ export default function Portal({ onClose }) {
       accountNumber: paymentInstructionsDraft.accountNumber.trim(),
       instructions: paymentInstructionsDraft.instructions.trim()
     };
-    if (next.accountNumber && !/^\\d{10}$/.test(next.accountNumber)) { setError("Enter a valid 10-digit Nigerian bank account number, or leave it blank."); return; }
+    if (next.accountNumber && !/^\d{10}$/.test(next.accountNumber)) { setError("Enter a valid 10-digit Nigerian bank account number, or leave it blank."); return; }
     if (next.accountNumber && (!next.bankName || !next.accountName)) { setError("Enter the bank name and account name when an account number is supplied."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
@@ -1176,7 +1176,7 @@ export default function Portal({ onClose }) {
           <form className="portal-form" onSubmit={savePaymentInstructions}>
             <label>Bank name<input maxLength="80" value={paymentInstructionsDraft.bankName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,bankName:e.target.value})} placeholder="e.g. Access Bank"/></label>
             <label>Account name<input maxLength="100" value={paymentInstructionsDraft.accountName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountName:e.target.value})} placeholder="Registered account name"/></label>
-            <label>Account number<input inputMode="numeric" maxLength="10" value={paymentInstructionsDraft.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountNumber:e.target.value.replace(/\\D/g,"").slice(0,10)})} placeholder="10-digit account number"/></label>
+            <label>Account number<input inputMode="numeric" maxLength="10" value={paymentInstructionsDraft.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountNumber:e.target.value.replace(/\D/g,"").slice(0,10)})} placeholder="10-digit account number"/></label>
             <label>Additional transfer instructions<textarea maxLength="600" value={paymentInstructionsDraft.instructions} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,instructions:e.target.value})} placeholder="Payment reference, deposit guidance or other customer instructions"/></label>
             <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save bank instructions"}</button>
           </form>
