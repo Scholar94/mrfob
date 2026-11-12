@@ -1,9 +1,46 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload } from "firebase/auth";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
+
+const PRODUCTION_STAGES = [
+  ["received", "Order received"],
+  ["designer_review", "Designer review"],
+  ["awaiting_measurements", "Awaiting measurements"],
+  ["measurements_completed", "Measurements completed"],
+  ["awaiting_quotation_approval", "Awaiting quotation approval"],
+  ["awaiting_deposit", "Awaiting deposit"],
+  ["confirmed", "Order confirmed"],
+  ["fabric_preparation", "Fabric preparation"],
+  ["cutting", "Cutting"],
+  ["sewing", "Sewing"],
+  ["finishing", "Finishing"],
+  ["quality_control", "Quality control"],
+  ["ready_for_fitting", "Ready for fitting"],
+  ["alterations", "Alterations"],
+  ["completed", "Production completed"],
+  ["ready_for_collection", "Ready for collection"],
+  ["dispatched", "Dispatched"],
+  ["delivered", "Delivered"]
+];
+
+const MEASUREMENT_PROFILES = {
+  "General body profile": [["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["neck","Neck"]],
+  "Men’s shirt": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["neck","Neck"],["sleeve","Sleeve length"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["shirtLength","Shirt length"],["acrossBack","Across back"]],
+  "Trousers": [["waist","Waist"],["hip","Hip"],["inseam","Inside leg"],["outseam","Outside leg"],["thigh","Thigh"],["knee","Knee"],["ankle","Ankle opening"],["frontRise","Front rise"],["backRise","Back rise"]],
+  "Dress / Gown": [["bust","Bust"],["underBust","Under bust"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["armhole","Armhole"],["bustPoint","Bust point"],["dressLength","Dress length"]],
+  "Skirt": [["waist","Waist"],["hip","Hip"],["waistToHip","Waist to hip"],["skirtLength","Skirt length"]],
+  "Jacket": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["jacketLength","Jacket length"],["acrossBack","Across back"]],
+  "Blouse": [["bust","Bust"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["armhole","Armhole"],["blouseLength","Blouse length"]]
+};
+const ALL_MEASUREMENT_FIELDS = [...new Set(Object.values(MEASUREMENT_PROFILES).flat().map(([key]) => key))];
+
+
+function productionStageLabel(value) {
+  return PRODUCTION_STAGES.find(([stage]) => stage === value)?.[1] || String(value || "Order received").replaceAll("_", " ");
+}
 
 function localDateString(date = new Date()) {
   const year = date.getFullYear();
@@ -34,10 +71,12 @@ export default function Portal({ onClose }) {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
+  const [quoteEdits, setQuoteEdits] = useState({});
   const [myOrders, setMyOrders] = useState([]);
+  const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
   const [profileLoading, setProfileLoading] = useState(false);
-  const [measurementForm, setMeasurementForm] = useState({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
+  const [measurementForm, setMeasurementForm] = useState({ profileName: "My measurements", garmentType: "General body profile", chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", bicep: "", wrist: "", armhole: "", shirtLength: "", acrossBack: "", outseam: "", thigh: "", knee: "", ankle: "", frontRise: "", backRise: "", bust: "", underBust: "", bustPoint: "", dressLength: "", waistToHip: "", skirtLength: "", jacketLength: "", blouseLength: "", unit: "cm", notes: "" });
   const [measurements, setMeasurements] = useState([]);
   const [measurementsLoading, setMeasurementsLoading] = useState(false);
   const [trainingForm, setTrainingForm] = useState({ course: "Fashion Design", mode: "Onsite practical training", message: "" });
@@ -48,6 +87,7 @@ export default function Portal({ onClose }) {
   const [appointments, setAppointments] = useState([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
+  const [appointmentEdits, setAppointmentEdits] = useState({});
   const [payments, setPayments] = useState([]);
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
@@ -89,6 +129,20 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function sendPasswordReset() {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const address = email.trim();
+      if (!address) throw new Error("Enter the email address registered to your account.");
+      await sendPasswordResetEmail(auth, address);
+      setMessage("If an account exists for this email, Firebase has sent a password-reset link. Check your inbox and spam folder.");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        setMessage("If an account exists for this email, Firebase has sent a password-reset link. Check your inbox and spam folder.");
+      } else setError(err.message || "Could not send the password-reset email.");
+    } finally { setBusy(false); }
+  }
+
   async function resendVerification() {
     if (!user) return;
     setBusy(true); setError(""); setMessage("");
@@ -117,7 +171,12 @@ export default function Portal({ onClose }) {
     setOrdersLoading(true); setError("");
     try {
       const snapshot = await getDocs(collection(db, "orders"));
-      setOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      const enriched = await Promise.all(rows.map(async order => {
+        const events = await getDocs(query(collection(db, "orders", order.id, "events")));
+        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
+      }));
+      setOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load orders."); }
     finally { setOrdersLoading(false); }
   }
@@ -126,7 +185,12 @@ export default function Portal({ onClose }) {
     if (!user || claims.superAdmin || claims.staffRole) return;
     try {
       const snapshot = await getDocs(query(collection(db, "orders"), where("customerUid", "==", user.uid)));
-      setMyOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      const enriched = await Promise.all(rows.map(async order => {
+        const events = await getDocs(query(collection(db, "orders", order.id, "events")));
+        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
+      }));
+      setMyOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load your orders."); }
   }
 
@@ -170,16 +234,31 @@ export default function Portal({ onClose }) {
     if (!user || claims.superAdmin || claims.staffRole) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const fields = ["chest","waist","hip","shoulder","sleeve","length","neck","inseam"];
       const values = {};
-      fields.forEach(key => { const raw = measurementForm[key].trim(); if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank."); values[key] = raw ? Number(raw) : null; });
-      if (!fields.some(key => values[key] !== null)) throw new Error("Enter at least one measurement.");
-      await addDoc(collection(db, "measurements"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", ...values, notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      setMeasurementForm({ chest: "", waist: "", hip: "", shoulder: "", sleeve: "", length: "", neck: "", inseam: "", notes: "" });
-      setMessage("Your measurement record has been saved securely.");
+      ALL_MEASUREMENT_FIELDS.forEach(key => {
+        const raw = String(measurementForm[key] ?? "").trim();
+        if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank.");
+        values[key] = raw ? Number((measurementForm.unit === "in" ? Number(raw) * 2.54 : Number(raw)).toFixed(1)) : null;
+      });
+      const activeFields = MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"];
+      if (!activeFields.some(([key]) => values[key] !== null)) throw new Error("Enter at least one measurement for this garment profile.");
+      const profileName = measurementForm.profileName.trim() || measurementForm.garmentType;
+      await addDoc(collection(db, "measurements"), {
+        customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "",
+        profileName, garmentType: measurementForm.garmentType, ...values,
+        notes: measurementForm.notes.trim(), createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setMeasurementForm(current => ({ ...current, profileName: "My measurements", ...Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, ""])), unit: "cm", notes: "" }));
+      setMessage("Your garment measurement profile has been saved. Values are stored in centimetres.");
       await loadMeasurements();
     } catch (err) { setError(err.message || "Could not save your measurements."); }
     finally { setBusy(false); }
+  }
+
+  function reuseMeasurementProfile(item) {
+    const values = Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, item[key] == null ? "" : String(item[key])]));
+    setMeasurementForm(current => ({ ...current, ...values, profileName: (item.profileName || item.garmentType || "Saved profile") + " (copy)", garmentType: item.garmentType || "General body profile", unit: "cm", notes: item.notes || "" }));
+    setMessage("Saved measurements loaded into the form. Review and save to create a new profile.");
   }
 
   async function loadTrainingEnquiries() {
@@ -206,12 +285,29 @@ export default function Portal({ onClose }) {
   }
 
   async function loadAdminCustomerServices() {
-    if (!claims.superAdmin) return;
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) return;
     try {
       const [measurementSnapshot, trainingSnapshot] = await Promise.all([getDocs(collection(db, "measurements")), getDocs(collection(db, "trainingEnquiries"))]);
       setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load customer measurement and training records."); }
+  }
+
+  async function reviewMeasurement(id, verificationStatus, verificationNote) {
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) || !id) return;
+    if (!["pending", "verified", "revision-needed"].includes(verificationStatus)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const reviewedAt = serverTimestamp();
+      await updateDoc(doc(db, "measurements", id), {
+        verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000),
+        verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff",
+        verifiedAt: reviewedAt, updatedAt: serverTimestamp()
+      });
+      setAllMeasurements(items => items.map(item => item.id === id ? { ...item, verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000), verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff" } : item));
+      setMessage("Measurement review saved.");
+    } catch (err) { setError(err.message || "Could not save the measurement review."); }
+    finally { setBusy(false); }
   }
 
   async function updateTrainingStatus(id, status) {
@@ -244,14 +340,78 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function submitCustomerOrder(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const item = customerOrderForm.item.trim();
+      if (!item) throw new Error("Describe the garment or service you want.");
+      const quantity = Number(customerOrderForm.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) throw new Error("Quantity must be a whole number between 1 and 50.");
+      const orderNumber = "MFO-REQ-" + Date.now().toString().slice(-8);
+      const description = ["Category: " + customerOrderForm.category, "Fabric preference: " + (customerOrderForm.fabric.trim() || "To be discussed"), "Colour: " + (customerOrderForm.colour.trim() || "To be discussed"), "Quantity: " + quantity, "Measurement: " + customerOrderForm.measurementMethod, "Preferred completion date: " + (customerOrderForm.preferredDate || "Not specified"), "Delivery: " + customerOrderForm.deliveryMethod, "Special instructions: " + (customerOrderForm.instructions.trim() || "None")].join("\n");
+      await addDoc(collection(db, "orders"), { customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "", customerEmail: user.email || "", orderNumber, item, description, category: customerOrderForm.category, fabric: customerOrderForm.fabric.trim(), colour: customerOrderForm.colour.trim(), quantity, measurementMethod: customerOrderForm.measurementMethod, preferredDate: customerOrderForm.preferredDate, deliveryMethod: customerOrderForm.deliveryMethod, instructions: customerOrderForm.instructions.trim(), status: "received", paymentStatus: "unquoted", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      setCustomerOrderForm({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
+      setMessage("Your request " + orderNumber + " has been submitted. The team must review it and prepare a quotation; no price or completion date is confirmed yet.");
+      await loadMyOrders();
+    } catch (err) { setError(err.message || "Could not submit your order request."); }
+    finally { setBusy(false); }
+  }
+
   async function updateOrder(id, changes) {
     if (!claims.superAdmin || !id) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
-      setOrders(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
+      const current = orders.find(item => item.id === id);
+      const batch = writeBatch(db);
+      batch.update(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
+      if (Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status) {
+        const eventRef = doc(collection(db, "orders", id, "events"));
+        batch.set(eventRef, {
+          fromStatus: current?.status || "received",
+          toStatus: changes.status,
+          stageLabel: productionStageLabel(changes.status),
+          changedByUid: user.uid,
+          changedByName: user.displayName || user.email || "Administrator",
+          createdAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      setOrders(items => items.map(item => item.id === id ? {
+        ...item, ...changes,
+        events: Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status
+          ? [...(item.events || []), { fromStatus: current?.status || "received", toStatus: changes.status, stageLabel: productionStageLabel(changes.status), changedByName: user.displayName || user.email || "Administrator", createdAt: { toDate: () => new Date() } }]
+          : item.events
+      } : item));
       setMessage("Order updated successfully.");
     } catch (err) { setError(err.message || "Could not update the order."); }
+    finally { setBusy(false); }
+  }
+
+  async function sendOrderQuotation(order) {
+    if (!claims.superAdmin || !order?.id) return;
+    const edit = quoteEdits[order.id] || {};
+    const amount = Number(edit.amount);
+    if (!Number.isFinite(amount) || amount <= 0) { setError("Enter a quotation amount greater than zero."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const patch = { amount, quotationNote: (edit.note || "").trim(), quotationStatus: "sent", quotationSentAt: serverTimestamp(), paymentStatus: "awaiting_customer_approval", updatedAt: serverTimestamp() };
+      await updateDoc(doc(db, "orders", order.id), patch);
+      setOrders(items => items.map(item => item.id === order.id ? { ...item, ...patch, quotationSentAt: new Date() } : item));
+      setMessage("Quotation sent to the customer for approval.");
+    } catch (err) { setError(err.message || "Could not send the quotation."); }
+    finally { setBusy(false); }
+  }
+
+  async function respondToQuotation(order, decision) {
+    if (!user || !order?.id || order.customerUid !== user.uid || order.quotationStatus !== "sent" || !["accepted", "declined"].includes(decision)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "orders", order.id), { quotationStatus: decision, updatedAt: serverTimestamp() });
+      setMyOrders(items => items.map(item => item.id === order.id ? { ...item, quotationStatus: decision } : item));
+      setMessage(decision === "accepted" ? "You accepted the quotation. The team can now confirm the deposit and production arrangements." : "You declined the quotation. The team will contact you to discuss next steps.");
+    } catch (err) { setError(err.message || "Could not submit your quotation response."); }
     finally { setBusy(false); }
   }
 
@@ -266,8 +426,21 @@ export default function Portal({ onClose }) {
     finally { setAppointmentsLoading(false); }
   }
 
+  function hasConfirmedAppointmentConflict(date, time, excludeId = "") {
+    return appointments.some(item =>
+      item.id !== excludeId &&
+      item.status === "confirmed" &&
+      item.appointmentDate === date &&
+      item.appointmentTime === time
+    );
+  }
+
   async function bookAppointment(e) {
     e.preventDefault();
+    if (hasConfirmedAppointmentConflict(appointmentForm.appointmentDate, appointmentForm.appointmentTime)) {
+      setError("That date and time already has a confirmed appointment. Please choose another slot or contact the team.");
+      return;
+    }
     if (!user || !appointmentForm.appointmentDate || !appointmentForm.appointmentTime) return;
     setBusy(true); setError(""); setMessage("");
     try {
@@ -292,6 +465,40 @@ export default function Portal({ onClose }) {
       setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
       setMessage("Appointment status updated.");
     } catch (err) { setError(err.message || "Could not update appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function proposeAppointmentAlternative(item) {
+    if (!claims.superAdmin || !item?.id) return;
+    const edit = appointmentEdits[item.id] || {};
+    if (!edit.proposedDate || !edit.proposedTime) { setError("Enter both an alternative date and time."); return; }
+    if (edit.proposedDate < localDateString()) { setError("An alternative appointment date cannot be in the past."); return; }
+    if (hasConfirmedAppointmentConflict(edit.proposedDate, edit.proposedTime, item.id)) {
+      setError("That proposed slot already has another confirmed appointment. Choose a different date or time.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const patch = { status: "alternative_proposed", proposedDate: edit.proposedDate, proposedTime: edit.proposedTime, adminMessage: (edit.adminMessage || "").trim(), updatedAt: serverTimestamp() };
+      await updateDoc(doc(db, "appointments", item.id), patch);
+      setAppointments(items => items.map(row => row.id === item.id ? { ...row, ...patch, updatedAt: new Date() } : row));
+      setMessage("Alternative appointment proposed. The customer must accept it before it is treated as confirmed.");
+    } catch (err) { setError(err.message || "Could not propose an alternative appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function acceptAppointmentAlternative(item) {
+    if (!user || !item?.id || item.customerUid !== user.uid || item.status !== "alternative_proposed") return;
+    if (hasConfirmedAppointmentConflict(item.proposedDate, item.proposedTime, item.id)) {
+      setError("That proposed slot is no longer available because another appointment has been confirmed. Please contact the team for another time.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "appointments", item.id), { appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
+      setAppointments(items => items.map(row => row.id === item.id ? { ...row, appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed" } : row));
+      setMessage("You accepted the proposed appointment time.");
+    } catch (err) { setError(err.message || "Could not accept the proposed appointment."); }
     finally { setBusy(false); }
   }
 
@@ -636,14 +843,34 @@ export default function Portal({ onClose }) {
         </form>
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
-        <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Enter values in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
-        <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
-          <div className="measurement-grid">{[["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve"],["length","Garment length"],["neck","Neck"],["inseam","Inseam"]].map(([key,label])=><label key={key}>{label} (cm)<input type="number" min="0.1" step="0.1" value={measurementForm[key]} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder="cm"/></label>)}</div>
-          <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
-          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurements"}</button>
+        <div className="customer-management-heading"><div><h3>Request a Custom Order</h3><p>Send your garment requirements for review and quotation</p></div></div>
+        <form className="portal-form" onSubmit={submitCustomerOrder}>
+          <label>Garment category<select value={customerOrderForm.category} onChange={e=>setCustomerOrderForm({...customerOrderForm,category:e.target.value})}><option>Men’s clothing</option><option>Women’s clothing</option><option>Bridal and occasion wear</option><option>Traditional Nigerian attire</option><option>Corporate or institutional uniforms</option><option>Industrial or group tailoring</option><option>Other custom request</option></select></label>
+          <label>What would you like us to make?<input required maxLength="120" value={customerOrderForm.item} onChange={e=>setCustomerOrderForm({...customerOrderForm,item:e.target.value})} placeholder="e.g. Two-piece senator outfit"/></label>
+          <label>Fabric preference (optional)<input maxLength="100" value={customerOrderForm.fabric} onChange={e=>setCustomerOrderForm({...customerOrderForm,fabric:e.target.value})} placeholder="Fabric type or 'please advise'"/></label>
+          <label>Preferred colour (optional)<input maxLength="80" value={customerOrderForm.colour} onChange={e=>setCustomerOrderForm({...customerOrderForm,colour:e.target.value})} placeholder="e.g. Navy blue"/></label>
+          <label>Quantity<input type="number" min="1" max="50" step="1" required value={customerOrderForm.quantity} onChange={e=>setCustomerOrderForm({...customerOrderForm,quantity:e.target.value})}/></label>
+          <label>Measurement arrangement<select value={customerOrderForm.measurementMethod} onChange={e=>setCustomerOrderForm({...customerOrderForm,measurementMethod:e.target.value})}><option>I need a measurement appointment</option><option>I have measurements to discuss</option><option>Use my previously saved measurements</option></select></label>
+          <label>Preferred completion date (request only)<input type="date" min={localDateString()} value={customerOrderForm.preferredDate} onChange={e=>setCustomerOrderForm({...customerOrderForm,preferredDate:e.target.value})}/></label>
+          <label>Collection or delivery<select value={customerOrderForm.deliveryMethod} onChange={e=>setCustomerOrderForm({...customerOrderForm,deliveryMethod:e.target.value})}><option>Collection at the studio</option><option>Delivery arrangement required</option><option>To be discussed</option></select></label>
+          <label>Additional instructions<textarea maxLength="1500" rows="4" value={customerOrderForm.instructions} onChange={e=>setCustomerOrderForm({...customerOrderForm,instructions:e.target.value})} placeholder="Style details, occasion, fitting needs or other instructions"/></label>
+          <p className="portal-hint">This is an order request, not a confirmed order. The price, deposit and completion date will be confirmed by MR FOP after review.</p>
+          <button className="portal-submit" disabled={busy}>{busy ? "Submitting request…" : "Submit custom order request"}</button>
         </form>
-        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>Saved measurements</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}
       </section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+        <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Values are stored consistently in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
+        <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
+          <label>Profile name<input value={measurementForm.profileName} maxLength={60} onChange={e=>setMeasurementForm({...measurementForm,profileName:e.target.value})} placeholder="e.g. Office shirt measurements"/></label>
+          <label>Garment profile<select value={measurementForm.garmentType} onChange={e=>setMeasurementForm({...measurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
+          <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
+          <div className="measurement-grid">{(MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"]).map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key] || ""} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
+          <p className="portal-hint">Enter measurements with a flexible tape measure. Keep the tape comfortably fitted, not tight. A designer should confirm measurements before garment production.</p>
+          <label>Notes<textarea value={measurementForm.notes} onChange={e=>setMeasurementForm({...measurementForm,notes:e.target.value})} placeholder="Optional fitting notes"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save measurement profile"}</button>
+        </form>
+        {measurementsLoading ? <p className="staff-empty">Loading your measurements…</p> : measurements.length ? <div className="measurement-list">{measurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.profileName || item.garmentType || "Saved measurements"}</strong><span>{item.garmentType || "General profile"} · {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"} · centimetres</span><div className="measurement-values">{ALL_MEASUREMENT_FIELDS.filter(key=>item[key]!==null&&item[key]!==undefined&&item[key]!=="").map(key=><span key={key}>{key.replace(/[A-Z]/g," $&").replace(/^./,c=>c.toUpperCase())}: {item[key]} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<button type="button" onClick={()=>reuseMeasurementProfile(item)}>Reuse this profile</button></article>)}</div> : <p className="staff-empty">You have not saved any measurements yet.</p>}
+      </section>}}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>Fashion Institute</h3><p>Enquire about courses and practical training</p></div><button type="button" onClick={loadTrainingEnquiries} disabled={trainingLoading}>{trainingLoading ? "Loading…" : "Refresh enquiries"}</button></div>
         <form className="portal-form appointment-form" onSubmit={submitTrainingEnquiry}>
@@ -667,13 +894,15 @@ export default function Portal({ onClose }) {
           <button className="portal-submit" disabled={busy || customers.length===0}>{busy ? "Saving…" : "Create order"}</button>
         </form>}
         {ordersLoading ? <p className="staff-empty">Loading orders…</p> : orders.length ? <div className="order-list">{orders.map(order=><article className="order-card" key={order.id}>
-          <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
+          <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
           <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>
-          {claims.superAdmin ? <div className="order-controls"><label>Production status<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}><option value="received">Received</option><option value="confirmed">Confirmed</option><option value="in_production">In production</option><option value="ready">Ready for collection</option><option value="delivered">Delivered</option><option value="cancelled">Cancelled</option></select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span></div>}
+          {claims.superAdmin && (order.paymentStatus === "unquoted" || order.amount === undefined || order.quotationStatus === "declined") && <div className="order-quotation-editor"><strong>Prepare customer quotation</strong><label>Quotation amount (₦)<input type="number" min="0.01" step="0.01" value={quoteEdits[order.id]?.amount ?? (order.amount ? String(order.amount) : "")} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],amount:e.target.value}}))}/></label><label>Quotation notes<textarea value={quoteEdits[order.id]?.note ?? order.quotationNote ?? ""} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],note:e.target.value}}))} placeholder="Fabric, fittings, deposit terms and scope"/></label><button type="button" disabled={busy} onClick={()=>sendOrderQuotation(order)}>Send quotation</button></div>}
+          {order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span><small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"} · {event.changedByName || "Team"}</small></div>)}</div>}
+          {claims.superAdmin ? <div className="order-controls"><label>Production stage<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}>{PRODUCTION_STAGES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="awaiting_customer_approval">Awaiting quotation approval</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span></div>}
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>₦{Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {String(order.status || "received").replaceAll("_"," ")}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div></article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div>{order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span><small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"}</small></div>)}</div>}{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
         <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
         {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
@@ -687,7 +916,7 @@ export default function Portal({ onClose }) {
         {appointmentsLoading ? <p className="staff-empty">Loading appointments…</p> : appointments.length ? <div className="appointment-list">{appointments.map(item=><article className="appointment-card" key={item.id}>
           <div><strong>{item.service}</strong><span>{item.customerName || item.customerEmail || "Customer"}</span></div>
           <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}
-          {claims.superAdmin ? <label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label> : <span className="appointment-status-text">Status: {item.status || "pending"}</span>}
+          {claims.superAdmin ? <><label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="alternative_proposed">Alternative proposed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><div className="appointment-alternative-form"><strong>Propose another date and time</strong><label>Alternative date<input type="date" min={localDateString()} value={appointmentEdits[item.id]?.proposedDate ?? item.proposedDate ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedDate:e.target.value}}))}/></label><label>Alternative time<input type="time" value={appointmentEdits[item.id]?.proposedTime ?? item.proposedTime ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedTime:e.target.value}}))}/></label><label>Message to customer<textarea value={appointmentEdits[item.id]?.adminMessage ?? item.adminMessage ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],adminMessage:e.target.value}}))} placeholder="Explain why an alternative is suggested"/></label><button type="button" disabled={busy} onClick={()=>proposeAppointmentAlternative(item)}>Send alternative proposal</button></div></> : <><span className="appointment-status-text">Status: {String(item.status || "pending").replaceAll("_"," ")}</span>{item.status === "alternative_proposed" && <div className="appointment-alternative-proposal"><strong>Alternative time proposed</strong><p>{item.proposedDate} at {item.proposedTime}</p>{item.adminMessage&&<p>{item.adminMessage}</p>}<button type="button" disabled={busy} onClick={()=>acceptAppointmentAlternative(item)}>Accept proposed time</button></div>}</>}
         </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
       </section>
       {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
@@ -783,9 +1012,9 @@ export default function Portal({ onClose }) {
         <h4>Order history</h4>
         {customerOrders.length ? customerOrders.map(order=><article className="customer-order" key={order.id}><strong>{order.orderNumber || order.id}</strong><span>{order.status || "Status not set"}</span><small>{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : "Date not recorded"}</small></article>) : <p className="staff-empty">No orders found for this customer yet.</p>}
       </section>}
-      {claims.superAdmin && <section className="customer-management">
+      {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Measurements</h3><p>Private fitting records submitted by customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh records</button></div>
-        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}</article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
+        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<p><strong>Designer review:</strong> {item.verificationStatus || "Awaiting review"}</p>{item.verificationNote&&<p>{item.verificationNote}</p>}<label>Review status<select value={item.verificationStatus || "pending"} disabled={busy} onChange={e=>reviewMeasurement(item.id,e.target.value,item.verificationNote || "")}><option value="pending">Awaiting review</option><option value="verified">Verified by designer</option><option value="revision-needed">Revision needed</option></select></label><label>Designer notes<textarea defaultValue={item.verificationNote || ""} maxLength={1000} id={"measurement-note-"+item.id}/></label><button type="button" disabled={busy} onClick={()=>reviewMeasurement(item.id,item.verificationStatus || "pending",document.getElementById("measurement-note-"+item.id)?.value || "")}>Save review</button></article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
       </section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Fashion Institute Enquiries</h3><p>Review course and training enquiries from customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh enquiries</button></div>
@@ -796,16 +1025,18 @@ export default function Portal({ onClose }) {
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
     </> : <>
-      <h2>{mode === "register" ? "Create your customer account" : "Welcome back"}</h2>
-      <p className="portal-subtitle">{mode === "register" ? "Register to access your MR FOP customer account." : "Sign in to continue to your account."}</p>
-      <form className="portal-form" onSubmit={submit}>
+      <h2>{mode === "register" ? "Create your customer account" : mode === "reset" ? "Reset your password" : "Welcome back"}</h2>
+      <p className="portal-subtitle">{mode === "register" ? "Register to access your MR FOP customer account." : mode === "reset" ? "Enter your registered email address and we will request a secure reset link from Firebase." : "Sign in to continue to your account."}</p>
+      <form className="portal-form" onSubmit={mode === "reset" ? e => { e.preventDefault(); sendPasswordReset(); } : submit}>
         {mode === "register" && <label>Full name<input required value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name"/></label>}
         <label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com"/></label>
-        <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="At least 8 characters"/></label>
-        <button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}</button>
+        {mode !== "reset" && <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="At least 8 characters"/></label>}
+        <button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}</button>
       </form>
+      {mode === "login" && <p className="portal-switch"><button onClick={()=>{setMode("reset");setError("");setMessage("");}}>Forgot your password?</button></p>}
       {error && <p className="portal-error">{error}</p>}{message && <p className="portal-success">{message}</p>}
       <p className="portal-switch">{mode === "register" ? "Already registered?" : "New to MR FOP?"} <button onClick={()=>{setMode(mode === "register" ? "login" : "register");setError("");setMessage("");}}>{mode === "register" ? "Sign in" : "Create an account"}</button></p>
+      {mode === "reset" && <p className="portal-switch"><button onClick={()=>{setMode("login");setError("");setMessage("");}}>Return to sign in</button></p>}
       <p className="portal-hint"><KeyRound size={14}/> Passwords are handled by Firebase Authentication, not stored in the website database.</p>
     </>}
   </section></div>;

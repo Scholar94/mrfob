@@ -37,7 +37,14 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow create: if signedIn() && (
         (request.resource.data.customerUid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['customerUid', 'item', 'description', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'orderNumber', 'item', 'description', 'category', 'fabric', 'colour', 'quantity', 'measurementMethod', 'preferredDate', 'deliveryMethod', 'instructions', 'status', 'paymentStatus', 'createdAt', 'updatedAt'])
+          && request.resource.data.item is string && request.resource.data.item.size() > 0
+          && request.resource.data.item.size() <= 120
+          && request.resource.data.quantity is int && request.resource.data.quantity >= 1 && request.resource.data.quantity <= 50
+          && request.resource.data.status == 'received'
+          && request.resource.data.paymentStatus == 'unquoted'
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
         ) || (isSuperAdmin()
           && request.resource.data.keys().hasOnly(['orderNumber', 'customerUid', 'customerName', 'customerEmail', 'item', 'description', 'amount', 'currency', 'dueDate', 'status', 'paymentStatus', 'createdAt', 'updatedAt', 'createdBy'])
           && request.resource.data.createdBy == request.auth.uid
@@ -46,11 +53,39 @@ service cloud.firestore {
         )
       );
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if (isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'updatedAt']))
+      allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.paymentStatus == resource.data.paymentStatus)
+        || (isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'amount', 'quotationNote', 'quotationStatus', 'quotationSentAt', 'updatedAt'])
+        && (!('amount' in request.resource.data) || (request.resource.data.amount is number && request.resource.data.amount > 0))
+        && (!('quotationStatus' in request.resource.data) || request.resource.data.quotationStatus in ['sent', 'accepted', 'declined']))
+        || (signedIn()
+        && resource.data.customerUid == request.auth.uid
+        && resource.data.quotationStatus == 'sent'
+        && request.resource.data.quotationStatus in ['accepted', 'declined']
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quotationStatus', 'updatedAt']))
         || (hasStaffRole(['manager', 'sales', 'tailor'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
       allow delete: if isSuperAdmin();
+
+      match /events/{eventId} {
+        allow create: if isSuperAdmin()
+          && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'changedByUid', 'changedByName', 'createdAt'])
+          && request.resource.data.changedByUid == request.auth.uid
+          && request.resource.data.fromStatus is string
+          && request.resource.data.toStatus in ['received', 'designer_review', 'awaiting_measurements', 'measurements_completed', 'awaiting_quotation_approval', 'awaiting_deposit', 'confirmed', 'fabric_preparation', 'cutting', 'sewing', 'finishing', 'quality_control', 'ready_for_fitting', 'alterations', 'completed', 'ready_for_collection', 'dispatched', 'delivered']
+          && request.resource.data.stageLabel is string
+          && request.resource.data.createdAt is timestamp;
+        allow read: if signedIn() && (
+          isSuperAdmin() || isStaff() ||
+          get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
+        );
+        allow update, delete: if false;
+      }
     }
 
     match /appointments/{appointmentId} {
@@ -59,9 +94,22 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'service', 'appointmentDate', 'appointmentTime', 'purpose', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.status == 'pending';
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+      allow update: if (
+        isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proposedDate', 'proposedTime', 'adminMessage', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'confirmed', 'alternative_proposed', 'completed', 'cancelled']
+        && (request.resource.data.status != 'alternative_proposed'
+          || (request.resource.data.proposedDate is string
+            && request.resource.data.proposedTime is string))
+      ) || (
+        signedIn()
+        && resource.data.customerUid == request.auth.uid
+        && resource.data.status == 'alternative_proposed'
+        && request.resource.data.status == 'confirmed'
+        && request.resource.data.appointmentDate == resource.data.proposedDate
+        && request.resource.data.appointmentTime == resource.data.proposedTime
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'appointmentDate', 'appointmentTime', 'updatedAt'])
+      );
       allow delete: if isSuperAdmin();
     }
 
@@ -140,13 +188,24 @@ service cloud.firestore {
     match /measurements/{measurementId} {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'createdAt', 'updatedAt'])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
-      allow update: if signedIn() && resource.data.customerUid == request.auth.uid
-        && request.resource.data.customerUid == resource.data.customerUid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerName', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'notes', 'updatedAt']);
+      allow update: if signedIn() && (
+        (resource.data.customerUid == request.auth.uid
+          && request.resource.data.customerUid == resource.data.customerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'updatedAt']))
+        || ((isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
+          && request.resource.data.customerUid == resource.data.customerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verificationStatus', 'verificationNote', 'verifiedByUid', 'verifiedByName', 'verifiedAt', 'updatedAt'])
+          && request.resource.data.verificationStatus in ['pending', 'verified', 'revision-needed']
+          && request.resource.data.verificationNote is string
+          && request.resource.data.verificationNote.size() <= 1000
+          && request.resource.data.verifiedByUid == request.auth.uid
+          && request.resource.data.verifiedAt is timestamp
+          && request.resource.data.updatedAt is timestamp)
+      );
       allow delete: if isSuperAdmin() || hasStaffRole(['manager', 'tailor']);
     }
 
