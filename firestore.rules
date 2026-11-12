@@ -296,8 +296,8 @@ service cloud.firestore {
     }
 
     match /instituteAssignments/{assignmentId} {
-      allow create: if isSuperAdmin() || hasStaffRole(['institute']);
-      allow update: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow create: if isSuperAdmin() || hasStaffRole(['institute','manager']);
+      allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager'])
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
@@ -314,7 +314,7 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['assignmentId','courseId','assignmentTitle','studentUid','studentName','answer','status','submittedAt','createdAt','updatedAt']);
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
-      allow update: if (isSuperAdmin() || hasStaffRole(['institute']))
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','maxScore','feedback','gradedBy','gradedAt','updatedAt'])
         && request.resource.data.status == 'graded'
         && request.resource.data.score is number
