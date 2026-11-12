@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, updateDoc, doc, where, setDoc, runTransaction } from "firebase/firestore";
+import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -379,7 +379,9 @@ export default function InstituteWorkspace() {
       if (!assessmentForm.courseId || !assessmentForm.title.trim() || !questions.length) throw new Error("Choose a course, enter an assessment title and add at least one question (one per line).");
       if (questions.length > 30) throw new Error("An assessment can contain up to 30 questions.");
       const course = courses.find(c => c.id === assessmentForm.courseId);
-      await addDoc(collection(db, "instituteAssessments"), { courseId:course.id, courseTitle:course.title, title:assessmentForm.title.trim(), instructions:assessmentForm.instructions.trim(), dueDate:assessmentForm.dueDate || "", questions, published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      const dueAt = assessmentForm.dueDate ? Timestamp.fromDate(new Date(assessmentForm.dueDate + "T23:59:59")) : null;
+      if (dueAt && dueAt.toDate() < new Date()) throw new Error("The assessment due date cannot be in the past.");
+      await addDoc(collection(db, "instituteAssessments"), { courseId:course.id, courseTitle:course.title, title:assessmentForm.title.trim(), instructions:assessmentForm.instructions.trim(), dueDate:assessmentForm.dueDate || "", dueAt, questions, published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
       setAssessmentForm({ courseId:"", title:"", instructions:"", dueDate:"", questions:"" }); setNotice("Assessment published. Responses will be manually graded by authorized teaching staff."); await load();
     } catch(e) { setError(e.message || "Could not publish assessment."); } finally { setBusy(false); }
   }
@@ -388,6 +390,7 @@ export default function InstituteWorkspace() {
     setBusy(true); setError(""); setNotice("");
     try {
       const answers = item.questions.map((q,i) => (assessmentDrafts[item.id + "_" + i] || "").trim());
+      if (item.dueAt?.toDate && item.dueAt.toDate().getTime() < Date.now()) throw new Error("The submission deadline has passed.");
       if (answers.some(a => !a)) throw new Error("Answer every question before submitting.");
       if (assessmentSubmissions.some(s => s.assessmentId === item.id && s.studentUid === user.uid)) throw new Error("You have already submitted this assessment.");
       const submissionId = user.uid + "_" + item.id;
