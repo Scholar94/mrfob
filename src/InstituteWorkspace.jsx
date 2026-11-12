@@ -342,7 +342,9 @@ export default function InstituteWorkspace() {
       if (!assignmentForm.courseId || !assignmentForm.title.trim() || !assignmentForm.instructions.trim()) throw new Error("Choose a course and provide an assignment title and instructions.");
       const points = Number(assignmentForm.points || 100);
       if (!Number.isFinite(points) || points < 1) throw new Error("Enter a valid maximum score.");
-      await addDoc(collection(db, "instituteAssignments"), { courseId: assignmentForm.courseId, courseTitle: courses.find(c=>c.id===assignmentForm.courseId)?.title || "", title: assignmentForm.title.trim(), instructions: assignmentForm.instructions.trim(), dueDate: assignmentForm.dueDate || "", points, published: true, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      const dueAt = assignmentForm.dueDate ? Timestamp.fromDate(new Date(assignmentForm.dueDate + "T23:59:59")) : null;
+      if (dueAt && dueAt.toDate() < new Date()) throw new Error("The assignment due date cannot be in the past.");
+      await addDoc(collection(db, "instituteAssignments"), { courseId: assignmentForm.courseId, courseTitle: courses.find(c=>c.id===assignmentForm.courseId)?.title || "", title: assignmentForm.title.trim(), instructions: assignmentForm.instructions.trim(), dueDate: assignmentForm.dueDate || "", dueAt, points, published: true, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       setAssignmentForm(v=>({...v,title:"",instructions:"",dueDate:""})); setNotice("Assignment published to paid students in the selected course."); await load();
     } catch(e) { setError(e.message || "Could not publish assignment."); } finally { setBusy(false); }
   }
@@ -352,6 +354,7 @@ export default function InstituteWorkspace() {
     try {
       const answer = (submissionDrafts[item.id] || "").trim();
       if (!answer) throw new Error("Enter your assignment response before submitting.");
+      if (item.dueAt?.toDate && item.dueAt.toDate().getTime() < Date.now()) throw new Error("The assignment submission deadline has passed.");
       if (submissions.some(s=>s.assignmentId===item.id)) throw new Error("You have already submitted this assignment. Contact your instructor if a correction is required.");
       await addDoc(collection(db, "instituteSubmissions"), { assignmentId:item.id, courseId:item.courseId, assignmentTitle:item.title, studentUid:user.uid, studentName:user.displayName || user.email || "Student", answer, status:"submitted", submittedAt:serverTimestamp(), createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
       setNotice("Your assignment has been submitted."); setSubmissionDrafts(v=>({...v,[item.id]:""})); await load();
