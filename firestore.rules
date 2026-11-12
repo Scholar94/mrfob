@@ -272,9 +272,29 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['applicationRef','customerUid','fullName','email','phone','address','courseId','courseTitle','windowId','windowTitle','mode','experience','note','status','paymentStatus','createdAt','updatedAt']);
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
       allow update: if (isSuperAdmin() || hasStaffRole(['institute']))
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','paymentStatus','paymentVerifiedBy','paymentVerifiedAt','updatedAt'])
         && request.resource.data.status in ['pending','admitted','rejected','more_information']
         && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /instituteEnrollments/{enrollmentId} {
+      allow create, update: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow delete: if isSuperAdmin();
+    }
+
+    function hasPaidCourseAccess(courseId) {
+      let enrollmentId = request.auth.uid + '_' + courseId;
+      return signedIn()
+        && exists(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId))
+        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid';
+    }
+
+    match /instituteLessons/{lessonId} {
+      allow create, update: if isSuperAdmin() || hasStaffRole(['institute']);
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager'])
+        || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
     }
 
