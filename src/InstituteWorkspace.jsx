@@ -20,6 +20,8 @@ export default function InstituteWorkspace() {
   const [submissions, setSubmissions] = useState([]);
   const [allEnrollments, setAllEnrollments] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [lessonProgress, setLessonProgress] = useState([]);
+  const [allLessonProgress, setAllLessonProgress] = useState([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
@@ -51,18 +53,20 @@ export default function InstituteWorkspace() {
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
         const assignmentSets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", en.courseId), where("published", "==", true)))));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))));
-        const [submissionSnap, attendanceSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid)))]);
+        const [submissionSnap, attendanceSnap, progressSnap] = await Promise.all([getDocs(query(collection(db, "instituteSubmissions"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteAttendance"), where("studentUid", "==", user.uid))), getDocs(query(collection(db, "instituteLessonProgress"), where("studentUid", "==", user.uid)))]);
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.date||"").localeCompare(a.date||"")));
+        setLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
         setApplications(all.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance"))]);
+        const [assignmentSnap, submissionSnap, enrollmentAllSnap, attendanceSnap, progressSnap] = await Promise.all([getDocs(collection(db, "instituteAssignments")), getDocs(collection(db, "instituteSubmissions")), getDocs(collection(db, "instituteEnrollments")), getDocs(collection(db, "instituteAttendance")), getDocs(collection(db, "instituteLessonProgress"))]);
         setAssignments(assignmentSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubmissions(submissionSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAllEnrollments(enrollmentAllSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setAttendance(attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllLessonProgress(progressSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     } catch (e) { setError(e.message || "Could not load Fashion Institute records."); }
   }
@@ -192,6 +196,15 @@ export default function InstituteWorkspace() {
       await setDoc(doc(db, "instituteAttendance", recordId), { studentUid: enrollment.studentUid, studentId: enrollment.studentId || "", studentName: enrollment.studentName || enrollment.studentEmail || "Student", courseId: enrollment.courseId, courseTitle: enrollment.courseTitle || "", windowId: enrollment.windowId || "", date: attendanceDate, status, markedBy: user.uid, markedAt: serverTimestamp(), updatedAt: serverTimestamp() });
       setNotice("Attendance saved for " + (enrollment.studentName || enrollment.studentEmail || "student") + "."); await load();
     } catch(e) { setError(e.message || "Could not save attendance."); } finally { setBusy(false); }
+  }
+
+  async function markLessonComplete(lesson) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const progressId = user.uid + "_" + lesson.id;
+      await setDoc(doc(db, "instituteLessonProgress", progressId), { studentUid:user.uid, courseId:lesson.courseId, lessonId:lesson.id, lessonTitle:lesson.title, completed:true, completedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setNotice("Lesson marked as completed."); await load();
+    } catch(e) { setError(e.message || "Could not update lesson progress."); } finally { setBusy(false); }
   }
 
   async function changeWindowStatus(item, status) {
