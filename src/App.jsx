@@ -83,6 +83,14 @@ export default function App() {
           <a href={wa} target="_blank" rel="noreferrer" className="button button-gold">Enquire about training <ArrowUpRight size={17}/></a>
         </div>
       </section>
+      <section className="industrial section-pad" id="industrial">
+        <div className="section-heading"><div><p className="eyebrow"><i/> MADE FOR TEAMS AND ORGANISATIONS</p><h2>Industrial & <em>corporate tailoring.</em></h2></div><p>Professional clothing solutions for organisations, teams and coordinated groups. Share your requirements with our team for a tailored discussion.</p></div>
+        <div className="industrial-grid">
+          <article><span>01</span><h3>Corporate uniforms</h3><p>Coordinated workwear and uniforms shaped around your organisation's identity and practical needs.</p><a href={wa} target="_blank" rel="noreferrer">Discuss a uniform project <ArrowUpRight size={15}/></a></article>
+          <article><span>02</span><h3>Group & bulk orders</h3><p>Enquire about multiple garments, group measurements, fabric choices and project requirements.</p><a href={wa} target="_blank" rel="noreferrer">Request a project discussion <ArrowUpRight size={15}/></a></article>
+          <article><span>03</span><h3>Production coordination</h3><p>Talk with our team about specifications, quantities, fitting arrangements and proposed timelines before confirming a project.</p><a href={wa} target="_blank" rel="noreferrer">Plan your production <ArrowUpRight size={15}/></a></article>
+        </div>
+      </section>
       <section className="promise section-pad"><div><p className="eyebrow"><i/> WHY MR FOP</p><h2>Good style is seen.<br/><em>Great fit is felt.</em></h2></div>
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
       </section>
