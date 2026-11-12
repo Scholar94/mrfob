@@ -74,7 +74,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
 
       match /events/{eventId} {
-        allow create: if isSuperAdmin()
+        allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
           && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'changedByUid', 'changedByName', 'createdAt'])
           && request.resource.data.changedByUid == request.auth.uid
           && request.resource.data.fromStatus is string
