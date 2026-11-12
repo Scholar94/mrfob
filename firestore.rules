@@ -367,7 +367,7 @@ service cloud.firestore {
     }
 
     match /instituteLessons/{lessonId} {
-      allow create: if isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid);
+      allow create: if isActiveInstituteCourse(request.resource.data.courseId) && (isSuperAdmin() || hasStaffRole(['institute','manager']) || (hasInstructorCourseAccess(request.resource.data.courseId) && request.resource.data.createdBy == request.auth.uid));
       allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
