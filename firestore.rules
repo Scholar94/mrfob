@@ -257,7 +257,7 @@ service cloud.firestore {
 
     match /trainingWindows/{windowId} {
       allow read: if true;
-      allow create: if (isActiveInstituteCourse(request.resource.data.courseId) && (isSuperAdmin() || hasStaffRole(['institute','manager']));
+      allow create: if isActiveInstituteCourse(request.resource.data.courseId) && (isSuperAdmin() || hasStaffRole(['institute','manager']));
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         || (signedIn()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledCount','lastApplicationId','updatedAt'])
