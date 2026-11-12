@@ -288,3 +288,21 @@
 .payment-declaration-admin{margin:18px 0;border-top:1px solid #ddd1c1;padding-top:18px}
 .payment-declaration-review label{display:grid;gap:7px;font-size:10px;font-weight:700;margin-top:12px}
 .payment-declaration-review textarea{width:100%;min-height:55px;padding:10px;border:1px solid #d9cebf;background:#fff;font:12px 'DM Sans'}
+
+
+/* Fashion Institute workspace */
+.institute-workspace{margin:30px 0;padding:24px;background:#fffdf9;border:1px solid #e8dfd0;border-radius:16px}
+.institute-workspace .customer-management-heading{margin-bottom:20px}
+.institute-course-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0 26px}
+.institute-course-card{display:flex;flex-direction:column;gap:9px;padding:18px;border:1px solid #e9dfd2;border-radius:12px;background:#fff}
+.institute-course-card>span{font-size:10px;letter-spacing:1.5px;color:#9b7948;font-weight:800}
+.institute-course-card h4{margin:0;color:#32151f;font-family:'Playfair Display',serif;font-size:19px}
+.institute-course-card p{margin:0;color:#746b68;line-height:1.55;font-size:13px}
+.institute-course-card small{color:#746b68}
+.institute-course-card strong{margin-top:auto;color:#7c5a32}
+.institute-window-list{margin:24px 0}
+.institute-window-list>h4,.institute-admin-grid h4{color:#32151f;font-family:'Playfair Display',serif;font-size:20px;margin:0 0 14px}
+.institute-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:24px 0}
+.institute-admin-grid .portal-form{margin:0;min-width:0}
+.institute-application-form{margin:24px 0}
+@media(max-width:760px){.institute-workspace{padding:15px;margin:20px 0}.institute-admin-grid{grid-template-columns:1fr}}
