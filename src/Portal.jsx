@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, reload } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload } from "firebase/auth";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
@@ -87,6 +87,20 @@ export default function Portal({ onClose }) {
       } else await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (err) { setError(err.message || "Unable to complete your request."); }
     finally { setBusy(false); }
+  }
+
+  async function sendPasswordReset() {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const address = email.trim();
+      if (!address) throw new Error("Enter the email address registered to your account.");
+      await sendPasswordResetEmail(auth, address);
+      setMessage("If an account exists for this email, Firebase has sent a password-reset link. Check your inbox and spam folder.");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        setMessage("If an account exists for this email, Firebase has sent a password-reset link. Check your inbox and spam folder.");
+      } else setError(err.message || "Could not send the password-reset email.");
+    } finally { setBusy(false); }
   }
 
   async function resendVerification() {
@@ -796,16 +810,18 @@ export default function Portal({ onClose }) {
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
     </> : <>
-      <h2>{mode === "register" ? "Create your customer account" : "Welcome back"}</h2>
-      <p className="portal-subtitle">{mode === "register" ? "Register to access your MR FOP customer account." : "Sign in to continue to your account."}</p>
-      <form className="portal-form" onSubmit={submit}>
+      <h2>{mode === "register" ? "Create your customer account" : mode === "reset" ? "Reset your password" : "Welcome back"}</h2>
+      <p className="portal-subtitle">{mode === "register" ? "Register to access your MR FOP customer account." : mode === "reset" ? "Enter your registered email address and we will request a secure reset link from Firebase." : "Sign in to continue to your account."}</p>
+      <form className="portal-form" onSubmit={mode === "reset" ? e => { e.preventDefault(); sendPasswordReset(); } : submit}>
         {mode === "register" && <label>Full name<input required value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Your full name"/></label>}
         <label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com"/></label>
-        <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="At least 8 characters"/></label>
-        <button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}</button>
+        {mode !== "reset" && <label>Password<input type="password" required minLength={8} value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="At least 8 characters"/></label>}
+        <button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}</button>
       </form>
+      {mode === "login" && <p className="portal-switch"><button onClick={()=>{setMode("reset");setError("");setMessage("");}}>Forgot your password?</button></p>}
       {error && <p className="portal-error">{error}</p>}{message && <p className="portal-success">{message}</p>}
       <p className="portal-switch">{mode === "register" ? "Already registered?" : "New to MR FOP?"} <button onClick={()=>{setMode(mode === "register" ? "login" : "register");setError("");setMessage("");}}>{mode === "register" ? "Sign in" : "Create an account"}</button></p>
+      {mode === "reset" && <p className="portal-switch"><button onClick={()=>{setMode("login");setError("");setMessage("");}}>Return to sign in</button></p>}
       <p className="portal-hint"><KeyRound size={14}/> Passwords are handled by Firebase Authentication, not stored in the website database.</p>
     </>}
   </section></div>;
