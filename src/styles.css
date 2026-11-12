@@ -275,3 +275,16 @@
 .contact-address p{font-size:11px;line-height:1.8;color:#dfd2d2;margin:0}
 @media(max-width:900px){.order-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.order-steps article{border-bottom:1px solid #ded5c8}.order-steps article:nth-child(2n){border-right:0;margin-right:0}.order-steps article:last-child{border-bottom:0}}
 @media(max-width:650px){.order-steps{grid-template-columns:1fr}.order-steps article,.order-steps article:nth-child(2n){border-right:0;border-bottom:1px solid #ded5c8;margin:0;padding:21px 0}.order-steps article:last-child{border-bottom:0}.order-steps h3{margin:10px 0 7px}.order-steps-action{align-items:flex-start;flex-direction:column}.faq-list summary{font-size:17px;padding:18px 35px 18px 0}}
+
+
+.payment-declaration-notice{padding:12px 14px;background:#f4ead8;border-left:3px solid #c6a66a;color:#6b5432;font-size:10px;line-height:1.7;margin:14px 0}
+.payment-declaration-list{display:grid;gap:9px;margin-top:16px}
+.payment-declaration-list article,.payment-declaration-review,.payment-declaration-history{background:#eee7dc;padding:13px;margin-top:9px}
+.payment-declaration-list article>div,.payment-declaration-review>div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.payment-declaration-list strong,.payment-declaration-review strong,.payment-declaration-history strong{font-size:11px}
+.payment-declaration-list span,.payment-declaration-list small,.payment-declaration-review p,.payment-declaration-history span{display:block;font-size:10px;line-height:1.7;color:#75696a;margin-top:6px}
+.declaration-status{font-size:9px;text-transform:uppercase;letter-spacing:.8px}
+.declaration-status.pending{color:#956c25}.declaration-status.verified{color:#28613a}.declaration-status.rejected{color:#8e3028}
+.payment-declaration-admin{margin:18px 0;border-top:1px solid #ddd1c1;padding-top:18px}
+.payment-declaration-review label{display:grid;gap:7px;font-size:10px;font-weight:700;margin-top:12px}
+.payment-declaration-review textarea{width:100%;min-height:55px;padding:10px;border:1px solid #d9cebf;background:#fff;font:12px 'DM Sans'}
