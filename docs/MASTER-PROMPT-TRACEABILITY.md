@@ -231,3 +231,6 @@
 
 
 - **2026-11-12 — Assignment submission deadline enforcement:** assignment publishers can set an optional due date; the app stores an end-of-day Firestore timestamp and warns students when the deadline has passed. Firestore rules independently compare trusted request time with the assignment deadline and reject late submissions, including attempts made by bypassing the interface. Legacy assignments without a deadline remain compatible. This does not add resubmission, extensions, file attachments or automated grading. Publish the latest `firestore.rules` before use; build and live deadline-boundary tests remain pending.
+
+
+- **2026-11-12 — Institute attendance summaries:** the student attendance view now calculates the share of marked sessions recorded as present or late, and the staff register shows each paid enrolment's attended-session count and percentage alongside the selected day's status. The denominator is only the attendance records actually entered; this is not an assumed timetable/session count, and missing marks are not counted as absences. Build and live data validation remain pending.
