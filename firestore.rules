@@ -296,6 +296,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/instituteInstructorAssignments/$(assignmentId)).data.active == true;
     }
 
+    function hasPaidEnrollmentForStudent(courseId, studentUid) {
+      let enrollmentId = studentUid + '_' + courseId;
+      return exists(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId))
+        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid';
+    }
+
     function hasPaidCourseAccess(courseId) {
       let enrollmentId = request.auth.uid + '_' + courseId;
       return signedIn()
@@ -328,6 +334,8 @@ service cloud.firestore {
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','maxScore','feedback','gradedBy','gradedAt','updatedAt'])
         && request.resource.data.status == 'graded'
+        && exists(/databases/$(database)/documents/instituteAssignments/$(resource.data.assignmentId))
+        && get(/databases/$(database)/documents/instituteAssignments/$(resource.data.assignmentId)).data.courseId == resource.data.courseId
         && request.resource.data.score is number
         && request.resource.data.maxScore is number
         && request.resource.data.score >= 0
@@ -399,6 +407,7 @@ service cloud.firestore {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
         && request.resource.data.studentUid is string
         && request.resource.data.courseId is string
+        && ((isSuperAdmin() || hasStaffRole(['institute','manager'])) || hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid))
         && request.resource.data.date is string
         && request.resource.data.status in ['present','absent','late','excused']
         && request.resource.data.markedBy == request.auth.uid
@@ -407,6 +416,7 @@ service cloud.firestore {
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
         && request.resource.data.studentUid == resource.data.studentUid
         && request.resource.data.courseId == resource.data.courseId
+        && ((isSuperAdmin() || hasStaffRole(['institute','manager'])) || hasPaidEnrollmentForStudent(resource.data.courseId, resource.data.studentUid))
         && request.resource.data.date == resource.data.date
         && request.resource.data.status in ['present','absent','late','excused']
         && request.resource.data.markedBy == request.auth.uid
