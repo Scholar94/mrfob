@@ -201,3 +201,6 @@
 
 
 - **2026-11-12 — Printable Institute certificates:** added a dedicated print layout for issued course-completion certificates, accessible to the certificate owner and authorized Institute administration. The print view includes the student name/ID, course, intake, issue date and certificate reference, with HTML-escaped certificate fields and browser print-to-paper/PDF support. This is not a public certificate-verification service; certificate records remain access-controlled in Firestore. Public verification, cryptographic authenticity, configurable signatories/seals and print-design approval remain outstanding. Build verification and browser print testing are pending.
+
+
+- **2026-11-12 — Institute administrator progress reporting correction:** administrator data loading now retrieves published and draft Institute lessons alongside enrolments and lesson-progress records, so the existing student progress panel can calculate course lesson totals and completion percentages instead of incorrectly showing zero lessons. This is a reporting correction only; learner completion remains self-attested. Build verification and live data validation remain pending.
