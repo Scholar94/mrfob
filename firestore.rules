@@ -310,6 +310,9 @@ service cloud.firestore {
         && request.resource.data.status == 'submitted'
         && request.resource.data.answer is string
         && request.resource.data.assignmentId is string
+        && exists(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId))
+        && get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.courseId == request.resource.data.courseId
+        && get(/databases/$(database)/documents/instituteAssignments/$(request.resource.data.assignmentId)).data.published == true
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['assignmentId','courseId','assignmentTitle','studentUid','studentName','answer','status','submittedAt','createdAt','updatedAt']);
