@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-12 — Fashion Institute attendance register:** added an attendance date selector and per-enrollment Present, Absent, Late and Excused actions for authorized Institute administration. Records are keyed by student, course and date to make repeated marking update the same daily record rather than create duplicate rows. Students can view their own attendance history; only Super Admin/Institute/Manager can create or update attendance, and only Super Admin can delete records. Attendance is manually recorded and does not yet include instructor-specific permissions, session timetables, QR/check-in verification, percentage summaries or notifications. Latest Firestore rules must be published in Firebase. Build/deployment and live authorization testing pending.
+
+
 - **2026-11-12 — Fashion Institute assignments and submissions:** Institute/Manager/Super Admin can publish course assignments with instructions, optional due date and maximum score. Paid students enrolled in the assignment's course can read and submit one text response; students can read their own submission, while authorized Institute staff can review and grade with a bounded score and feedback. Payment verification and enrollment activation are now Super Admin-only in Firestore rules; Institute staff can process admissions but cannot grant paid access. Added `instituteAssignments` and `instituteSubmissions` rules. This is text-based submission only; file uploads, plagiarism checks, late-submission policy, edit/resubmission and notification workflows are not included. Latest Firestore rules must be published in Firebase. Build, deployment and live authorization tests pending.
 
 
