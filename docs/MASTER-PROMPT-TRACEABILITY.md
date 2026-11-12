@@ -153,3 +153,6 @@
 
 
 - **Garment-specific measurement profiles (2026-11-12):** expanded customer measurement records add profile name and garment type, with field sets for general body profile, men’s shirt, trousers, dress/gown, skirt, jacket and blouse. Customers can save multiple named profiles and reuse a prior profile as a starting point for a revised record. Inch inputs are converted to centimetres for consistent storage. Admin records display the extended measurements. Firestore create rules allow the added fields while retaining the existing collection and records. Visual tape-measure diagrams, range/anomaly checks, designer verification and live Firestore testing are still outstanding; this work is on the development branch and has not been deployed.
+
+
+- **Measurement designer review (2026-11-12):** the customer measurement records panel is available to Super Admin, manager and tailor roles. Authorized staff can mark a profile awaiting review, verified or revision needed, and save a review note. Firestore rules restrict staff updates to verification metadata and retain customer ownership; live rules publication and role-based end-to-end tests remain pending.
