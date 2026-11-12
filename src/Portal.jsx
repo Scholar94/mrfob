@@ -599,14 +599,14 @@ export default function Portal({ onClose }) {
       const orderRef = doc(db, "orders", item.orderId);
       if (decision === "verified") {
         const paymentRef = doc(collection(db, "payments"));
+        const legacyLedger = await getDocs(query(collection(db, "payments"), where("orderId", "==", item.orderId)));
+        const legacyPaid = legacyLedger.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
         await runTransaction(db, async transaction => {
           const declarationSnap = await transaction.get(declarationRef);
           const orderSnap = await transaction.get(orderRef);
           if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
           if (!orderSnap.exists() || orderSnap.data().customerUid !== item.customerUid) throw new Error("The linked order could not be verified.");
-          const ledgerQuery = query(collection(db, "payments"), where("orderId", "==", item.orderId));
-          const ledgerSnap = await transaction.get(ledgerQuery);
-          const alreadyPaid = ledgerSnap.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
+          const alreadyPaid = typeof orderSnap.data().amountPaid === "number" ? orderSnap.data().amountPaid : legacyPaid;
           const newPaid = alreadyPaid + Number(declarationSnap.data().amount || 0);
           const quoted = Number(orderSnap.data().amount || 0);
           const paymentStatus = quoted > 0 && newPaid >= quoted ? "paid" : newPaid > 0 ? "part_paid" : "unpaid";
@@ -617,7 +617,7 @@ export default function Portal({ onClose }) {
             reference: declarationSnap.data().reference || "", note: "Verified from customer transfer declaration " + item.id,
             declarationId: item.id, createdAt: serverTimestamp(), createdBy: user.uid
           });
-          transaction.update(orderRef, { paymentStatus, updatedAt: serverTimestamp() });
+          transaction.update(orderRef, { amountPaid: newPaid, paymentStatus, updatedAt: serverTimestamp() });
           transaction.update(declarationRef, { status: "verified", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
         });
         setMessage("Transfer declaration verified and added to the payment ledger. The order payment status has been reconciled.");
@@ -645,12 +645,12 @@ export default function Portal({ onClose }) {
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a payment amount greater than zero.");
       const orderRef = doc(db, "orders", order.id);
       const paymentRef = doc(collection(db, "payments"));
+      const legacyLedger = await getDocs(query(collection(db, "payments"), where("orderId", "==", order.id)));
+      const legacyPaid = legacyLedger.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
       await runTransaction(db, async transaction => {
         const orderSnap = await transaction.get(orderRef);
         if (!orderSnap.exists()) throw new Error("The selected order no longer exists.");
-        const ledgerQuery = query(collection(db, "payments"), where("orderId", "==", order.id));
-        const ledgerSnap = await transaction.get(ledgerQuery);
-        const paidBefore = ledgerSnap.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
+        const paidBefore = typeof orderSnap.data().amountPaid === "number" ? orderSnap.data().amountPaid : legacyPaid;
         const paidAfter = paidBefore + amount;
         const quoted = Number(orderSnap.data().amount || 0);
         const paymentStatus = quoted > 0 && paidAfter >= quoted ? "paid" : "part_paid";
@@ -661,7 +661,7 @@ export default function Portal({ onClose }) {
           reference: paymentForm.reference.trim(), note: paymentForm.note.trim(),
           createdAt: serverTimestamp(), createdBy: user.uid
         });
-        transaction.update(orderRef, { paymentStatus, updatedAt: serverTimestamp() });
+        transaction.update(orderRef, { amountPaid: paidAfter, paymentStatus, updatedAt: serverTimestamp() });
       });
       setPaymentForm({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
       setMessage("Payment transaction recorded and the order payment status reconciled successfully.");
