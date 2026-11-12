@@ -76,7 +76,21 @@ export default function InstituteWorkspace() {
       }
       if (isInstructor) {
         const assignedSnap = await getDocs(query(collection(db, "instituteInstructorAssignments"), where("instructorUid", "==", user.uid), where("active", "==", true)));
-        setInstructorAssignments(assignedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const assigned = assignedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setInstructorAssignments(assigned);
+        const courseIds = [...new Set(assigned.map(a => a.courseId))];
+        const [lessonSets, assignmentSets, enrollmentSets, submissionSets, attendanceSets] = await Promise.all([
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAssignments"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteEnrollments"), where("courseId", "==", courseId), where("paymentStatus", "==", "paid"))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteSubmissions"), where("courseId", "==", courseId))))),
+          Promise.all(courseIds.map(courseId => getDocs(query(collection(db, "instituteAttendance"), where("courseId", "==", courseId))))
+        ]);
+        setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
+        setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setSubmissions(submissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
+        setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
       }
       if (isAdmin) {
         const all = await getDocs(collection(db, "instituteApplications"));
@@ -370,10 +384,10 @@ export default function InstituteWorkspace() {
       {allEnrollments.map(en=>{const courseLessons=lessons.filter(l=>l.courseId===en.courseId);const done=allLessonProgress.filter(p=>p.studentUid===en.studentUid&&p.courseId===en.courseId&&p.completed).length;return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.courseTitle} · {done}/{courseLessons.length} lessons completed</span><p>{courseLessons.length ? Math.round(Math.min(done,courseLessons.length)/courseLessons.length*100)+"% lesson completion" : "No lessons published yet."}</p></article>})}
       {!allEnrollments.length&&<p className="staff-empty">Student progress will appear after course enrolments are activated.</p>}
     </section>}
-    {isAdmin && <section className="institute-window-list">
+    {(isAdmin || isInstructor) && <section className="institute-window-list">
       <h4>Student attendance register</h4>
       <label>Attendance date<input type="date" value={attendanceDate} onChange={e=>setAttendanceDate(e.target.value)}/></label>
-      {allEnrollments.map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
+      {allEnrollments.filter(en=>!isInstructor || instructorAssignments.some(a=>a.courseId===en.courseId&&a.active)).map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
       {!allEnrollments.length&&<p className="staff-empty">No enrolled students are available for attendance marking.</p>}
     </section>}
     {isAdmin && <section className="institute-window-list">
@@ -388,19 +402,19 @@ export default function InstituteWorkspace() {
     </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p></article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My attendance record</h4>{attendance.length?attendance.map(a=><article className="appointment-card" key={a.id}><strong>{a.courseTitle}</strong><span>{a.date} · {a.status}</span></article>):<p className="staff-empty">Your attendance records will appear here when the Institute marks attendance.</p>}</section>}
-    {isAdmin && <form className="portal-form" onSubmit={createAssignment}>
+    {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
-      <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
+      <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? courses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : courses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
       <label>Assignment title<input required value={assignmentForm.title} onChange={e=>setAssignmentForm({...assignmentForm,title:e.target.value})}/></label>
       <label>Instructions<textarea required rows="5" value={assignmentForm.instructions} onChange={e=>setAssignmentForm({...assignmentForm,instructions:e.target.value})}/></label>
       <label>Due date (optional)<input type="date" value={assignmentForm.dueDate} onChange={e=>setAssignmentForm({...assignmentForm,dueDate:e.target.value})}/></label>
       <label>Maximum score<input type="number" min="1" step="1" value={assignmentForm.points} onChange={e=>setAssignmentForm({...assignmentForm,points:e.target.value})}/></label>
       <button className="portal-submit" disabled={busy||!courses.length}>Publish assignment</button>
     </form>}
-    {isAdmin && <div className="institute-window-list"><h4>Student submissions & grading</h4>{submissions.length?submissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assignmentTitle}</strong><span>{sub.studentName} · {sub.status}</span><p>{sub.answer}</p>{sub.status==="graded"?<p>Score: {sub.score}/{sub.maxScore} · {sub.feedback}</p>:<button type="button" disabled={busy} onClick={()=>gradeSubmission(sub,"graded")}>Grade submission</button>}</article>):<p className="staff-empty">No student submissions yet.</p>}</div>}
+    {(isAdmin || isInstructor) && <div className="institute-window-list"><h4>Student submissions & grading</h4>{submissions.length?submissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assignmentTitle}</strong><span>{sub.studentName} · {sub.status}</span><p>{sub.answer}</p>{sub.status==="graded"?<p>Score: {sub.score}/{sub.maxScore} · {sub.feedback}</p>:<button type="button" disabled={busy} onClick={()=>gradeSubmission(sub,"graded")}>Grade submission</button>}</article>):<p className="staff-empty">No student submissions yet.</p>}</div>}
     {!isAdmin && !isInstructor && <div className="institute-window-list"><h4>My course assignments</h4>{assignments.map(a=>{const prior=submissions.find(s=>s.assignmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle} · Maximum score: {a.points}</span>{a.dueDate&&<p>Due: {a.dueDate}</p>}<p>{a.instructions}</p>{prior?<div><p>Submission status: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}<p>{prior.answer}</p></div>:<><label>Your response<textarea rows="5" value={submissionDrafts[a.id]||""} onChange={e=>setSubmissionDrafts(v=>({...v,[a.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>submitAssignment(a)}>Submit assignment</button></>}</article>})}{!assignments.length&&<p className="staff-empty">No assignments have been published for your enrolled courses.</p>}</div>}
-    {isAdmin && <form className="portal-form" onSubmit={createLesson}><h4>Publish a course lesson</h4>
-      <label>Course<select required value={lessonForm.courseId} onChange={e=>setLessonForm({...lessonForm,courseId:e.target.value})}><option value="">Choose course</option>{courses.map(x=><option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
+    {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createLesson}><h4>Publish a course lesson</h4>
+      <label>Course<select required value={lessonForm.courseId} onChange={e=>setLessonForm({...lessonForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? courses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : courses).map(x=><option key={x.id} value={x.id}>{x.title}</option>)}</select></label>
       <label>Lesson title<input required value={lessonForm.title} onChange={e=>setLessonForm({...lessonForm,title:e.target.value})}/></label>
       <label>Module / topic<input value={lessonForm.module} onChange={e=>setLessonForm({...lessonForm,module:e.target.value})}/></label>
       <label>Lesson type<select value={lessonForm.type} onChange={e=>setLessonForm({...lessonForm,type:e.target.value})}><option>Text lesson</option><option>Video lesson</option><option>Reading resource</option></select></label>
