@@ -113,9 +113,9 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    match /payments/{paymentId} {
+    match /paymentDeclarations/{declarationId} {\n      allow create: if signedIn()\n        && request.resource.data.customerUid == request.auth.uid\n        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'transferDate', 'payerName', 'note', 'status', 'createdAt', 'updatedAt'])\n        && request.resource.data.amount is number && request.resource.data.amount > 0\n        && request.resource.data.reference is string && request.resource.data.reference.size() > 0 && request.resource.data.reference.size() <= 120\n        && request.resource.data.transferDate is string\n        && request.resource.data.status == 'pending'\n        && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp\n        && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.auth.uid;\n      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());\n      allow update: if isSuperAdmin()\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedAt', 'reviewedBy', 'updatedAt'])\n        && resource.data.status == 'pending'\n        && request.resource.data.status in ['verified', 'rejected']\n        && request.resource.data.reviewedBy == request.auth.uid\n        && request.resource.data.reviewedAt is timestamp;\n      allow delete: if isSuperAdmin();\n    }\n\n    match /payments/{paymentId} {
       allow create: if isSuperAdmin()
-        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'note', 'createdAt', 'createdBy'])
+        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'note', 'declarationId', 'createdAt', 'createdBy'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
