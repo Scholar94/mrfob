@@ -156,3 +156,6 @@
 
 
 - **Measurement designer review (2026-11-12):** the customer measurement records panel is available to Super Admin, manager and tailor roles. Authorized staff can mark a profile awaiting review, verified or revision needed, and save a review note. Firestore rules restrict staff updates to verification metadata and retain customer ownership; live rules publication and role-based end-to-end tests remain pending.
+
+
+- **Illustrated measurement guidance (2026-11-12):** added a responsive front-view schematic identifying chest, waist and hip tape positions, with practical measurement instructions and a clear designer-confirmation disclaimer. This is a general guide only; profile-specific diagrams and out-of-range/anomaly checks remain future work.
