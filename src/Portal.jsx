@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload } from "firebase/auth";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -159,7 +159,12 @@ export default function Portal({ onClose }) {
     setOrdersLoading(true); setError("");
     try {
       const snapshot = await getDocs(collection(db, "orders"));
-      setOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      const enriched = await Promise.all(rows.map(async order => {
+        const events = await getDocs(query(collection(db, "orders", order.id, "events")));
+        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
+      }));
+      setOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load orders."); }
     finally { setOrdersLoading(false); }
   }
@@ -168,7 +173,12 @@ export default function Portal({ onClose }) {
     if (!user || claims.superAdmin || claims.staffRole) return;
     try {
       const snapshot = await getDocs(query(collection(db, "orders"), where("customerUid", "==", user.uid)));
-      setMyOrders(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      const enriched = await Promise.all(rows.map(async order => {
+        const events = await getDocs(query(collection(db, "orders", order.id, "events")));
+        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
+      }));
+      setMyOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load your orders."); }
   }
 
@@ -309,8 +319,27 @@ export default function Portal({ onClose }) {
     if (!claims.superAdmin || !id) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
-      setOrders(items => items.map(item => item.id === id ? { ...item, ...changes } : item));
+      const current = orders.find(item => item.id === id);
+      const batch = writeBatch(db);
+      batch.update(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
+      if (Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status) {
+        const eventRef = doc(collection(db, "orders", id, "events"));
+        batch.set(eventRef, {
+          fromStatus: current?.status || "received",
+          toStatus: changes.status,
+          stageLabel: productionStageLabel(changes.status),
+          changedByUid: user.uid,
+          changedByName: user.displayName || user.email || "Administrator",
+          createdAt: serverTimestamp()
+        });
+      }
+      await batch.commit();
+      setOrders(items => items.map(item => item.id === id ? {
+        ...item, ...changes,
+        events: Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status
+          ? [...(item.events || []), { fromStatus: current?.status || "received", toStatus: changes.status, stageLabel: productionStageLabel(changes.status), changedByName: user.displayName || user.email || "Administrator", createdAt: { toDate: () => new Date() } }]
+          : item.events
+      } : item));
       setMessage("Order updated successfully.");
     } catch (err) { setError(err.message || "Could not update the order."); }
     finally { setBusy(false); }
@@ -821,10 +850,11 @@ export default function Portal({ onClose }) {
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
           <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>
           {claims.superAdmin && (order.paymentStatus === "unquoted" || order.amount === undefined || order.quotationStatus === "declined") && <div className="order-quotation-editor"><strong>Prepare customer quotation</strong><label>Quotation amount (₦)<input type="number" min="0.01" step="0.01" value={quoteEdits[order.id]?.amount ?? (order.amount ? String(order.amount) : "")} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],amount:e.target.value}}))}/></label><label>Quotation notes<textarea value={quoteEdits[order.id]?.note ?? order.quotationNote ?? ""} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],note:e.target.value}}))} placeholder="Fabric, fittings, deposit terms and scope"/></label><button type="button" disabled={busy} onClick={()=>sendOrderQuotation(order)}>Send quotation</button></div>}
+          {order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span><small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"} · {event.changedByName || "Team"}</small></div>)}</div>}
           {claims.superAdmin ? <div className="order-controls"><label>Production stage<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}>{PRODUCTION_STAGES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="awaiting_customer_approval">Awaiting quotation approval</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label></div> : <div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span></div>}
         </article>)}</div> : <p className="staff-empty">No orders have been created yet.</p>}
       </section>}
-      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div>{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
+      {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div>{order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span><small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"}</small></div>)}</div>}{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
         <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
         {!claims.staffRole && !claims.superAdmin && <form className="portal-form appointment-form" onSubmit={bookAppointment}>
