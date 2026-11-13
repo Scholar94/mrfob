@@ -1397,6 +1397,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     setBusy(true); setError(""); setMessage("");
     try {
       await setDoc(doc(db, "publicSettings", "paymentInstructions"), { ...next, updatedAt: serverTimestamp(), updatedBy: user.uid });
+      await recordAuditEvent({ user, claims, action: "payment_instructions_updated", entityType: "paymentInstructions", entityId: "paymentInstructions", summary: "Updated customer bank-transfer instructions." });
       setPaymentInstructions(next);
       setMessage("Customer bank transfer instructions have been saved.");
     } catch (err) { setError(err.message || "Could not save payment instructions."); }
@@ -1716,6 +1717,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           createdAt: serverTimestamp(), createdBy: user.uid
         });
       });
+      await recordAuditEvent({ user, claims, action: "inventory_stock_adjusted", entityType: "product", entityId: product.id, summary: "Recorded stock " + direction + " of " + quantity + " units for " + product.name + "." });
       setStockAdjustments(current => ({ ...current, [product.id]: "" }));
       setMessage(direction === "in" ? "Stock added successfully." : "Stock issued successfully.");
       await loadProducts();
@@ -1894,6 +1896,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       const target = result.docs[0].data();
       if (target.uid === user.uid) throw new Error("You cannot change your own Super Admin access.");
       await setDoc(doc(db, "roles", target.uid), { uid: target.uid, email: target.email, role: staffRole, updatedAt: serverTimestamp() });
+      await recordAuditEvent({ user, claims, action: "staff_role_assigned", entityType: "role", entityId: target.uid, summary: "Assigned role " + staffRole + " to " + (target.email || target.uid) + "." });
       setMessage("Staff permission saved. Ask the staff member to sign out and sign in again.");
       setStaffEmail("");
     } catch (err) { setError(err.message || "Could not update staff permissions."); }
