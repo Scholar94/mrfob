@@ -690,3 +690,21 @@ button:disabled{cursor:not-allowed}
 .testimonial-card blockquote{margin:14px 0;line-height:1.75;color:#463b36}
 .testimonial-author{margin:0;color:#4a2730;font-weight:700}
 .testimonial-author span{font-size:.82rem;font-weight:500;color:#887d72}
+
+
+/* Customer privacy and personal-data request centre */
+.privacy-request-center { margin-top: 22px; }
+.privacy-request-form { margin: 18px 0 22px; }
+.privacy-request-list { display: grid; gap: 12px; margin-top: 16px; }
+.privacy-request-card { border: 1px solid var(--line, #e8e0d8); border-radius: 14px; padding: 16px; background: var(--surface, #fff); }
+.privacy-request-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.privacy-request-card p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.privacy-request-card small { display: block; color: var(--muted, #766b6b); margin-top: 7px; }
+.privacy-request-status { display: inline-flex; border-radius: 999px; padding: 5px 9px; background: #f2eee9; color: #493b35; font-size: 12px; text-transform: capitalize; }
+.privacy-request-status.status-completed { background: #e8f4eb; color: #245a34; }
+.privacy-request-status.status-unable-to-fulfil { background: #f9eeee; color: #843939; }
+.privacy-request-note { padding: 10px; border-left: 3px solid #b99a64; background: #faf7f1; }
+.privacy-request-admin { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 12px; margin-top: 12px; }
+.privacy-request-admin label { display: grid; gap: 6px; font-size: 13px; }
+.privacy-request-admin textarea, .privacy-request-admin select { width: 100%; border: 1px solid #d9d0c7; border-radius: 8px; padding: 10px; font: inherit; }
+@media (max-width: 640px) { .privacy-request-admin { grid-template-columns: 1fr; } }
