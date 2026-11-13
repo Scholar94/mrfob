@@ -748,3 +748,24 @@ button:disabled{cursor:not-allowed}
 
 
 .payment-declaration-review > p a, .payment-declaration-list a { color: #795c36; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* Customer referral programme */
+.referral-code-panel { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:16px; margin:16px 0; border:1px dashed #b99a64; border-radius:12px; background:#faf7f1; }
+.referral-code-panel span { color:#766b63; font-size:13px; }
+.referral-code-panel strong { color:#32151f; font:700 20px Georgia,serif; letter-spacing:2px; }
+.referral-code-panel button { margin-left:auto; border:1px solid #d7c4a7; border-radius:8px; padding:8px 12px; background:#fff; }
+.referral-form { margin:16px 0 22px; }
+.referral-list { display:grid; gap:12px; margin-top:16px; }
+.referral-card { border:1px solid #e8e0d8; border-radius:13px; padding:15px; background:#fff; }
+.referral-card-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.referral-status { border-radius:999px; padding:5px 10px; background:#f2eee9; color:#493b35; font-size:12px; text-transform:capitalize; }
+.referral-rewarded { background:#e8f4eb; color:#245a34; }
+.referral-declined { background:#f9eeee; color:#843939; }
+.referral-card p { overflow-wrap:anywhere; }
+.referral-card small { color:#766b63; }
+.referral-review-note { padding:10px; background:#faf7f1; border-left:3px solid #b99a64; }
+.referral-review-actions { display:grid; grid-template-columns:minmax(0,2fr) minmax(160px,1fr); gap:12px; margin-top:12px; }
+.referral-review-actions label { display:grid; gap:6px; font-size:13px; }
+.referral-review-actions textarea,.referral-review-actions select { width:100%; border:1px solid #d9d0c7; border-radius:8px; padding:9px; font:inherit; }
+@media(max-width:640px){.referral-review-actions{grid-template-columns:1fr}.referral-code-panel button{margin-left:0}}
