@@ -7,6 +7,7 @@ import Portal from "./Portal.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
+import StyleRecommendations from "./StyleRecommendations.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 
@@ -270,6 +271,7 @@ export default function App() {
         </article>)}</div>
         <p className="category-disclaimer">This is a service and style category guide, not a live inventory or a confirmation that every design is currently available.</p>
       </section>
+      <StyleRecommendations createWhatsAppLink={whatsappLink} />
       <PublicWebsiteMedia />
       <FabricCatalogue />
       <section className="quote-band"><div className="quote-mark">“</div><p>Our mission is simple: to make every customer feel <em>brand new and happy</em> through excellence and professional service.</p><span>THE MR FOP PROMISE</span></section>
