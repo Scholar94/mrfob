@@ -589,7 +589,18 @@ export default function InstituteWorkspace() {
         windowTitle: certificateData.windowTitle, status: "issued", issuedAt,
         updatedAt: issuedAt
       };
+      const completionApproval = {
+        studentUid: enrollment.studentUid,
+        courseId: enrollment.courseId,
+        certificateRef,
+        status: "approved",
+        checks: completion.checks,
+        approvedBy: user.uid,
+        approvedAt: issuedAt,
+        createdAt: issuedAt
+      };
       const batch = writeBatch(db);
+      batch.set(doc(db, "instituteCompletionApprovals", certificateId), completionApproval);
       batch.set(doc(db, "instituteCertificates", certificateId), certificateData);
       batch.set(doc(db, "publicCertificateVerifications", certificateRef), publicCertificateData);
       await batch.commit();
