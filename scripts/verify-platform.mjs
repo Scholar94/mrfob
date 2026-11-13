@@ -48,6 +48,13 @@ assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log r
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 assert.ok(app.includes("StyleRecommendations") && app.includes("createWhatsAppLink={whatsappLink}"), "Public style recommendation tool is not mounted");
+assert.ok(app.includes("FabricCatalogue") && app.includes("<FabricCatalogue />"), "Public fabric gallery is not mounted");
+assert.ok(portal.includes("FabricCatalogue admin"), "Super Admin fabric management is not mounted");
+assert.ok(portal.includes("PrivacyRequestCenter"), "Customer privacy request centre is not mounted");
+assert.ok(rules.includes("match /fabrics/{fabricId}") && rules.includes("match /privacyRequests/{requestId}"), "Fabric/privacy Firestore rules are missing");
+assert.ok(portal.includes("transaction.delete(oldSlotRef)") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)"), "Appointment alternative slot release/reservation is not transactional");
+assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && read("src/styles.css").includes(".fabric-grid"), "Responsive style/fabric UI styles are missing");
+
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
 assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
