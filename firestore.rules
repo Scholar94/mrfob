@@ -886,11 +886,12 @@ service cloud.firestore {
         return data.keys().hasOnly(['title','description','category','mediaType','fileName','contentType','size','driveFileId','driveUrl','previewUrl','drivePreviewUrl','visibility','published','uploadedByUid','createdAt','updatedAt'])
           && data.title is string && data.title.size() > 0 && data.title.size() <= 100
           && data.description is string && data.description.size() <= 500
-          && data.category in ['Collections','Fashion shows','Promotional videos','Training','Company news','Gallery']
-          && data.mediaType in ['image','video']
-          && data.fileName is string && data.contentType in ['image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime']
+          && data.category in ['Collections','Fashion shows','Promotional videos','Training','Company news','Gallery','Company theme song']
+          && data.mediaType in ['image','video','audio']
+          && data.fileName is string && data.contentType in ['image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/mp4','audio/wav','audio/ogg']
           && data.size is int && data.size > 0
-          && ((data.mediaType == 'image' && data.size <= 20971520) || (data.mediaType == 'video' && data.size <= 104857600))
+          && ((data.mediaType == 'image' && data.size <= 20971520) || (data.mediaType == 'video' && data.size <= 104857600) || (data.mediaType == 'audio' && data.size <= 52428800))
+          && ((data.mediaType == 'audio' && data.category == 'Company theme song') || (data.mediaType != 'audio' && data.category != 'Company theme song'))
           && data.driveFileId is string && data.driveUrl is string && data.previewUrl is string && data.drivePreviewUrl is string
           && data.visibility == 'public' && data.published is bool && data.uploadedByUid == request.auth.uid;
       }
