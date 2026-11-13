@@ -198,6 +198,7 @@ export default function Portal({ onClose }) {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
   const [appointmentEdits, setAppointmentEdits] = useState({});
+  const [appointmentAssignmentEdits, setAppointmentAssignmentEdits] = useState({});
   const [payments, setPayments] = useState([]);
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
@@ -1004,6 +1005,47 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  async function saveAppointmentAssignment(item) {
+    if (!claims.superAdmin || !item?.id) return;
+    const edit = appointmentAssignmentEdits[item.id] || {};
+    const designerUid = edit.designerUid ?? item.assignedDesignerUid ?? "";
+    const orderId = edit.orderId ?? item.orderId ?? "";
+    const designer = staffMembers.find(member => member.uid === designerUid && member.role === "tailor");
+    const linkedOrder = orders.find(order => order.id === orderId && order.customerUid === item.customerUid);
+    if (designerUid && !designer) { setError("Choose an active Production / Tailor staff member."); return; }
+    if (orderId && !linkedOrder) { setError("Choose an order belonging to this appointment's customer."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const patch = {
+        assignedDesignerUid: designer?.uid || "",
+        assignedDesignerName: designer?.displayName || designer?.name || designer?.email || "",
+        orderId: linkedOrder?.id || "",
+        orderNumber: linkedOrder?.orderNumber || linkedOrder?.id || "",
+        updatedAt: serverTimestamp()
+      };
+      const batch = writeBatch(db);
+      batch.update(doc(db, "appointments", item.id), patch);
+      const notificationRef = doc(collection(db, "notifications"));
+      const details = [
+        designer ? "Designer: " + patch.assignedDesignerName : "No designer currently assigned",
+        linkedOrder ? "Order: " + patch.orderNumber : "No order linked"
+      ].join(". ");
+      batch.set(notificationRef, {
+        customerUid: item.customerUid,
+        appointmentId: item.id,
+        type: "appointment_assignment",
+        title: "Your appointment details have been updated",
+        message: details,
+        createdAt: serverTimestamp(),
+        readAt: null
+      });
+      await batch.commit();
+      setAppointments(rows => rows.map(row => row.id === item.id ? { ...row, ...patch, updatedAt: new Date() } : row));
+      setMessage("Appointment assignment and order link saved. The customer has been notified.");
+    } catch (err) { setError(err.message || "Could not save the appointment assignment."); }
+    finally { setBusy(false); }
+  }
+
   async function reconcileConfirmedAppointmentSlots() {
     if (!claims.superAdmin) return;
     setBusy(true); setError(""); setMessage("");
@@ -1707,8 +1749,15 @@ export default function Portal({ onClose }) {
         </form>}
         {appointmentsLoading ? <p className="staff-empty">Loading appointments…</p> : appointments.length ? <div className="appointment-list">{appointments.map(item=><article className="appointment-card" key={item.id}>
           <div><strong>{item.service}</strong><span>{item.customerName || item.customerEmail || "Customer"}</span></div>
-          <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}
-          {claims.superAdmin ? <><label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="alternative_proposed">Alternative proposed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><div className="appointment-alternative-form"><strong>Propose another date and time</strong><label>Alternative date<input type="date" min={localDateString()} value={appointmentEdits[item.id]?.proposedDate ?? item.proposedDate ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedDate:e.target.value}}))}/></label><label>Alternative time<input type="time" value={appointmentEdits[item.id]?.proposedTime ?? item.proposedTime ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedTime:e.target.value}}))}/></label><label>Message to customer<textarea value={appointmentEdits[item.id]?.adminMessage ?? item.adminMessage ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],adminMessage:e.target.value}}))} placeholder="Explain why an alternative is suggested"/></label><button type="button" disabled={busy} onClick={()=>proposeAppointmentAlternative(item)}>Send alternative proposal</button></div></> : <><span className="appointment-status-text">Status: {String(item.status || "pending").replaceAll("_"," ")}</span>{item.status === "alternative_proposed" && <div className="appointment-alternative-proposal"><strong>Alternative time proposed</strong><p>{item.proposedDate} at {item.proposedTime}</p>{item.adminMessage&&<p>{item.adminMessage}</p>}<button type="button" disabled={busy} onClick={()=>acceptAppointmentAlternative(item)}>Accept proposed time</button></div>}{["pending", "alternative_proposed"].includes(item.status || "pending") && <button type="button" className="appointment-cancel-button" disabled={busy} onClick={()=>cancelMyAppointment(item)}>Cancel my request</button>}</>}
+          <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}{item.assignedDesignerName && <p><strong>Assigned designer:</strong> {item.assignedDesignerName}</p>}{item.orderNumber && <p><strong>Related order:</strong> {item.orderNumber}</p>}
+          {claims.superAdmin ? <><label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="alternative_proposed">Alternative proposed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><div className="appointment-alternative-form appointment-assignment-form">
+            <strong>Designer and order assignment</strong>
+            <label>Assigned designer<select value={appointmentAssignmentEdits[item.id]?.designerUid ?? item.assignedDesignerUid ?? ""} disabled={busy} onChange={e=>setAppointmentAssignmentEdits(current=>({...current,[item.id]:{...current[item.id],designerUid:e.target.value}}))}><option value="">Unassigned</option>{staffMembers.filter(member=>member.role==="tailor").map(member=><option key={member.uid} value={member.uid}>{member.displayName || member.name || member.email || member.uid}</option>)}</select></label>
+            <label>Related customer order<select value={appointmentAssignmentEdits[item.id]?.orderId ?? item.orderId ?? ""} disabled={busy} onChange={e=>setAppointmentAssignmentEdits(current=>({...current,[item.id]:{...current[item.id],orderId:e.target.value}}))}><option value="">No linked order</option>{orders.filter(order=>order.customerUid===item.customerUid).map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.item || "Order"}</option>)}</select></label>
+            <p className="portal-hint">Only active Tailor staff and orders belonging to this customer are selectable.</p>
+            <button type="button" disabled={busy} onClick={()=>saveAppointmentAssignment(item)}>Save designer and order assignment</button>
+          </div>
+          <div className="appointment-alternative-form"><strong>Propose another date and time</strong><label>Alternative date<input type="date" min={localDateString()} value={appointmentEdits[item.id]?.proposedDate ?? item.proposedDate ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedDate:e.target.value}}))}/></label><label>Alternative time<input type="time" value={appointmentEdits[item.id]?.proposedTime ?? item.proposedTime ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedTime:e.target.value}}))}/></label><label>Message to customer<textarea value={appointmentEdits[item.id]?.adminMessage ?? item.adminMessage ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],adminMessage:e.target.value}}))} placeholder="Explain why an alternative is suggested"/></label><button type="button" disabled={busy} onClick={()=>proposeAppointmentAlternative(item)}>Send alternative proposal</button></div></> : <><span className="appointment-status-text">Status: {String(item.status || "pending").replaceAll("_"," ")}</span>{item.status === "alternative_proposed" && <div className="appointment-alternative-proposal"><strong>Alternative time proposed</strong><p>{item.proposedDate} at {item.proposedTime}</p>{item.adminMessage&&<p>{item.adminMessage}</p>}<button type="button" disabled={busy} onClick={()=>acceptAppointmentAlternative(item)}>Accept proposed time</button></div>}{["pending", "alternative_proposed"].includes(item.status || "pending") && <button type="button" className="appointment-cancel-button" disabled={busy} onClick={()=>cancelMyAppointment(item)}>Cancel my request</button>}</>}
         </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
       </section>
       <section className="customer-management customer-self-service support-centre">
