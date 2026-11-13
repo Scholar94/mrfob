@@ -720,6 +720,29 @@ export default function InstituteWorkspace() {
       <button className="portal-submit" disabled={busy}>Save instructor profile</button>
     </form>}
     {isInstructor && <section className="institute-window-list"><h4>My teaching timetable</h4>{sessions.filter(s=>s.instructorUid===user.uid).length?sessions.filter(s=>s.instructorUid===user.uid).map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Open meeting link</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">No teaching sessions have been scheduled for your assigned courses.</p>}</section>}
+    {!isAdmin && !isInstructor && <section className="institute-window-list">
+      <h4>My learning progress</h4>
+      {enrollments.length ? enrollments.map(en=>{
+        const courseLessons=lessons.filter(l=>l.courseId===en.courseId);
+        const completedLessons=lessonProgress.filter(p=>p.courseId===en.courseId&&p.completed).length;
+        const courseAssignments=assignments.filter(a=>a.courseId===en.courseId);
+        const submittedAssignments=courseAssignments.filter(a=>submissions.some(s=>s.assignmentId===a.id)).length;
+        const courseAssessments=assessments.filter(a=>a.courseId===en.courseId);
+        const submittedAssessments=courseAssessments.filter(a=>assessmentSubmissions.some(s=>s.assessmentId===a.id)).length;
+        const gradedAssessments=courseAssessments.filter(a=>assessmentSubmissions.some(s=>s.assessmentId===a.id&&s.status==="graded")).length;
+        const courseAttendance=attendance.filter(a=>a.courseId===en.courseId);
+        const attended=courseAttendance.filter(a=>a.status==="present"||a.status==="late").length;
+        const lessonPercent=courseLessons.length?Math.round(Math.min(completedLessons,courseLessons.length)/courseLessons.length*100):0;
+        return <article className="appointment-card" key={en.id}>
+          <strong>{en.courseTitle || "Enrolled course"}</strong>
+          <span>{en.windowTitle || "Active enrolment"} · Payment: {en.paymentStatus || "pending"}</span>
+          <p><strong>{lessonPercent}%</strong> lesson completion · {Math.min(completedLessons,courseLessons.length)} of {courseLessons.length} lessons completed</p>
+          <div className="portal-progress-track" role="progressbar" aria-label={(en.courseTitle||"Course")+" lesson completion"} aria-valuemin="0" aria-valuemax="100" aria-valuenow={lessonPercent}><span style={{width:lessonPercent+"%"}}/></div>
+          <p>Assignments: {submittedAssignments}/{courseAssignments.length} submitted · Assessments: {submittedAssessments}/{courseAssessments.length} submitted · {gradedAssessments} graded</p>
+          <p>Attendance: {attended} of {courseAttendance.length} marked sessions attended{courseAttendance.length?" ("+Math.round(attended/courseAttendance.length*100)+"%)":" (not yet recorded)"}</p>
+        </article>;
+      }) : <p className="staff-empty">Your learning progress will appear here after your training payment is verified and course access is activated.</p>}
+    </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My course timetable</h4>{sessions.filter(s=>s.status!=="cancelled").length?sessions.filter(s=>s.status!=="cancelled").map(s=><article className="appointment-card" key={s.id}><strong>{s.title}</strong><span>{s.courseTitle} · {s.startsAt} – {s.endsAt}</span><p>{s.mode==="Online"?"Online session":s.venue} · {s.status}</p>{s.meetingUrl&&<p><a href={s.meetingUrl} target="_blank" rel="noreferrer">Join session</a></p>}{s.notes&&<p>{s.notes}</p>}</article>):<p className="staff-empty">Your course timetable will appear here when the Institute schedules sessions.</p>}</section>}
     {isInstructor && <section className="institute-window-list">
       <h4>My instructor assignments</h4>
