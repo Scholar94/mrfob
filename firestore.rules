@@ -430,6 +430,36 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    match /reviews/{orderId} {
+      allow read: if (signedIn() && resource.data.customerUid == request.auth.uid)
+        || isSuperAdmin()
+        || hasStaffRole(['manager'])
+        || resource.data.status == 'approved';
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['orderId', 'customerUid', 'customerName', 'rating', 'comment', 'status', 'createdAt'])
+        && request.resource.data.orderId == orderId
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() <= 120
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() >= 10 && request.resource.data.comment.size() <= 1000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is timestamp
+        && !exists(/databases/$(database)/documents/reviews/$(orderId))
+        && exists(/databases/$(database)/documents/orders/$(orderId))
+        && get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
+        && get(/databases/$(database)/documents/orders/$(orderId)).data.status == 'delivered';
+      allow update: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'moderatedAt', 'moderatedBy'])
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.moderatedBy == request.auth.uid
+        && request.resource.data.moderatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /customerFavourites/{customerUid}/items/{productId} {
       allow read: if signedIn() && request.auth.uid == customerUid;
       allow create: if signedIn()
