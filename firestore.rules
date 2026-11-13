@@ -375,11 +375,16 @@ service cloud.firestore {
     match /paymentDeclarations/{declarationId} {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'transferDate', 'payerName', 'note', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'transferDate', 'payerName', 'note', 'status', 'evidenceFileId', 'evidenceFileName', 'evidenceContentType', 'evidenceSize', 'evidenceDriveUrl', 'createdAt', 'updatedAt'])
         && request.resource.data.amount is number && request.resource.data.amount > 0
         && request.resource.data.reference is string && request.resource.data.reference.size() > 0 && request.resource.data.reference.size() <= 120
         && request.resource.data.transferDate is string
         && request.resource.data.status == 'pending'
+        && request.resource.data.evidenceFileId is string && request.resource.data.evidenceFileId.size() > 0
+        && request.resource.data.evidenceFileName is string && request.resource.data.evidenceFileName.size() > 0 && request.resource.data.evidenceFileName.size() <= 180
+        && request.resource.data.evidenceContentType in ['image/jpeg','image/png','image/webp','application/pdf']
+        && request.resource.data.evidenceSize is int && request.resource.data.evidenceSize > 0 && request.resource.data.evidenceSize <= 15728640
+        && request.resource.data.evidenceDriveUrl is string && request.resource.data.evidenceDriveUrl.matches('https://drive\\.google\\.com/.*')
         && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp
         && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.auth.uid;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isFinanceOfficer());
