@@ -750,7 +750,27 @@ export default function InstituteWorkspace() {
     </section>}
     {isAdmin && <section className="institute-window-list">
       <h4>Student learning progress</h4>
-      {allEnrollments.map(en=>{const courseLessons=lessons.filter(l=>l.courseId===en.courseId);const done=allLessonProgress.filter(p=>p.studentUid===en.studentUid&&p.courseId===en.courseId&&p.completed).length;return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.courseTitle} · {done}/{courseLessons.length} lessons completed</span><p>{courseLessons.length ? Math.round(Math.min(done,courseLessons.length)/courseLessons.length*100)+"% lesson completion" : "No lessons published yet."}</p></article>})}
+      {allEnrollments.map(en=>{
+        const courseLessons=lessons.filter(l=>l.courseId===en.courseId);
+        const done=allLessonProgress.filter(p=>p.studentUid===en.studentUid&&p.courseId===en.courseId&&p.completed).length;
+        const lessonPercent=courseLessons.length?Math.round(Math.min(done,courseLessons.length)/courseLessons.length*100):0;
+        const courseAssignments=assignments.filter(a=>a.courseId===en.courseId);
+        const assignmentSubs=submissions.filter(s=>s.studentUid===en.studentUid&&s.courseId===en.courseId);
+        const courseAssessments=assessments.filter(a=>a.courseId===en.courseId);
+        const assessmentSubs=assessmentSubmissions.filter(s=>s.studentUid===en.studentUid&&s.courseId===en.courseId);
+        const graded=assessmentSubs.filter(s=>s.status==="graded");
+        const courseAttendance=attendance.filter(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId);
+        const attended=courseAttendance.filter(a=>a.status==="present"||a.status==="late").length;
+        return <article className="appointment-card" key={en.id}>
+          <strong>{en.studentName || en.studentEmail || en.studentUid}</strong>
+          <span>{en.courseTitle} · {en.windowTitle || "Enrolment"} · {en.studentId || en.studentUid}</span>
+          <p><strong>{lessonPercent}%</strong> lesson completion · {Math.min(done,courseLessons.length)}/{courseLessons.length} lessons</p>
+          <div className="portal-progress-track" role="progressbar" aria-label={(en.studentName||"Student")+" lesson completion"} aria-valuemin="0" aria-valuemax="100" aria-valuenow={lessonPercent}><span style={{width:lessonPercent+"%"}}/></div>
+          <p>Assignments: {assignmentSubs.length}/{courseAssignments.length} submitted · Assessments: {assessmentSubs.length}/{courseAssessments.length} submitted · {graded.length} graded</p>
+          {graded.length>0&&<p>Recorded assessment scores: {graded.map(g=>Number(g.score||0)+"/"+Number(g.maxScore||0)).join(", ")}</p>}
+          <p>Attendance: {attended}/{courseAttendance.length} marked sessions attended{courseAttendance.length?" ("+Math.round(attended/courseAttendance.length*100)+"%)":" (not yet recorded)"}</p>
+        </article>;
+      })}
       {!allEnrollments.length&&<p className="staff-empty">Student progress will appear after course enrolments are activated.</p>}
     </section>}
     {(isAdmin || isInstructor) && <section className="institute-window-list">
