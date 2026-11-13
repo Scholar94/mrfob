@@ -359,7 +359,7 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp
         && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.auth.uid;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isFinanceOfficer());
       allow update: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedAt', 'reviewedBy', 'updatedAt'])
         && resource.data.status == 'pending'
@@ -388,7 +388,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isFinanceOfficer());
       allow update, delete: if isSuperAdmin();
     }
 
