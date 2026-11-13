@@ -156,6 +156,7 @@ export default function Portal({ onClose }) {
   const [payments, setPayments] = useState([]);
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
+  const [paymentEvidenceFile, setPaymentEvidenceFile] = useState(null);
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
   const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
   const [paymentInstructions, setPaymentInstructions] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
@@ -1410,6 +1411,7 @@ export default function Portal({ onClose }) {
   async function submitPaymentDeclaration(e) {
     e.preventDefault();
     if (!user || claims.superAdmin || claims.staffRole) return;
+    const formElement = e.currentTarget;
     setBusy(true); setError(""); setMessage("");
     try {
       const order = myOrders.find(item => item.id === declarationForm.orderId);
@@ -1419,16 +1421,32 @@ export default function Portal({ onClose }) {
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter the amount you transferred.");
       if (!reference) throw new Error("Enter the bank transfer narration or transaction reference.");
       if (!declarationForm.transferDate) throw new Error("Select the transfer date.");
+      if (!paymentEvidenceFile) throw new Error("Attach a transfer receipt or payment evidence image/PDF.");
+      const evidenceTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (!evidenceTypes.includes(paymentEvidenceFile.type)) throw new Error("Payment evidence must be a JPG, PNG, WebP image or PDF.");
+      if (paymentEvidenceFile.size <= 0 || paymentEvidenceFile.size > 15 * 1024 * 1024) throw new Error("Payment evidence must be no larger than 15 MB.");
+      const uploaded = await uploadFileToGoogleDrive(paymentEvidenceFile, {
+        storageOwner: "customer",
+        shareWithEmail: "mrfopvi@gmail.com",
+        orderId: order.id,
+        uploadedBy: user.uid,
+        folder: "Payment Evidence"
+      });
       await addDoc(collection(db, "paymentDeclarations"), {
         orderId: order.id, orderNumber: order.orderNumber || order.id,
         customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "",
         amount, currency: "NGN", method: "Bank transfer", reference,
         transferDate: declarationForm.transferDate, payerName: declarationForm.payerName.trim(),
         note: declarationForm.note.trim(), status: "pending",
+        evidenceFileId: uploaded.fileId, evidenceFileName: uploaded.name,
+        evidenceContentType: uploaded.mimeType, evidenceSize: uploaded.size,
+        evidenceDriveUrl: uploaded.webViewLink,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
       setDeclarationForm({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
-      setMessage("Your transfer declaration has been submitted for review. It is not yet a confirmed payment.");
+      setPaymentEvidenceFile(null);
+      formElement.reset();
+      setMessage("Your transfer declaration and private payment evidence have been submitted for review. This is not yet a confirmed payment.");
       await loadPaymentDeclarations();
     } catch (err) { setError(err.message || "Could not submit your transfer declaration."); }
     finally { setBusy(false); }
@@ -2116,7 +2134,7 @@ export default function Portal({ onClose }) {
         </form></section>}
         {(claims.superAdmin || claims.staffRole === "finance") && <section className="payment-declaration-admin">
           <div className="customer-management-heading"><div><h3>Customer Transfer Declarations</h3><p>Verify the funds in your bank independently before approving a declaration</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
-          {paymentDeclarations.filter(item=>item.status==="pending").length ? paymentDeclarations.filter(item=>item.status==="pending").map(item=><article className="payment-declaration-review" key={item.id}><div><strong>{item.orderNumber} · {item.customerName || "Customer"}</strong><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></div><p>Transfer date: {item.transferDate} · Reference: {item.reference}</p><p>Payer: {item.payerName || "Not supplied"}{item.note ? " · "+item.note : ""}</p><label>Review note<textarea value={declarationReviewNotes[item.id] || ""} onChange={e=>setDeclarationReviewNotes({...declarationReviewNotes,[item.id]:e.target.value})} placeholder="Optional note to customer"/></label><div className="verification-actions"><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"verified")}>Verify and record payment</button><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"rejected")}>Reject declaration</button></div></article>) : <p className="staff-empty">No declarations are awaiting review.</p>}
+          {paymentDeclarations.filter(item=>item.status==="pending").length ? paymentDeclarations.filter(item=>item.status==="pending").map(item=><article className="payment-declaration-review" key={item.id}><div><strong>{item.orderNumber} · {item.customerName || "Customer"}</strong><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></div><p>Transfer date: {item.transferDate} · Reference: {item.reference}</p>{item.evidenceDriveUrl && <p><a href={item.evidenceDriveUrl} target="_blank" rel="noreferrer">Open private payment evidence</a> · {item.evidenceFileName || "Receipt file"}</p><p>Payer: {item.payerName || "Not supplied"}{item.note ? " · "+item.note : ""}</p><label>Review note<textarea value={declarationReviewNotes[item.id] || ""} onChange={e=>setDeclarationReviewNotes({...declarationReviewNotes,[item.id]:e.target.value})} placeholder="Optional note to customer"/></label><div className="verification-actions"><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"verified")}>Verify and record payment</button><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"rejected")}>Reject declaration</button></div></article>) : <p className="staff-empty">No declarations are awaiting review.</p>}
           {paymentDeclarations.filter(item=>item.status!=="pending").map(item=><article className="payment-declaration-history" key={item.id}><strong>{item.orderNumber} · ₦{Number(item.amount||0).toLocaleString("en-NG")}</strong><span>{item.status}{item.reviewNote ? " · "+item.reviewNote : ""}</span></article>)}
         </section>}
         {payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.customerName || "Customer"} · {payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString() : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}
@@ -2132,9 +2150,11 @@ export default function Portal({ onClose }) {
           <label>Bank transaction reference / narration<input required maxLength="120" value={declarationForm.reference} onChange={e=>setDeclarationForm({...declarationForm,reference:e.target.value})} placeholder="Reference shown by your bank"/></label>
           <label>Name on the sending account<input maxLength="100" value={declarationForm.payerName} onChange={e=>setDeclarationForm({...declarationForm,payerName:e.target.value})} placeholder="Account holder name"/></label>
           <label>Additional note (optional)<textarea maxLength="500" value={declarationForm.note} onChange={e=>setDeclarationForm({...declarationForm,note:e.target.value})} placeholder="Any useful transfer detail"/></label>
+          <label>Payment evidence (JPG, PNG, WebP or PDF; max 15 MB)<input required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>setPaymentEvidenceFile(e.target.files?.[0] || null)}/></label>
+          <p className="portal-hint">The file is uploaded privately to Google Drive and shared with the company account for verification. Do not upload a full bank statement.</p>
           <button className="portal-submit" disabled={busy || !myOrders.length}>{busy ? "Submitting…" : "Submit transfer declaration"}</button>
         </form>
-        {paymentDeclarations.length ? <div className="payment-declaration-list">{paymentDeclarations.map(item=><article key={item.id}><div><strong>{item.orderNumber}</strong><span>₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.transferDate}</span></div><b className={"declaration-status "+item.status}>{item.status === "verified" ? "Verified" : item.status === "rejected" ? "Rejected" : "Pending review"}</b><small>Reference: {item.reference}{item.reviewNote ? " · Review note: "+item.reviewNote : ""}</small></article>)}</div> : <p className="staff-empty">No transfer declarations submitted yet.</p>}
+        {paymentDeclarations.length ? <div className="payment-declaration-list">{paymentDeclarations.map(item=><article key={item.id}><div><strong>{item.orderNumber}</strong><span>₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.transferDate}</span></div><b className={"declaration-status "+item.status}>{item.status === "verified" ? "Verified" : item.status === "rejected" ? "Rejected" : "Pending review"}</b><small>Reference: {item.reference}{item.reviewNote ? " · Review note: "+item.reviewNote : ""}</small>{item.evidenceDriveUrl && <a href={item.evidenceDriveUrl} target="_blank" rel="noreferrer">View my uploaded evidence</a>}</article>)}</div> : <p className="staff-empty">No transfer declarations submitted yet.</p>}
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management"><div className="customer-management-heading"><div><h3>My Payment History</h3><p>Payments recorded against your orders</p></div><button type="button" onClick={loadPayments}>Refresh</button></div>{payments.length ? <div className="payment-list">{payments.map(payment=><article className="payment-card" key={payment.id}><div><strong>{payment.orderNumber}</strong><span>{payment.method}</span></div><b>₦{Number(payment.amount || 0).toLocaleString("en-NG")}</b><small>{payment.reference || "No reference"}{payment.createdAt?.toDate ? " · " + payment.createdAt.toDate().toLocaleDateString("en-NG") : ""}{payment.note ? " · " + payment.note : ""}</small></article>)}</div> : <p className="staff-empty">No payment transactions recorded yet.</p>}</section>}
       {claims.superAdmin && <section className="pos-management">
