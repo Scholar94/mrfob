@@ -498,20 +498,30 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if signedIn();
       allow create: if isSuperAdmin()
-        && request.resource.data.keys().hasOnly(['name', 'sku', 'category', 'description', 'price', 'costPrice', 'currency', 'stock', 'imageUrl', 'active', 'createdAt', 'updatedAt', 'createdBy'])
+        && request.resource.data.keys().hasOnly(['name', 'sku', 'category', 'description', 'price', 'costPrice', 'currency', 'stock', 'imageUrl', 'galleryImages', 'availableColors', 'fabricOptions', 'customizationOptions', 'active', 'createdAt', 'updatedAt', 'createdBy'])
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.name is string
-        && request.resource.data.sku is string
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 160
+        && request.resource.data.sku is string && request.resource.data.sku.size() > 0 && request.resource.data.sku.size() <= 80
         && request.resource.data.price is number && request.resource.data.price >= 0
         && request.resource.data.costPrice is number && request.resource.data.costPrice >= 0
-        && request.resource.data.stock is int && request.resource.data.stock >= 0;
+        && request.resource.data.stock is int && request.resource.data.stock >= 0
+        && request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 1500
+        && request.resource.data.galleryImages is list && request.resource.data.galleryImages.size() <= 8
+        && request.resource.data.availableColors is list && request.resource.data.availableColors.size() <= 12
+        && request.resource.data.fabricOptions is list && request.resource.data.fabricOptions.size() <= 12
+        && request.resource.data.customizationOptions is list && request.resource.data.customizationOptions.size() <= 12;
       allow update: if isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'sku', 'category', 'description', 'price', 'costPrice', 'imageUrl', 'active', 'stock', 'updatedAt'])
-        && request.resource.data.name is string && request.resource.data.name.size() > 0
-        && request.resource.data.sku is string && request.resource.data.sku.size() > 0
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'sku', 'category', 'description', 'price', 'costPrice', 'imageUrl', 'galleryImages', 'availableColors', 'fabricOptions', 'customizationOptions', 'active', 'stock', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 160
+        && request.resource.data.sku is string && request.resource.data.sku.size() > 0 && request.resource.data.sku.size() <= 80
         && request.resource.data.price is number && request.resource.data.price >= 0
         && request.resource.data.costPrice is number && request.resource.data.costPrice >= 0
-        && request.resource.data.stock is int && request.resource.data.stock >= 0;
+        && request.resource.data.stock is int && request.resource.data.stock >= 0
+        && request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() <= 1500
+        && request.resource.data.galleryImages is list && request.resource.data.galleryImages.size() <= 8
+        && request.resource.data.availableColors is list && request.resource.data.availableColors.size() <= 12
+        && request.resource.data.fabricOptions is list && request.resource.data.fabricOptions.size() <= 12
+        && request.resource.data.customizationOptions is list && request.resource.data.customizationOptions.size() <= 12;
       allow delete: if isSuperAdmin();
     }
 
