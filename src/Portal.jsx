@@ -119,6 +119,9 @@ export default function Portal({ onClose }) {
   const [allMeasurements, setAllMeasurements] = useState([]);
   const [allTrainingEnquiries, setAllTrainingEnquiries] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportForm, setSupportForm] = useState({ category: "Order enquiry", subject: "", message: "" });
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
   const [appointmentEdits, setAppointmentEdits] = useState({});
@@ -467,6 +470,69 @@ export default function Portal({ onClose }) {
       setMyOrders(items => items.map(item => item.id === order.id ? { ...item, quotationStatus: decision } : item));
       setMessage(decision === "accepted" ? "You accepted the quotation. The team can now confirm the deposit and production arrangements." : "You declined the quotation. The team will contact you to discuss next steps.");
     } catch (err) { setError(err.message || "Could not submit your quotation response."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadSupportTickets() {
+    if (!user) return;
+    setSupportLoading(true);
+    try {
+      const source = claims.superAdmin || claims.staffRole
+        ? collection(db, "supportTickets")
+        : query(collection(db, "supportTickets"), where("customerUid", "==", user.uid));
+      const snapshot = await getDocs(source);
+      setSupportTickets(snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+        .sort((a,b) => (b.updatedAt?.seconds || b.createdAt?.seconds || 0) - (a.updatedAt?.seconds || a.createdAt?.seconds || 0)));
+    } catch (err) { setError(err.message || "Could not load support requests."); }
+    finally { setSupportLoading(false); }
+  }
+
+  async function submitSupportTicket(e) {
+    e.preventDefault();
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    const subject = supportForm.subject.trim();
+    const body = supportForm.message.trim();
+    if (subject.length < 4 || body.length < 10) { setError("Enter a clear subject and a message of at least 10 characters."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await addDoc(collection(db, "supportTickets"), {
+        customerUid: user.uid, customerName: user.displayName || profileForm.displayName || "",
+        customerEmail: user.email || "", category: supportForm.category, subject,
+        message: body, status: "open", staffReply: "", createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      setSupportForm({ category: "Order enquiry", subject: "", message: "" });
+      setMessage("Your support request has been sent. Keep its reference in this dashboard and check back for a reply.");
+      await loadSupportTickets();
+    } catch (err) { setError(err.message || "Could not submit your support request."); }
+    finally { setBusy(false); }
+  }
+
+  async function replyToSupportTicket(ticket) {
+    if (!(claims.superAdmin || claims.staffRole) || !ticket?.id) return;
+    const reply = (window.prompt("Write a reply visible to this customer:", ticket.staffReply || "") || "").trim();
+    if (!reply) return;
+    if (reply.length > 2000) { setError("The reply must be 2,000 characters or fewer."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "supportTickets", ticket.id), {
+        staffReply: reply, status: ticket.status === "closed" ? "closed" : "in_progress",
+        repliedBy: user.uid, repliedAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setMessage("Your reply has been saved to the customer's support request.");
+      await loadSupportTickets();
+    } catch (err) { setError(err.message || "Could not save the support reply."); }
+    finally { setBusy(false); }
+  }
+
+  async function updateSupportStatus(ticket, status) {
+    if (!(claims.superAdmin || claims.staffRole) || !ticket?.id || !["open","in_progress","closed"].includes(status)) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "supportTickets", ticket.id), { status, updatedAt: serverTimestamp(), statusUpdatedBy: user.uid });
+      setSupportTickets(items => items.map(item => item.id === ticket.id ? { ...item, status } : item));
+      setMessage("Support request status updated.");
+    } catch (err) { setError(err.message || "Could not update support request."); }
     finally { setBusy(false); }
   }
 
@@ -1025,7 +1091,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadPayments(); loadPaymentDeclarations(); loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadSupportTickets(); loadPayments(); loadPaymentDeclarations(); loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   const financeNow=new Date();
   const financeBounds=(()=>{let a=new Date(financeNow.getFullYear(),financeNow.getMonth(),1),b=new Date(financeNow.getFullYear(),financeNow.getMonth()+1,0,23,59,59,999);if(financePeriod==="today"){a=new Date();a.setHours(0,0,0,0);b=new Date();b.setHours(23,59,59,999);}else if(financePeriod==="yesterday"){a=new Date();a.setDate(a.getDate()-1);a.setHours(0,0,0,0);b=new Date(a);b.setHours(23,59,59,999);}else if(financePeriod==="week"){a=new Date();a.setDate(a.getDate()-(a.getDay()+6)%7);a.setHours(0,0,0,0);b=new Date(a);b.setDate(b.getDate()+6);b.setHours(23,59,59,999);}else if(financePeriod==="lastMonth"){a=new Date(financeNow.getFullYear(),financeNow.getMonth()-1,1);b=new Date(financeNow.getFullYear(),financeNow.getMonth(),0,23,59,59,999);}else if(financePeriod==="year"){a=new Date(financeNow.getFullYear(),0,1);b=new Date(financeNow.getFullYear(),11,31,23,59,59,999);}else if(financePeriod==="custom"){a=new Date(financeStart+"T00:00:00");b=new Date(financeEnd+"T23:59:59.999");if(!financeStart||!financeEnd||Number.isNaN(a.getTime())||Number.isNaN(b.getTime())||a>b){a=new Date(8640000000000000);b=new Date(0);}}else if(financePeriod==="all"){a=new Date(0);b=new Date(8640000000000000);}return {start:a,end:b};})();
@@ -1159,6 +1225,22 @@ export default function Portal({ onClose }) {
           <p>{item.appointmentDate} at {item.appointmentTime}</p>{item.purpose && <p>{item.purpose}</p>}
           {claims.superAdmin ? <><label className="appointment-status">Booking status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateAppointment(item.id,e.target.value)}><option value="pending">Pending</option><option value="confirmed">Confirmed</option><option value="alternative_proposed">Alternative proposed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label><div className="appointment-alternative-form"><strong>Propose another date and time</strong><label>Alternative date<input type="date" min={localDateString()} value={appointmentEdits[item.id]?.proposedDate ?? item.proposedDate ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedDate:e.target.value}}))}/></label><label>Alternative time<input type="time" value={appointmentEdits[item.id]?.proposedTime ?? item.proposedTime ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],proposedTime:e.target.value}}))}/></label><label>Message to customer<textarea value={appointmentEdits[item.id]?.adminMessage ?? item.adminMessage ?? ""} onChange={e=>setAppointmentEdits(current=>({...current,[item.id]:{...current[item.id],adminMessage:e.target.value}}))} placeholder="Explain why an alternative is suggested"/></label><button type="button" disabled={busy} onClick={()=>proposeAppointmentAlternative(item)}>Send alternative proposal</button></div></> : <><span className="appointment-status-text">Status: {String(item.status || "pending").replaceAll("_"," ")}</span>{item.status === "alternative_proposed" && <div className="appointment-alternative-proposal"><strong>Alternative time proposed</strong><p>{item.proposedDate} at {item.proposedTime}</p>{item.adminMessage&&<p>{item.adminMessage}</p>}<button type="button" disabled={busy} onClick={()=>acceptAppointmentAlternative(item)}>Accept proposed time</button></div>}</>}
         </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
+      </section>
+      <section className="customer-management customer-self-service support-centre">
+        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Customer Support Centre" : "Help & Support"}</h3><p>{claims.superAdmin || claims.staffRole ? "Review customer enquiries and reply from the account portal." : "Send a private enquiry to the MR FOP team and check its response here."}</p></div><button type="button" onClick={loadSupportTickets} disabled={supportLoading}>{supportLoading ? "Loading…" : "Refresh requests"}</button></div>
+        {!claims.superAdmin && !claims.staffRole && <form className="portal-form" onSubmit={submitSupportTicket}>
+          <label>Enquiry category<select value={supportForm.category} onChange={e=>setSupportForm({...supportForm,category:e.target.value})}><option>Order enquiry</option><option>Appointment</option><option>Quotation or payment</option><option>Measurements or fitting</option><option>Fashion Institute</option><option>Complaint or other</option></select></label>
+          <label>Subject<input required minLength="4" maxLength="120" value={supportForm.subject} onChange={e=>setSupportForm({...supportForm,subject:e.target.value})} placeholder="Briefly describe what you need help with"/></label>
+          <label>Message<textarea required minLength="10" maxLength="2000" rows="4" value={supportForm.message} onChange={e=>setSupportForm({...supportForm,message:e.target.value})} placeholder="Explain your enquiry. Do not include passwords, bank PINs or card details."/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Sending…" : "Send support request"}</button>
+        </form>}
+        {supportLoading ? <p className="staff-empty">Loading support requests…</p> : supportTickets.length ? <div className="support-ticket-list">{supportTickets.map(ticket=><article className="support-ticket-card" key={ticket.id}>
+          <div className="support-ticket-heading"><div><strong>{ticket.subject}</strong><span>{ticket.customerName || ticket.customerEmail || "Customer"} · {ticket.category}</span></div><span className={"support-ticket-status status-"+(ticket.status||"open")}>{String(ticket.status||"open").replaceAll("_"," ")}</span></div>
+          <p>{ticket.message}</p>
+          {ticket.staffReply && <div className="support-ticket-reply"><strong>MR FOP team response</strong><p>{ticket.staffReply}</p></div>}
+          {(claims.superAdmin || claims.staffRole) && <div className="support-ticket-actions"><label>Status<select value={ticket.status||"open"} disabled={busy} onChange={e=>updateSupportStatus(ticket,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label><button type="button" disabled={busy} onClick={()=>replyToSupportTicket(ticket)}>{ticket.staffReply ? "Update reply" : "Reply to customer"}</button></div>}
+          <small>Reference: {ticket.id}</small>
+        </article>)}</div> : <p className="staff-empty">{claims.superAdmin || claims.staffRole ? "No customer support requests have been received." : "You have not sent a support request yet."}</p>}
       </section>
       {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
         <div className="customer-management-heading"><div><h3>Payment Management</h3><p>Record and review payments linked to customer orders</p></div><button type="button" onClick={loadPayments}>Refresh payments</button></div>
