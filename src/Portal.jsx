@@ -1251,8 +1251,9 @@ export default function Portal({ onClose }) {
 
   async function loadPayments() {
     if (!user) return;
+    if (claims.staffRole && claims.staffRole !== "finance" && !claims.superAdmin) { setPayments([]); return; }
     try {
-      const source = claims.superAdmin || claims.staffRole ? collection(db, "payments") : query(collection(db, "payments"), where("customerUid", "==", user.uid));
+      const source = claims.superAdmin || claims.staffRole === "finance" ? collection(db, "payments") : query(collection(db, "payments"), where("customerUid", "==", user.uid));
       const snapshot = await getDocs(source);
       setPayments(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load payment history."); }
@@ -1291,9 +1292,10 @@ export default function Portal({ onClose }) {
 
   async function loadPaymentDeclarations() {
     if (!user) return;
+    if (claims.staffRole && claims.staffRole !== "finance" && !claims.superAdmin) { setPaymentDeclarations([]); return; }
     setDeclarationsLoading(true);
     try {
-      const source = claims.superAdmin || claims.staffRole
+      const source = claims.superAdmin || claims.staffRole === "finance"
         ? collection(db, "paymentDeclarations")
         : query(collection(db, "paymentDeclarations"), where("customerUid", "==", user.uid));
       const snapshot = await getDocs(source);
@@ -1745,7 +1747,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor", "institute"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); loadPayments(); loadPaymentDeclarations(); loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor", "institute"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   useEffect(() => {
     if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
