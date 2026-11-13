@@ -10,6 +10,7 @@ import AppointmentCalendar from "./AppointmentCalendar.jsx";
 import MeasurementGuide from "./MeasurementGuide.jsx";
 import AIMeasurementAssistant from "./AIMeasurementAssistant.jsx";
 import WebsiteMediaManager from "./WebsiteMedia.jsx";
+import PrivacyRequestCenter from "./PrivacyRequestCenter.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -2236,6 +2237,7 @@ export default function Portal({ onClose }) {
           <p className="portal-hint">For your protection, the portal re-checks your current password with Firebase before saving the new one. If your account uses a non-password sign-in provider, use that provider's account-security settings instead.</p>
         </form>
       </section>
+      {(!claims.staffRole || claims.superAdmin) && <PrivacyRequestCenter user={user} claims={claims} />}
       <InstituteWorkspace />
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
