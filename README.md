@@ -192,3 +192,12 @@ The homepage uses its built-in FAQ list as a fallback. Super Admin and Fashion M
 ## Final acceptance testing
 
 A 22-case role-based acceptance test plan is maintained in docs/QA-TEST-PLAN.md. It is intentionally marked not run until the owner has configured the production Firebase project, published current Firestore rules, configured Drive/Apps Script and prepared separate test accounts. Passing the GitHub Actions build and static source checks does not count as passing the acceptance plan.
+
+
+## Product gallery and customisation
+
+The Super Admin product form supports a primary image plus up to eight additional HTTPS image views, available colours, fabric options and customisation options. Customer product cards let users switch between the saved image views and review the listed options. Existing product records can continue to receive stock adjustments even if they predate the optional gallery arrays. Product catalogue fields are protected by Firestore rules. The portal catalogue is not yet a complete public e-commerce checkout or live inventory reservation system.
+
+## Refund requests and manual refund recording
+
+Customers can submit one refund request per verified payment. Finance Officers and Super Admins can review, approve or reject a request. A refund can only be marked paid after it has been approved and a real transfer reference has been entered. This is a record of a manually completed bank transfer; the platform does not initiate or verify bank transfers. Refunds are not automatically netted from POS or statutory financial reports. Publish the latest Firestore rules before use.
