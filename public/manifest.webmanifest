@@ -7,5 +7,5 @@
   "display": "standalone",
   "background_color": "#f7f3ec",
   "theme_color": "#251018",
-  "icons": [{ "src": "/mrfob/brand-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "icons": [{ "src": "/mrfob/mr-fop-app-logo.webp", "sizes": "256x256", "type": "image/webp", "purpose": "any" }]
 }

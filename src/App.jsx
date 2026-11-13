@@ -109,7 +109,7 @@ export default function App() {
   return <div className="site-shell">
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
-      <a className="brand" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a>
+      <a className="brand" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a>
       <button className="mobile-menu" type="button" onClick={() => setMenu(!menu)} aria-label={menu ? "Close navigation" : "Open navigation"} aria-expanded={menu} aria-controls="primary-navigation">{menu ? <X/> : <Menu/>}</button>
       <nav id="primary-navigation" className={menu ? "nav nav-open" : "nav"}>
         <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#why-us" onClick={close}>Why MR FOP</a><a href="#how-to-order" onClick={close}>How to Order</a>
@@ -181,7 +181,7 @@ export default function App() {
         <div className="why-us-action"><p>Have a garment, group order or training goal in mind?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Talk to our team <ArrowUpRight size={17}/></a></div>
       </section>
       <section className="institute" id="institute"><div className="institute-photo"><img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85" alt="Fashion design and creative training" loading="lazy"/></div>
-        <div className="institute-content"><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
+        <div className="institute-content"><img className="institute-brand-logo" src="/mrfob/mr-fop-fashion-institute-logo.webp" alt="MR FOP Fashion Institute" /><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
           <p>Our Fashion Institute is the learning arm of MR FOP FASHIONS. Whether you are starting from the beginning or developing your craft, take the next step with practical fashion training.</p>
           <div className="training-points"><span><CheckCircle2/> Online learning pathway</span><span><CheckCircle2/> Onsite practical training</span><span><CheckCircle2/> Guided professional development</span></div>
           <div className="institute-actions"><a href={wa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
@@ -253,7 +253,7 @@ export default function App() {
       </div>
     </section>
     <CertificateVerification />
-    <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
+    <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image brand-image-footer" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
     <button className="music-toggle" type="button" onClick={() => setMusicNotice(true)} aria-haspopup="dialog" aria-expanded={musicNotice}> <Play size={14}/> BRAND MUSIC</button>

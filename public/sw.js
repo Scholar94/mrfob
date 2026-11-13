@@ -1,5 +1,5 @@
-const CACHE = "mrfob-shell-v2";
-const SHELL = ["/mrfob/", "/mrfob/offline.html", "/mrfob/manifest.webmanifest", "/mrfob/brand-mark.svg"];
+const CACHE = "mrfob-shell-v3";
+const SHELL = ["/mrfob/", "/mrfob/offline.html", "/mrfob/manifest.webmanifest", "/mrfob/mr-fop-app-logo.webp", "/mrfob/mr-fop-website-logo.webp", "/mrfob/mr-fop-fashion-institute-logo.webp"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));

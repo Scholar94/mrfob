@@ -731,7 +731,7 @@ export default function InstituteWorkspace() {
 
   if (!user) return null;
   return <section className="institute-workspace">
-    <div className="customer-management-heading"><div><h3>MR FOP Fashion Institute</h3><p>Courses, training intakes and admission applications</p></div><button type="button" onClick={load}>Refresh institute</button></div>
+    <div className="customer-management-heading institute-workspace-heading"><div><img className="institute-workspace-logo" src="/mrfob/mr-fop-fashion-institute-logo.webp" alt="MR FOP Fashion Institute" /><h3>MR FOP Fashion Institute</h3><p>Courses, training intakes and admission applications</p></div><button type="button" onClick={load}>Refresh institute</button></div>
     {error && <p className="portal-error">{error}</p>}{notice && <p className="portal-success">{notice}</p>}
     <section className="institute-window-list">
       <h4>Institute announcements</h4>
