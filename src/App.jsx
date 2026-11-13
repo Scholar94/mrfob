@@ -150,7 +150,7 @@ export default function App() {
         <a href="#institute" onClick={close}>Fashion Institute</a><a href="#about" onClick={close}>About</a><a href="#story" onClick={close}>Our Story</a>
         <a href="#contact" onClick={close}>Contact</a>
         <button className="account-cta" onClick={() => {setPortalOpen(true);close();}}><UserRound size={15}/> My Account</button>
-        <a className="nav-cta" href={wa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
+        <a className="nav-cta" href={companyWa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
       </nav>
     </header>
     <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -182,7 +182,7 @@ export default function App() {
       </section>
       <section className="collections section-pad" id="collections">
         <div className="section-heading"><div><p className="eyebrow"><i/> MADE FOR YOUR MOMENTS</p><h2>Find your <em>signature.</em></h2></div><p>Explore expressions of style, made with care and finished with intention.</p></div>
-        <div className="collection-grid">{collections.map(item => <a className="collection-card" href={wa} target="_blank" rel="noreferrer" key={item.name}>
+        <div className="collection-grid">{collections.map(item => <a className="collection-card" href={companyWa} target="_blank" rel="noreferrer" key={item.name}>
           <img src={item.image} alt={item.name} loading="lazy"/><div className="collection-overlay"/><span className="collection-type">{item.type}</span>
           <div className="collection-info"><div><h3>{item.name}</h3><p>{item.tag}</p></div><span className="collection-arrow"><ArrowUpRight/></span></div>
         </a>)}</div>
@@ -212,13 +212,13 @@ export default function App() {
           <article><span>05</span><div><h3>A guided customer journey</h3><p>Customers can use the account portal to submit requests, keep measurement profiles and follow available order and appointment updates.</p></div></article>
           <article><span>06</span><div><h3>Direct communication</h3><p>Speak with the team about your needs, ask questions and clarify the next steps before a project is accepted.</p></div></article>
         </div>
-        <div className="why-us-action"><p>Have a garment, group order or training goal in mind?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Talk to our team <ArrowUpRight size={17}/></a></div>
+        <div className="why-us-action"><p>Have a garment, group order or training goal in mind?</p><a className="button button-gold" href={companyWa} target="_blank" rel="noreferrer">Talk to our team <ArrowUpRight size={17}/></a></div>
       </section>
       <section className="institute" id="institute"><div className="institute-photo"><img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85" alt="Fashion design and creative training" loading="lazy"/></div>
         <div className="institute-content"><img className="institute-brand-logo" src="/mrfob/mr-fop-fashion-institute-logo.webp" alt="MR FOP Fashion Institute" /><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
           <p>Our Fashion Institute is the learning arm of MR FOP FASHIONS. Whether you are starting from the beginning or developing your craft, take the next step with practical fashion training.</p>
           <div className="training-points"><span><CheckCircle2/> Online learning pathway</span><span><CheckCircle2/> Onsite practical training</span><span><CheckCircle2/> Guided professional development</span></div>
-          <div className="institute-actions"><a href={wa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
+          <div className="institute-actions"><a href={companyWa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
         </div>
       </section>
       <section className="industrial section-pad" id="industrial">
@@ -255,7 +255,7 @@ export default function App() {
           <article><span>04</span><h3>Confirm and create</h3><p>After the agreed details and payment arrangements are confirmed, the order can move into production.</p></article>
           <article><span>05</span><h3>Fitting and collection</h3><p>We coordinate any required fitting, agreed adjustments and collection or delivery arrangements with you.</p></article>
         </div>
-        <div className="order-steps-action"><p>Ready to discuss a bespoke or group order?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Discuss your order <ArrowUpRight size={17}/></a></div>
+        <div className="order-steps-action"><p>Ready to discuss a bespoke or group order?</p><a className="button button-gold" href={companyWa} target="_blank" rel="noreferrer">Discuss your order <ArrowUpRight size={17}/></a></div>
       </section>
       {publicReviews.length > 0 && <section className="testimonials section-pad" id="customer-stories">
         <div className="section-heading"><div><p className="eyebrow"><i/> CUSTOMER EXPERIENCES</p><h2>Words from our <em>customers.</em></h2></div><p>Reviews are shared only after a completed order and administrative moderation.</p></div>
@@ -284,7 +284,7 @@ export default function App() {
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
       </section>
       <section className="contact section-pad" id="contact"><div><p className="eyebrow light"><i/> YOUR NEXT LOOK STARTS HERE</p><h2>Let's create<br/><em>something remarkable.</em></h2></div>
-        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><a className="contact-detail" href={"tel:" + companyPhone.replace(/[^+0-9]/g,"")}><Phone size={15}/> {companyPhone}</a><a className="contact-detail" href={"mailto:" + companyEmail}><MessageCircle size={15}/> {companyEmail}</a><div className="contact-detail contact-address"><span>VISIT US</span><p>{companyAddress}</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>{companyHours}</p></div></div>
+        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={companyWa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><a className="contact-detail" href={"tel:" + companyPhone.replace(/[^+0-9]/g,"")}><Phone size={15}/> {companyPhone}</a><a className="contact-detail" href={"mailto:" + companyEmail}><MessageCircle size={15}/> {companyEmail}</a><div className="contact-detail contact-address"><span>VISIT US</span><p>{companyAddress}</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>{companyHours}</p></div></div>
       </section>
     </main>
     <section className="location section-pad" id="location">
