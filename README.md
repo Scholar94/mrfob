@@ -157,3 +157,8 @@ The public homepage includes a live fabric gallery backed by the Firestore `fabr
 ## Customer loyalty and VIP benefits
 
 The account portal now includes a customer-benefits panel. Super Admin can set a customer tier (Standard, Silver, Gold or VIP), an approved discount percentage (0–50%), priority-support access and manual loyalty-point adjustments. Point changes are written to an append-only `loyaltyTransactions` history so customers can see the recorded reason and points movement. Customers can read only their own benefits and points history. Automatic purchase-based or referral-based point accrual is not enabled; points are currently managed manually. Publish the latest Firestore rules before use.
+
+
+## Private payment evidence
+
+Customer bank-transfer declarations require a JPG, PNG, WebP or PDF payment receipt (maximum 15 MB). The browser uploads the file directly to Google Drive using the customer's Drive authorization and shares it with the company account `mrfopvi@gmail.com`. Firestore stores only the private Drive file ID, metadata and view link. The evidence is visible in the customer declaration history and to authorized Finance Officer/Super Admin reviewers. A receipt upload never marks a payment as paid; Finance must independently verify the bank transaction and approve the declaration. Staff Google Drive access and the current Firestore rules must be configured before use.
