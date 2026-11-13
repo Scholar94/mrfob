@@ -57,6 +57,10 @@
 
 ## Work log
 
+- **2026-11-13 — Customer data portability export:** added a customer-only JSON export generated from the signed-in user's own Firestore records: profile, orders and production events, appointments, measurements, Fashion Institute enquiries, payments, payment declarations and support requests. Firestore queries are scoped to the authenticated UID; timestamps are converted to ISO strings; the download warns that measurements and financial details are sensitive. The export explicitly states its scope and exclusions and is not represented as a complete company backup or account-deletion tool. Build, deployment and live ownership-permission verification pending.
+
+
+
 - **2026-11-13 — Customer support request centre:** customers can submit a private support request with category, subject and message, then refresh to view the staff response and status. Super Admin and staff can review requests, update status and save a customer-visible reply. Firestore rules enforce customer ownership on creation/read and restrict replies/status changes to authorized staff; Super Admin alone can delete. This is an in-app support thread, not push/email/SMS notification, and it currently has no attachments, unread counters or response-time automation. Publish the latest Firestore rules before using the feature. Build, deployment and live customer/staff authorization checks remain pending.
 
 
