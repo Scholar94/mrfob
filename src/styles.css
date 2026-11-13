@@ -495,3 +495,6 @@ button:disabled{cursor:not-allowed}
 .certificate-verify-result>p{font-size:10px;line-height:1.7;color:#746b68}
 .certificate-public-reference{font-size:11px;color:#746b68;overflow-wrap:anywhere}
 @media(max-width:560px){.certificate-verification-form{grid-template-columns:1fr}.certificate-verification-form label{grid-column:auto}.certificate-verification-form button{width:100%}.certificate-verify-result dl{grid-template-columns:1fr}}
+
+.certificate-sync-button{display:inline-flex;margin:8px 0 4px;padding:9px 12px;border:1px solid #bda77e;border-radius:5px;background:#fff;color:#624b2d;font-size:10px;font-weight:700;cursor:pointer}
+.certificate-sync-button:disabled{opacity:.55}
