@@ -1767,7 +1767,8 @@ export default function Portal({ onClose }) {
         <article className="dashboard-tile"><strong>{payments.length}</strong><span>Payment transactions</span><small>My Payments</small></article>
         <article className="dashboard-tile"><strong>{products.filter(item=>item.active!==false).length}</strong><span>Products available to browse</span><small>Product Catalogue</small></article>
       </div>}
-      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-notifications">
+      {!claims.superAdmin && !claims.staffRole && <> 
+      <section className="customer-management customer-notifications">
         <div className="customer-management-heading"><div><h3>Account &amp; order notifications</h3><p>Updates about production, quotations, payments, appointments, support requests and Fashion Institute enquiries</p></div><button type="button" onClick={markAllCustomerNotificationsRead} disabled={busy || !customerNotifications.some(item => !item.readAt)}>Mark all as read</button></div>
         {customerNotifications.length ? <><div className="customer-notification-list">{customerNotifications.slice(0, notificationLimit).map(item=><article className={`customer-notification ${item.readAt ? "is-read" : "is-unread"}`} key={item.id}><div><strong>{item.title || "Order update"}</strong><small>{item.orderNumber ? "Order " + item.orderNumber : item.supportTicketId ? "Support request " + item.supportTicketId : "Account update"} · {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString() : "Recently"}</small><p>{item.message}</p></div>{!item.readAt && <button type="button" onClick={()=>markCustomerNotificationRead(item)}>Mark read</button>}</article>)}</div>{customerNotifications.length > notificationLimit && <button type="button" className="portal-secondary-action" onClick={() => setNotificationLimit(limit => limit + 20)}>Show older notifications ({customerNotifications.length - notificationLimit} remaining)</button>}</> : <p className="staff-empty">You have no notifications yet. Important account and service updates will appear here.</p>}
       </section>
@@ -1782,7 +1783,8 @@ export default function Portal({ onClose }) {
           <button type="button" className="portal-secondary-action" onClick={exportMyData} disabled={busy}>Download a copy of my customer data</button>
           <p className="portal-hint">Your export may contain private contact details, orders, payments and body measurements. Keep it somewhere secure.</p>
         </form>
-      </section>}
+      </section>
+      </>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>Request a Custom Order</h3><p>Send your garment requirements for review and quotation</p></div></div>
         <form className="portal-form" onSubmit={submitCustomerOrder}>
