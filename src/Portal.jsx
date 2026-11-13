@@ -249,6 +249,65 @@ export default function Portal({ onClose }) {
     finally { setProfileLoading(false); }
   }
 
+  function makeExportSafe(value) {
+    if (value == null) return value;
+    if (typeof value?.toDate === "function") return value.toDate().toISOString();
+    if (Array.isArray(value)) return value.map(makeExportSafe);
+    if (typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key,item]) => [key, makeExportSafe(item)]));
+    return value;
+  }
+
+  async function exportMyData() {
+    if (!user || claims.superAdmin || claims.staffRole) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const ownQuery = async (collectionName, field = "customerUid") => {
+        const snapshot = await getDocs(query(collection(db, collectionName), where(field, "==", user.uid)));
+        return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+      };
+      const [profileSnapshot, orderRows, appointmentRows, measurementRows, trainingRows, paymentRows, declarationRows, supportRows] = await Promise.all([
+        getDoc(doc(db, "users", user.uid)),
+        ownQuery("orders"),
+        ownQuery("appointments"),
+        ownQuery("measurements"),
+        ownQuery("trainingEnquiries"),
+        ownQuery("payments"),
+        ownQuery("paymentDeclarations"),
+        ownQuery("supportTickets")
+      ]);
+      const ordersWithEvents = await Promise.all(orderRows.map(async order => {
+        const eventSnapshot = await getDocs(collection(db, "orders", order.id, "events"));
+        return { ...order, events: eventSnapshot.docs.map(event => ({ id: event.id, ...event.data() })) };
+      }));
+      const exportData = {
+        exportName: "MR FOP FASHIONS customer data export",
+        exportedAt: new Date().toISOString(),
+        account: { uid: user.uid, email: user.email || "", emailVerified: !!user.emailVerified, authDisplayName: user.displayName || "" },
+        profile: profileSnapshot.exists() ? profileSnapshot.data() : null,
+        orders: ordersWithEvents,
+        appointments: appointmentRows,
+        measurements: measurementRows,
+        trainingEnquiries: trainingRows,
+        payments: paymentRows,
+        paymentDeclarations: declarationRows,
+        supportTickets: supportRows,
+        scopeNote: "This export contains the customer account and records available through the customer portal at export time. It does not include private staff notes, internal finance records, records stored in external services, or files that are not stored in these Firestore records."
+      };
+      const json = JSON.stringify(makeExportSafe(exportData), null, 2);
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "MR-FOP-my-data-" + localDateString() + ".json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage("Your customer data export has been prepared. Store the downloaded file securely because it contains personal and measurement information.");
+    } catch (err) { setError(err.message || "Could not prepare your data export. Please try again."); }
+    finally { setBusy(false); }
+  }
+
   async function saveMyProfile(e) {
     e.preventDefault();
     if (!user || claims.superAdmin || claims.staffRole) return;
@@ -1131,6 +1190,8 @@ export default function Portal({ onClose }) {
           <label>Phone number<input value={profileForm.phone} onChange={e=>setProfileForm({...profileForm,phone:e.target.value})} placeholder="Your contact number"/></label>
           <label>Address<textarea value={profileForm.address} onChange={e=>setProfileForm({...profileForm,address:e.target.value})} placeholder="Your delivery or contact address"/></label>
           <button className="portal-submit" disabled={busy || profileLoading}>{busy ? "Saving…" : "Save my profile"}</button>
+          <button type="button" className="portal-secondary-action" onClick={exportMyData} disabled={busy}>Download a copy of my customer data</button>
+          <p className="portal-hint">Your export may contain private contact details, orders, payments and body measurements. Keep it somewhere secure.</p>
         </form>
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
