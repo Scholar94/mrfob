@@ -579,8 +579,22 @@ export default function Portal({ onClose }) {
     if (amount <= 0) { setError("Enter at least one quotation amount greater than zero."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
+      const orderRef = doc(db, "orders", order.id);
+      const noticeRef = doc(collection(db, "notifications"));
       const patch = { amount, quotationItems, quotationNote: (edit.note || "").trim(), quotationStatus: "sent", quotationSentAt: serverTimestamp(), paymentStatus: "awaiting_customer_approval", updatedAt: serverTimestamp() };
-      await updateDoc(doc(db, "orders", order.id), patch);
+      await runTransaction(db, async transaction => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists()) throw new Error("This order no longer exists.");
+        if (orderSnap.data().customerUid !== order.customerUid) throw new Error("The order customer changed. Refresh and try again.");
+        transaction.update(orderRef, patch);
+        transaction.set(noticeRef, {
+          customerUid: orderSnap.data().customerUid, orderId: order.id,
+          type: "quotation_update", quotationStatus: "sent",
+          title: "Your quotation is ready for review",
+          message: "A quotation has been prepared for your order. Sign in to review the itemised amount and accept or decline it.",
+          createdAt: serverTimestamp(), readAt: null
+        });
+      });
       setOrders(items => items.map(item => item.id === order.id ? { ...item, ...patch, quotationSentAt: new Date() } : item));
       setMessage("Quotation sent to the customer for approval.");
     } catch (err) { setError(err.message || "Could not send the quotation."); }
@@ -591,7 +605,22 @@ export default function Portal({ onClose }) {
     if (!user || !order?.id || order.customerUid !== user.uid || order.quotationStatus !== "sent" || !["accepted", "declined"].includes(decision)) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "orders", order.id), { quotationStatus: decision, updatedAt: serverTimestamp() });
+      const orderRef = doc(db, "orders", order.id);
+      const noticeRef = doc(collection(db, "notifications"));
+      await runTransaction(db, async transaction => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists() || orderSnap.data().customerUid !== user.uid || orderSnap.data().quotationStatus !== "sent") {
+          throw new Error("This quotation is no longer awaiting your response. Refresh the order.");
+        }
+        transaction.update(orderRef, { quotationStatus: decision, updatedAt: serverTimestamp() });
+        transaction.set(noticeRef, {
+          customerUid: user.uid, orderId: order.id,
+          type: "quotation_update", quotationStatus: decision,
+          title: decision === "accepted" ? "Quotation acceptance recorded" : "Quotation response recorded",
+          message: decision === "accepted" ? "Your acceptance has been saved. The team can now proceed with deposit and production arrangements." : "Your decision to decline the quotation has been saved. The team can follow up with you.",
+          createdAt: serverTimestamp(), readAt: null
+        });
+      });
       setMyOrders(items => items.map(item => item.id === order.id ? { ...item, quotationStatus: decision } : item));
       setMessage(decision === "accepted" ? "You accepted the quotation. The team can now confirm the deposit and production arrangements." : "You declined the quotation. The team will contact you to discuss next steps.");
     } catch (err) { setError(err.message || "Could not submit your quotation response."); }
