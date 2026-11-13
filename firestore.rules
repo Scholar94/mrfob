@@ -1046,6 +1046,31 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || hasStaffRole(['manager']);
     }
 
+    match /privacyRequests/{requestId} {
+      allow create: if signedIn()
+        && roleOf(request.auth.uid) == 'customer'
+        && request.resource.data.keys().hasOnly(['customerUid','customerEmail','requestType','details','status','staffNote','createdAt','updatedAt'])
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerEmail == request.auth.token.email
+        && request.resource.data.requestType in ['access','correction','deletion']
+        && request.resource.data.details is string
+        && request.resource.data.details.size() >= 10
+        && request.resource.data.details.size() <= 1500
+        && request.resource.data.status == 'received'
+        && request.resource.data.staffNote == ''
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin());
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','staffNote','reviewedBy','updatedAt'])
+        && request.resource.data.status in ['received','reviewing','completed','unable_to_fulfil']
+        && request.resource.data.staffNote is string
+        && request.resource.data.staffNote.size() <= 1500
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
