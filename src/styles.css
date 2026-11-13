@@ -622,3 +622,6 @@ button:disabled{cursor:not-allowed}
 .production-photo-grid figcaption small{display:block;opacity:.75;font-size:.78rem}
 .production-photo-upload{display:block;grid-column:1/-1}
 .production-photo-upload input{display:block;width:100%;margin-top:7px}
+
+/* Google Drive production media */
+.production-photo-grid iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#111}.production-photo-grid img{max-width:100%;height:auto;object-fit:cover}
