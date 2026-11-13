@@ -73,6 +73,8 @@ export default function AppointmentCalendar({ appointments = [] }) {
         <div><strong>{item.appointmentTime || "Time not set"} · {item.service || "Appointment"}</strong><span>{item.customerName || item.customerEmail || "Customer"}</span></div>
         <span className={`appointment-calendar-status status-${item.status || "pending"}`}>{statusLabel(item.status)}</span>
         {item.purpose && <p>{item.purpose}</p>}
+        {item.assignedDesignerName && <p>Designer: {item.assignedDesignerName}</p>}
+        {item.orderNumber && <p>Related order: {item.orderNumber}</p>}
         {item.adminMessage && <p>Team message: {item.adminMessage}</p>}
       </article>) : <p className="appointment-calendar-empty-state">No bookings for this date. Select another date to review its schedule.</p>}
     </div>
