@@ -206,3 +206,8 @@ Customers can submit one refund request per verified payment. Finance Officers a
 ## Firestore security regression tests
 
 The GitHub Actions deployment workflow starts the local Firestore Emulator and runs `scripts/verify-firestore-rules.mjs`. The focused tests cover customer-owned privacy requests, the one-refund-per-payment lifecycle and Finance review, referral ownership, public/archived fabric visibility, product gallery writes and the deny-by-default rule. The emulator test suite does not yet cover every collection or every role combination. It does not publish rules to the production Firebase project.
+
+
+## Institute learner withdrawal
+
+Institute Administrators, Managers and the Super Admin can withdraw an admitted learner with verified paid enrolment. The action atomically updates the enrolment and application status and releases one place in the intake. Firestore lesson access is denied for withdrawn enrolments even though the historical payment record remains paid. The app then attempts to revoke direct Google Drive lesson permissions; inherited permissions may remain and Drive failures must be retried manually. Withdrawal is not a refund. Refunds are handled separately.
