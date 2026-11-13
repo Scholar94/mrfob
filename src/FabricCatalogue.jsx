@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 
 const emptyForm = { name: "", color: "", texture: "", priceRange: "", availability: "available", suitableCategories: "", imageUrl: "", active: true };
 
-export default function FabricCatalogue({ admin = false, user = null }) {
+export default function FabricCatalogue({ admin = false, user = null, claims = {} }) {
   const [fabrics, setFabrics] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
@@ -40,6 +41,7 @@ export default function FabricCatalogue({ admin = false, user = null }) {
     try {
       if (editingId) await updateDoc(doc(db, "fabrics", editingId), payload);
       else await addDoc(collection(db, "fabrics"), { ...payload, createdAt: serverTimestamp(), createdBy: user.uid });
+      await recordAuditEvent({ user, claims, action: editingId ? "fabric_updated" : "fabric_created", entityType: "fabric", entityId: editingId || "new", summary: (editingId ? "Updated fabric " : "Created fabric ") + name + "." });
       setForm(emptyForm); setEditingId(""); setNotice(editingId ? "Fabric record updated." : "Fabric added to the catalogue.");
       await refresh();
     } catch (err) { setError(err.message || "Could not save this fabric."); }
@@ -54,7 +56,7 @@ export default function FabricCatalogue({ admin = false, user = null }) {
   async function archive(item) {
     if (!admin || !window.confirm("Remove this fabric from the public catalogue? The record will be archived, not deleted.")) return;
     setBusy(true); setError(""); setNotice("");
-    try { await updateDoc(doc(db, "fabrics", item.id), { active: false, updatedAt: serverTimestamp() }); setNotice("Fabric archived from the public catalogue."); await refresh(); }
+    try { await updateDoc(doc(db, "fabrics", item.id), { active: false, updatedAt: serverTimestamp() }); await recordAuditEvent({ user, claims, action: "fabric_archived", entityType: "fabric", entityId: item.id, summary: "Archived fabric " + item.name + "." }); setNotice("Fabric archived from the public catalogue."); await refresh(); }
     catch (err) { setError(err.message || "Could not archive this fabric."); }
     finally { setBusy(false); }
   }
