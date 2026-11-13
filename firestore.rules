@@ -581,7 +581,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['assignmentId','courseId','assignmentTitle','studentUid','studentName','answer','status','submittedAt','createdAt','updatedAt']);
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId));
-      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
+      allow update: if (resource.data.gradingMode != 'automatic')
+        && (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','score','maxScore','feedback','gradedBy','gradedAt','updatedAt'])
         && request.resource.data.status == 'graded'
         && exists(/databases/$(database)/documents/instituteAssignments/$(resource.data.assignmentId))
@@ -808,6 +809,7 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId))
         && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.courseId == request.resource.data.courseId
         && get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.published == true
+        && (!get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.keys().hasAny(['assessmentType']) || get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.assessmentType == 'written')
         && (!get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.keys().hasAny(['dueAt']) || get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.dueAt == null || request.time <= get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.dueAt)
         && request.resource.data.answers.size() == get(/databases/$(database)/documents/instituteAssessments/$(request.resource.data.assessmentId)).data.questions.size()
         && request.resource.data.keys().hasOnly(['assessmentId','courseId','assessmentTitle','studentUid','studentName','answers','status','submittedAt','createdAt','updatedAt'])
