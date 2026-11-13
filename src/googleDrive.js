@@ -175,3 +175,41 @@ export async function shareDriveFileWithEmail(fileId, emailAddress, scope = "htt
     body: JSON.stringify({ type: "user", role: "reader", emailAddress: email })
   }, scope);
 }
+
+
+/**
+ * Removes direct user permissions for one email from a list of lesson files.
+ * Inherited permissions are intentionally left untouched because Drive does
+ * not allow an inherited permission to be removed at the child file.
+ */
+export async function revokeDriveFileAccessForEmail(fileIds, emailAddress) {
+  const email = String(emailAddress || "").trim().toLowerCase();
+  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    throw new Error("A valid student email is required to revoke Drive access.");
+  }
+  const ids = [...new Set((Array.isArray(fileIds) ? fileIds : [fileIds]).map(value => String(value || "").trim()).filter(Boolean))];
+  let revoked = 0;
+  let skippedInherited = 0;
+  for (const id of ids) {
+    let pageToken = "";
+    do {
+      const params = new URLSearchParams({ fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails(inherited))", pageSize: "100" });
+      if (pageToken) params.set("pageToken", pageToken);
+      const result = await driveRequest("/files/" + encodeURIComponent(id) + "/permissions?" + params.toString());
+      const matches = (result.permissions || []).filter(permission =>
+        permission.type === "user" &&
+        String(permission.emailAddress || "").trim().toLowerCase() === email
+      );
+      for (const permission of matches) {
+        if (permission.permissionDetails?.some(detail => detail.inherited)) {
+          skippedInherited += 1;
+          continue;
+        }
+        await driveRequest("/files/" + encodeURIComponent(id) + "/permissions/" + encodeURIComponent(permission.id), { method: "DELETE" });
+        revoked += 1;
+      }
+      pageToken = result.nextPageToken || "";
+    } while (pageToken);
+  }
+  return { revoked, skippedInherited, filesChecked: ids.length };
+}
