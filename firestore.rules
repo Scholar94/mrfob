@@ -1088,6 +1088,23 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /auditLogs/{auditId} {
+      allow create: if signedIn()
+        && (isSuperAdmin() || isStaff() || isFinanceOfficer() || roleOf(request.auth.uid) == 'instructor')
+        && request.resource.data.keys().hasOnly(['actorUid','actorRole','action','entityType','entityId','summary','createdAt'])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorRole == roleOf(request.auth.uid)
+        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated']
+        && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile']
+        && request.resource.data.entityId is string
+        && request.resource.data.entityId.size() <= 150
+        && request.resource.data.summary is string
+        && request.resource.data.summary.size() <= 500
+        && request.resource.data.createdAt is timestamp;
+      allow read: if isSuperAdmin();
+      allow update, delete: if false;
+    }
+
     match /corporateRequests/{requestId} {
       allow create: if signedIn()
         && roleOf(request.auth.uid) == 'customer'
