@@ -157,6 +157,7 @@ export default function Portal({ onClose }) {
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [favouriteProductIds, setFavouriteProductIds] = useState([]);
   const [sales, setSales] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -1512,8 +1513,30 @@ export default function Portal({ onClose }) {
     try {
       const snapshot = await getDocs(collection(db, "products"));
       setProducts(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.name || "").localeCompare(b.name || "")));
+      if (!claims.staffRole && !claims.superAdmin) {
+        const favourites = await getDocs(collection(db, "customerFavourites", user.uid, "items"));
+        setFavouriteProductIds(favourites.docs.map(item => item.id));
+      }
     } catch (err) { setError(err.message || "Could not load products."); }
     finally { setProductsLoading(false); }
+  }
+
+  async function toggleProductFavourite(product) {
+    if (!user || claims.staffRole || claims.superAdmin || !product?.id) return;
+    setError(""); setMessage("");
+    const favouriteRef = doc(db, "customerFavourites", user.uid, "items", product.id);
+    const alreadySaved = favouriteProductIds.includes(product.id);
+    try {
+      if (alreadySaved) {
+        await deleteDoc(favouriteRef);
+        setFavouriteProductIds(current => current.filter(id => id !== product.id));
+        setMessage(product.name + " removed from your saved designs.");
+      } else {
+        await setDoc(favouriteRef, { customerUid: user.uid, productId: product.id, productName: product.name || "", createdAt: serverTimestamp() });
+        setFavouriteProductIds(current => [...current, product.id]);
+        setMessage(product.name + " saved to your favourites.");
+      }
+    } catch (err) { setError(err.message || "Could not update your saved designs."); }
   }
 
   async function createProduct(e) {
@@ -2069,7 +2092,7 @@ export default function Portal({ onClose }) {
         <div className="customer-management-heading"><div><h3>Product Catalogue</h3><p>Browse products and current availability</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh catalogue"}</button></div>
         {productsLoading ? <p className="staff-empty">Loading products…</p> : products.filter(product=>product.active !== false).length ? <div className="inventory-list">{products.filter(product=>product.active !== false).map(product=><article className="inventory-card customer-product-card" key={product.id}>
           {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
-          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span></div>
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button></div>
         </article>)}</div> : <p className="staff-empty">Our product catalogue is being updated. Please check again soon.</p>}
       </section>}
       {claims.superAdmin && <section className="customer-management">
