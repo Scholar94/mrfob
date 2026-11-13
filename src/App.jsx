@@ -40,6 +40,7 @@ export default function App() {
   const [initialPortalSection, setInitialPortalSection] = useState("");
   const [policyOpen, setPolicyOpen] = useState("");
   const [publicReviews, setPublicReviews] = useState([]);
+  const [publicFaqs, setPublicFaqs] = useState([]);
   const [companyProfile, setCompanyProfile] = useState({});
   const companyName = companyProfile.companyName || "MR FOP FASHIONS COMPANY NIGERIA LIMITED";
   const companyPhone = companyProfile.phone || "+234 805 547 2913";
@@ -101,6 +102,16 @@ export default function App() {
     }
     document.title = "Page Not Found | MR FOP FASHIONS";
     window.requestAnimationFrame(() => document.getElementById("home")?.scrollIntoView({ behavior: "auto" }));
+  }, []);
+  useEffect(() => {
+    if (!firebaseReady || !db) return;
+    let active = true;
+    getDocs(query(collection(db, "publicFAQs"), where("active", "==", true)))
+      .then(snapshot => {
+        if (active) setPublicFaqs(snapshot.docs.map(row => ({ id: row.id, ...row.data() })).sort((a,b) => Number(a.order || 0) - Number(b.order || 0)));
+      })
+      .catch(() => { if (active) setPublicFaqs([]); });
+    return () => { active = false; };
   }, []);
   useEffect(() => {
     if (!firebaseReady || !db) return;
@@ -331,8 +342,8 @@ export default function App() {
       </section>}
       <section className="faq section-pad" id="faq">
         <div className="section-heading"><div><p className="eyebrow"><i/> GOOD TO KNOW</p><h2>Frequently asked <em>questions.</em></h2></div><p>Helpful information before you place a request or visit the fashion house.</p></div>
-        <div className="faq-list">
-          <details><summary>How do I place a bespoke clothing order?</summary><p>Open My Account to submit a custom order request, or contact the team on WhatsApp. Share the garment type, fabric and colour preferences, quantity, measurement arrangement and your preferred date. The team will review the request and provide a quotation where applicable.</p></details>
+        {publicFaqs.length ? <div className="faq-list">{publicFaqs.map(item => <details key={item.id}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div> : <div className="faq-list">
+<details><summary>How do I place a bespoke clothing order?</summary><p>Open My Account to submit a custom order request, or contact the team on WhatsApp. Share the garment type, fabric and colour preferences, quantity, measurement arrangement and your preferred date. The team will review the request and provide a quotation where applicable.</p></details>
           <details><summary>Is the price or completion date confirmed when I submit a request?</summary><p>No. A submitted request is an enquiry for review. The price, production schedule and collection or delivery arrangements must be discussed and confirmed by the company before the order is treated as confirmed.</p></details>
           <details><summary>Can I book an appointment for measurements or fitting?</summary><p>Yes. Use My Account to request an appointment and select your preferred date and time. Your appointment remains pending until the company confirms it or proposes an alternative.</p></details>
           <details><summary>Do I need to visit the fashion house?</summary><p>It depends on the garment and the measurement information available. Some requests may require an in-person measurement or fitting. The team will advise you during the order discussion.</p></details>
@@ -342,7 +353,7 @@ export default function App() {
           <details><summary>Can I follow the progress of my order?</summary><p>Sign in to My Account to review the order information and any production updates made available by the company. If you need clarification about a stage or an agreed date, contact the team directly.</p></details>
           <details><summary>Can you arrange delivery or collection?</summary><p>Collection or delivery preferences can be discussed when you submit an order request. The company will confirm the available arrangement, any applicable charge and the expected timing with you before the order is finalised.</p></details>
           <details><summary>When can a learner access Fashion Institute lessons?</summary><p>Lesson access depends on the learner's account, course enrolment and the Institute's admission and payment confirmation process. Contact the Institute if your approved course or learning materials are not visible in your account.</p></details>
-        </div>
+        </div>}
       </section>
       <section className="promise section-pad"><div><p className="eyebrow"><i/> WHY MR FOP</p><h2>Good style is seen.<br/><em>Great fit is felt.</em></h2></div>
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
