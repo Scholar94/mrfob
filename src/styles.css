@@ -708,3 +708,21 @@ button:disabled{cursor:not-allowed}
 .privacy-request-admin label { display: grid; gap: 6px; font-size: 13px; }
 .privacy-request-admin textarea, .privacy-request-admin select { width: 100%; border: 1px solid #d9d0c7; border-radius: 8px; padding: 10px; font: inherit; }
 @media (max-width: 640px) { .privacy-request-admin { grid-template-columns: 1fr; } }
+
+
+/* Public and managed fabric gallery */
+.fabric-catalogue { padding: 42px 0; }
+.fabric-catalogue-admin { margin-top: 24px; }
+.fabric-admin-form { margin: 18px 0 24px; }
+.fabric-active-toggle { display: flex !important; align-items: center; gap: 9px; }
+.fabric-active-toggle input { width: auto !important; }
+.fabric-form-actions, .fabric-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.fabric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 18px; }
+.fabric-card { overflow: hidden; border: 1px solid #e8e0d8; border-radius: 14px; background: #fff; color: #2d2022; }
+.fabric-card > img, .fabric-placeholder { display: grid; width: 100%; height: 190px; object-fit: cover; place-items: center; background: linear-gradient(135deg,#f4eee6,#e5d8c8); color: #72543d; font: 600 19px Georgia,serif; letter-spacing: 3px; }
+.fabric-card-copy { padding: 14px 16px; }
+.fabric-card-copy h4 { margin: 0 0 10px; font: 600 18px Georgia,serif; }
+.fabric-card-copy p { margin: 6px 0; color: #6d6260; font-size: 13px; line-height: 1.5; }
+.fabric-card-actions { padding: 0 16px 16px; }
+.fabric-card-actions button, .fabric-form-actions button:not(.portal-submit) { border: 1px solid #d9c9b2; border-radius: 8px; padding: 8px 12px; background: #faf7f2; color: #38232a; }
+@media (max-width: 640px) { .fabric-catalogue { padding: 28px 0; } .fabric-grid { grid-template-columns: 1fr; } }
