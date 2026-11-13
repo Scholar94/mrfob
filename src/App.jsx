@@ -21,6 +21,7 @@ const services = [
 export default function App() {
   const [menu, setMenu] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [installMessage, setInstallMessage] = useState("");
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState("");
@@ -62,8 +63,19 @@ export default function App() {
     };
   }, [policyOpen, musicNotice]);
   async function install() {
-    if (!installPrompt) { alert("Open your browser menu and choose Add to Home screen or Install app."); return; }
-    installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null);
+    if (!installPrompt) {
+      setInstallMessage("To install MR FOP FASHIONS, open your browser menu and choose Install app or Add to Home screen. The exact wording depends on your browser.");
+      return;
+    }
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setInstallMessage(choice?.outcome === "accepted" ? "The installation prompt was accepted. Follow your browser instructions to finish." : "Installation was not completed. You can try again from your browser menu.");
+    } catch (error) {
+      setInstallMessage("The installation prompt is unavailable right now. Please use your browser menu to install or add this site to your home screen.");
+    } finally {
+      setInstallPrompt(null);
+    }
   }
   const close = () => setMenu(false);
   return <div className="site-shell">
@@ -151,7 +163,7 @@ export default function App() {
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
       </section>
       <section className="contact section-pad" id="contact"><div><p className="eyebrow light"><i/> YOUR NEXT LOOK STARTS HERE</p><h2>Let's create<br/><em>something remarkable.</em></h2></div>
-        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><div className="contact-detail"><Phone size={15}/> +234 805 547 2913</div><div className="contact-detail"><MessageCircle size={15}/> mrfopvi@gmail.com</div><div className="contact-detail contact-address"><span>VISIT US</span><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store,<br/>Ijebu Ode, Ogun State, Nigeria.</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</p></div></div>
+        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><a className="contact-detail" href="tel:+2348055472913"><Phone size={15}/> +234 805 547 2913</a><a className="contact-detail" href="mailto:mrfopvi@gmail.com"><MessageCircle size={15}/> mrfopvi@gmail.com</a><div className="contact-detail contact-address"><span>VISIT US</span><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store,<br/>Ijebu Ode, Ogun State, Nigeria.</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</p></div></div>
       </section>
     </main>
     <section className="location section-pad" id="location">
@@ -165,7 +177,8 @@ export default function App() {
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
     <button className="music-toggle" type="button" onClick={() => setMusicNotice(true)} aria-haspopup="dialog" aria-expanded={musicNotice}> <Play size={14}/> BRAND MUSIC</button>
-    <button className="install-button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
+    <button className="install-button" type="button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
+    {installMessage && <p className="install-feedback" role="status" aria-live="polite">{installMessage}</p> }
     <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
 
     {policyOpen && <div className="modal-backdrop policy-backdrop" onClick={() => setPolicyOpen("")}><section ref={dialogRef} className="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-title" onClick={e => e.stopPropagation()}>
