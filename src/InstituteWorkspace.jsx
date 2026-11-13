@@ -40,6 +40,7 @@ export default function InstituteWorkspace() {
   const isInstructor = claims.staffRole === "instructor";
   const [announcementForm, setAnnouncementForm] = useState({ courseId: "all", title: "", message: "", expiresOn: "" });
   const [certificateEnrollmentId, setCertificateEnrollmentId] = useState("");
+  const [certificateRevocationDrafts, setCertificateRevocationDrafts] = useState({});
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
@@ -535,6 +536,22 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not issue certificate."); } finally { setBusy(false); }
   }
 
+  async function revokeCertificate(certificate) {
+    const reason = String(certificateRevocationDrafts[certificate.id] || "").trim();
+    if (reason.length < 8) { setError("Enter a clear revocation reason of at least 8 characters."); return; }
+    if (certificate.status !== "issued") { setError("Only an issued certificate can be revoked."); return; }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await updateDoc(doc(db, "instituteCertificates", certificate.id), {
+        status: "revoked", revocationReason: reason, revokedBy: user.uid,
+        revokedAt: serverTimestamp(), updatedAt: serverTimestamp()
+      });
+      setCertificateRevocationDrafts(current => { const next = { ...current }; delete next[certificate.id]; return next; });
+      setNotice("Certificate " + certificate.certificateRef + " has been marked revoked. Its record has been retained.");
+      await load();
+    } catch(e) { setError(e.message || "Could not revoke certificate."); } finally { setBusy(false); }
+  }
+
   async function markAttendance(enrollment, status) {
     setBusy(true); setError(""); setNotice("");
     try {
@@ -685,7 +702,7 @@ export default function InstituteWorkspace() {
         {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
       <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
-      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button></article>):<p className="staff-empty">No certificates have been issued yet.</p>}
+      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
       <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
     </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p>{c.status==="issued"&&<button type="button" onClick={()=>printCertificate(c)}>Print certificate</button>}</article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
