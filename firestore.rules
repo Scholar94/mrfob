@@ -147,7 +147,8 @@ service cloud.firestore {
         && request.resource.data.status in ['open','in_progress','closed']
         && request.resource.data.updatedAt is timestamp
         && (!('staffReply' in request.resource.data) || (request.resource.data.staffReply is string && request.resource.data.staffReply.size() <= 2000))
-        && (!('repliedBy' in request.resource.data) || request.resource.data.repliedBy == request.auth.uid);
+        && (!('repliedBy' in request.resource.data) || (request.resource.data.repliedBy == request.auth.uid && request.resource.data.repliedAt is timestamp))
+        && (!('statusUpdatedBy' in request.resource.data) || request.resource.data.statusUpdatedBy == request.auth.uid);
       allow delete: if isSuperAdmin();
     }
 
