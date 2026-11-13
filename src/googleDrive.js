@@ -112,7 +112,7 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
   }
   const uploaded = await uploadResponse.json();
-  if (metadata.customerEmail) {
+  if (metadata.customerEmail && metadata.visibility !== "public") {
     await driveRequest("/files/" + uploaded.id + "/permissions?sendNotificationEmail=false", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,4 +129,20 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     drivePreviewUrl: "https://drive.google.com/file/d/" + uploaded.id + "/preview",
     thumbnailLink: uploaded.thumbnailLink || ""
   };
+}
+
+
+export async function setDriveFilePublic(fileId, isPublic) {
+  if (!fileId) throw new Error("A Google Drive file ID is required.");
+  const permissions = await driveRequest("/files/" + encodeURIComponent(fileId) + "/permissions?fields=permissions(id,type,role)");
+  const anyone = (permissions.permissions || []).find(permission => permission.type === "anyone");
+  if (isPublic && !anyone) {
+    await driveRequest("/files/" + encodeURIComponent(fileId) + "/permissions?sendNotificationEmail=false", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "anyone", role: "reader" })
+    });
+  } else if (!isPublic && anyone) {
+    await driveRequest("/files/" + encodeURIComponent(fileId) + "/permissions/" + encodeURIComponent(anyone.id), { method: "DELETE" });
+  }
 }
