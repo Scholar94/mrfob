@@ -981,7 +981,11 @@ export default function Portal({ onClose }) {
           ? doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime)) : null;
         const oldSlot = oldSlotRef ? await transaction.get(oldSlotRef) : null;
         if (status === "confirmed") {
-          await ensureDesignerAvailability(transaction, item, item.appointmentDate, item.appointmentTime);
+          if (["Delivery", "Collection"].includes(item.service)) {
+            if (!item.orderId) throw new Error("Link this delivery or collection appointment to the customer's order before confirming it.");
+          } else {
+            await ensureDesignerAvailability(transaction, item, item.appointmentDate, item.appointmentTime);
+          }
           await reserveAppointmentSlot(transaction, item, item.appointmentDate, item.appointmentTime);
         } else if (oldSlot?.exists() && oldSlot.data().appointmentId === id) {
           transaction.delete(oldSlotRef);
@@ -1153,7 +1157,11 @@ export default function Portal({ onClose }) {
         if (!currentSnapshot.exists()) throw new Error("This appointment no longer exists.");
         const current = { id: item.id, ...currentSnapshot.data() };
         if (current.customerUid !== user.uid || current.status !== "alternative_proposed") throw new Error("This appointment proposal is no longer available.");
-        await ensureDesignerAvailability(transaction, current, current.proposedDate, current.proposedTime);
+        if (["Delivery", "Collection"].includes(current.service)) {
+          if (!current.orderId) throw new Error("The team must link this delivery or collection appointment to your order before you can accept it.");
+        } else {
+          await ensureDesignerAvailability(transaction, current, current.proposedDate, current.proposedTime);
+        }
         await reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime);
         transaction.update(appointmentRef, { appointmentDate: current.proposedDate, appointmentTime: current.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
       });
@@ -1775,7 +1783,7 @@ export default function Portal({ onClose }) {
         {(claims.superAdmin || claims.staffRole) && <AppointmentCalendar appointments={appointments} />}
         {!claims.staffRole && !claims.superAdmin && <form id="customer-appointments" className="portal-form appointment-form" onSubmit={bookAppointment}>
           <h4>Request an appointment</h4>
-          <label>Appointment type<select value={appointmentForm.service} onChange={e=>setAppointmentForm({...appointmentForm,service:e.target.value})}><option>Measurement</option><option>Fitting</option><option>Consultation</option><option>Collection</option></select></label>
+          <label>Appointment type<select value={appointmentForm.service} onChange={e=>setAppointmentForm({...appointmentForm,service:e.target.value})}><option>Measurement</option><option>Fitting</option><option>Consultation</option><option>Collection</option><option>Delivery</option></select></label>
           <label>Preferred date<input type="date" min={localDateString()} required value={appointmentForm.appointmentDate} onChange={e=>setAppointmentForm({...appointmentForm,appointmentDate:e.target.value})}/></label>
           <label>Preferred time<input type="time" required value={appointmentForm.appointmentTime} onChange={e=>setAppointmentForm({...appointmentForm,appointmentTime:e.target.value})}/></label>
           <label>Additional details<textarea value={appointmentForm.purpose} onChange={e=>setAppointmentForm({...appointmentForm,purpose:e.target.value})} placeholder="Tell us what you need…"/></label>
