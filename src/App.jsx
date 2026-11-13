@@ -9,7 +9,6 @@ import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 
-const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
 const collections = [
   { name: "Bespoke Menswear", tag: "Precision in every stitch", type: "MEN", image: "https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&w=1000&q=85" },
   { name: "Women's Elegance", tag: "Designed around you", type: "WOMEN", image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1000&q=85" },
@@ -46,7 +45,8 @@ export default function App() {
   const companyVision = companyProfile.vision || "To be recognized as a leading service delivery company providing maximum customer satisfaction.";
   const companyScope = companyProfile.businessScope || "Clothing designing and industrial tailoring, alongside the MR FOP FASHIONS Fashion Institute and professional fashion training.";
   const companyWhatsappDigits = String(companyProfile.whatsapp || "+234 805 547 2913").replace(/\D/g, "");
-  const companyWa = "https://wa.me/" + companyWhatsappDigits + "?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
+  const whatsappLink = message => "https://wa.me/" + companyWhatsappDigits + "?text=" + encodeURIComponent(message);
+  const companyWa = whatsappLink("Hello MR FOP FASHIONS, I would like to make an enquiry.");
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function App() {
       "",
       "Please guide me on the next steps, quotation requirements and consultation."
     ].join("\\n");
-    window.open("https://wa.me/2348055472913?text=" + encodeURIComponent(message), "_blank", "noopener,noreferrer");
+    window.open(whatsappLink(message), "_blank", "noopener,noreferrer");
     form.reset();
   }
   const close = () => setMenu(false);
@@ -195,7 +195,7 @@ export default function App() {
         <div className="section-heading"><div><p className="eyebrow"><i/> EXPLORE THE DETAILS</p><h2>Collections with <em>character.</em></h2></div><p>Choose a category to start a conversation with our team. Specific styles, fabrics, availability, pricing and timelines are confirmed during consultation.</p></div>
         <div className="category-grid">{collectionCategories.map(group => <article className="category-panel" key={group.title}>
           <div className="category-panel-heading"><span>MR FOP · COLLECTIONS</span><h3>{group.title}</h3><p>{group.intro}</p></div>
-          <ul>{group.items.map(item => <li key={item}><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about " + item + ". Please guide me on the available options.")} target="_blank" rel="noreferrer">{item}<ArrowUpRight size={14}/></a></li>)}</ul>
+          <ul>{group.items.map(item => <li key={item}><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to enquire about " + item + ". Please guide me on the available options.")} target="_blank" rel="noreferrer">{item}<ArrowUpRight size={14}/></a></li>)}</ul>
         </article>)}</div>
         <p className="category-disclaimer">This is a service and style category guide, not a live inventory or a confirmation that every design is currently available.</p>
       </section>
@@ -203,7 +203,7 @@ export default function App() {
       <section className="quote-band"><div className="quote-mark">“</div><p>Our mission is simple: to make every customer feel <em>brand new and happy</em> through excellence and professional service.</p><span>THE MR FOP PROMISE</span></section>
       <section className="services section-pad" id="services">
         <div className="section-heading"><div><p className="eyebrow"><i/> OUR EXPERTISE</p><h2>Craft. Create. <em>Become.</em></h2></div><p>One fashion house. Three ways to bring your vision to life.</p></div>
-        <div className="service-grid">{services.map(({icon: Icon, title, copy}, i) => <article className="service-card" key={title}><span className="service-number">0{i+1}</span><div className="service-icon"><Icon size={25}/></div><h3>{title}</h3><p>{copy}</p><a href={i === 2 ? "#institute" : wa} target={i === 2 ? undefined : "_blank"} rel="noreferrer" className="service-link">Discover more <ArrowUpRight size={16}/></a></article>)}</div>
+        <div className="service-grid">{services.map(({icon: Icon, title, copy}, i) => <article className="service-card" key={title}><span className="service-number">0{i+1}</span><div className="service-icon"><Icon size={25}/></div><h3>{title}</h3><p>{copy}</p><a href={i === 2 ? "#institute" : companyWa} target={i === 2 ? undefined : "_blank"} rel="noreferrer" className="service-link">Discover more <ArrowUpRight size={16}/></a></article>)}</div>
       </section>
       <section className="why-us section-pad" id="why-us">
         <div className="section-heading"><div><p className="eyebrow"><i/> THE DIFFERENCE IS IN THE DETAIL</p><h2>Why choose <em>MR FOP?</em></h2></div><p>A fashion partner for personal style, coordinated production and professional learning.</p></div>
@@ -227,12 +227,12 @@ export default function App() {
       <section className="industrial section-pad" id="industrial">
         <div className="section-heading"><div><p className="eyebrow"><i/> MADE FOR TEAMS AND ORGANISATIONS</p><h2>Industrial & <em>corporate tailoring.</em></h2></div><p>Professional clothing solutions for organisations, teams and coordinated groups. Share your requirements with our team for a tailored discussion.</p></div>
         <div className="industrial-grid">
-          <article><span>01</span><h3>Corporate uniforms</h3><p>Coordinated workwear shaped around your organisation's identity, staff roles and practical needs.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about corporate uniforms for our organisation.")} target="_blank" rel="noreferrer">Discuss corporate uniforms <ArrowUpRight size={15}/></a></article>
-          <article><span>02</span><h3>School uniforms</h3><p>Enquire about schoolwear requirements, garment specifications, sizing arrangements and coordinated orders.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to discuss school uniform production.")} target="_blank" rel="noreferrer">Discuss school uniforms <ArrowUpRight size={15}/></a></article>
-          <article><span>03</span><h3>Institutional clothing</h3><p>Uniform and clothing enquiries for institutions, associations and organised teams, subject to project review.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about institutional clothing.")} target="_blank" rel="noreferrer">Discuss institutional orders <ArrowUpRight size={15}/></a></article>
-          <article><span>04</span><h3>Wedding party clothing</h3><p>Coordinate clothing enquiries for wedding parties and groups, with styles and quantities discussed together.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about wedding party clothing.")} target="_blank" rel="noreferrer">Plan wedding party outfits <ArrowUpRight size={15}/></a></article>
-          <article><span>05</span><h3>Customized group orders</h3><p>Discuss matching or individually customized garments, group measurements, fabric choices and project details.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to discuss customized clothing for a group.")} target="_blank" rel="noreferrer">Discuss a group order <ArrowUpRight size={15}/></a></article>
-          <article><span>06</span><h3>Production coordination</h3><p>Review specifications, quantities, fitting arrangements and proposed timelines before any project is accepted.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to discuss production coordination for a tailoring project.")} target="_blank" rel="noreferrer">Plan your production <ArrowUpRight size={15}/></a></article>
+          <article><span>01</span><h3>Corporate uniforms</h3><p>Coordinated workwear shaped around your organisation's identity, staff roles and practical needs.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to enquire about corporate uniforms for our organisation.")} target="_blank" rel="noreferrer">Discuss corporate uniforms <ArrowUpRight size={15}/></a></article>
+          <article><span>02</span><h3>School uniforms</h3><p>Enquire about schoolwear requirements, garment specifications, sizing arrangements and coordinated orders.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to discuss school uniform production.")} target="_blank" rel="noreferrer">Discuss school uniforms <ArrowUpRight size={15}/></a></article>
+          <article><span>03</span><h3>Institutional clothing</h3><p>Uniform and clothing enquiries for institutions, associations and organised teams, subject to project review.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to enquire about institutional clothing.")} target="_blank" rel="noreferrer">Discuss institutional orders <ArrowUpRight size={15}/></a></article>
+          <article><span>04</span><h3>Wedding party clothing</h3><p>Coordinate clothing enquiries for wedding parties and groups, with styles and quantities discussed together.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to enquire about wedding party clothing.")} target="_blank" rel="noreferrer">Plan wedding party outfits <ArrowUpRight size={15}/></a></article>
+          <article><span>05</span><h3>Customized group orders</h3><p>Discuss matching or individually customized garments, group measurements, fabric choices and project details.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to discuss customized clothing for a group.")} target="_blank" rel="noreferrer">Discuss a group order <ArrowUpRight size={15}/></a></article>
+          <article><span>06</span><h3>Production coordination</h3><p>Review specifications, quantities, fitting arrangements and proposed timelines before any project is accepted.</p><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to discuss production coordination for a tailoring project.")} target="_blank" rel="noreferrer">Plan your production <ArrowUpRight size={15}/></a></article>
         </div>
         <div className="industrial-enquiry">
           <div className="industrial-enquiry-intro"><p className="eyebrow"><i/> START A PROJECT DISCUSSION</p><h3>Tell us what your team <em>needs.</em></h3><p>Share the initial details below. Your message will open in WhatsApp for you to review and send. This form does not submit or store information on this website.</p></div>
