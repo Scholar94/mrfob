@@ -12,6 +12,12 @@ const collections = [
   { name: "Bridal & Occasion", tag: "For your unforgettable moments", type: "BRIDAL", image: "https://images.unsplash.com/photo-1594552072238-b8a33785b7a7?auto=format&fit=crop&w=1000&q=85" },
   { name: "African Heritage", tag: "Tradition, tailored beautifully", type: "TRADITIONAL", image: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=1000&q=85" }
 ];
+
+const collectionCategories = [
+  { title: "Men's collection", intro: "Tailored options across formal, traditional and everyday dressing.", items: ["3-piece suits", "2-piece suits", "Waistcoats", "Designer shirts", "Premium trousers", "Senator wears", "Agbada", "Native attire", "Traditional caps", "Corporate clothing", "Casual wear"] },
+  { title: "Women's collection", intro: "A considered range for professional dressing, celebrations and everyday style.", items: ["Corporate suits", "Gowns", "Evening dresses", "Bridal dresses", "Wedding reception dresses", "Skirt and blouse", "Native outfits", "Corporate dresses", "Casual dresses", "Special occasion outfits"] },
+  { title: "Bridal & special occasions", intro: "Discuss coordinated looks and occasion-specific garments with the fashion team.", items: ["Bridal dresses", "Wedding reception dresses", "Wedding party clothing", "Special occasion outfits", "Customized clothing"] }
+];
 const services = [
   { icon: Scissors, title: "Bespoke Clothing Design", copy: "Made-to-measure pieces shaped around your style, occasion and personality." },
   { icon: Sparkles, title: "Industrial Tailoring", copy: "Professional garment production for institutions, businesses and groups." },
@@ -124,6 +130,15 @@ export default function App() {
           <img src={item.image} alt={item.name} loading="lazy"/><div className="collection-overlay"/><span className="collection-type">{item.type}</span>
           <div className="collection-info"><div><h3>{item.name}</h3><p>{item.tag}</p></div><span className="collection-arrow"><ArrowUpRight/></span></div>
         </a>)}</div>
+      </section>
+
+      <section className="collection-categories section-pad" id="collection-categories">
+        <div className="section-heading"><div><p className="eyebrow"><i/> EXPLORE THE DETAILS</p><h2>Collections with <em>character.</em></h2></div><p>Choose a category to start a conversation with our team. Specific styles, fabrics, availability, pricing and timelines are confirmed during consultation.</p></div>
+        <div className="category-grid">{collectionCategories.map(group => <article className="category-panel" key={group.title}>
+          <div className="category-panel-heading"><span>MR FOP · COLLECTIONS</span><h3>{group.title}</h3><p>{group.intro}</p></div>
+          <ul>{group.items.map(item => <li key={item}><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about " + item + ". Please guide me on the available options.")} target="_blank" rel="noreferrer">{item}<ArrowUpRight size={14}/></a></li>)}</ul>
+        </article>)}</div>
+        <p className="category-disclaimer">This is a service and style category guide, not a live inventory or a confirmation that every design is currently available.</p>
       </section>
       <section className="quote-band"><div className="quote-mark">“</div><p>Our mission is simple: to make every customer feel <em>brand new and happy</em> through excellence and professional service.</p><span>THE MR FOP PROMISE</span></section>
       <section className="services section-pad" id="services">
