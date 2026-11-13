@@ -827,6 +827,33 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /siteMedia/{mediaId} {
+      function validSiteMedia(data) {
+        return data.keys().hasOnly(['title','description','category','mediaType','fileName','contentType','size','driveFileId','driveUrl','previewUrl','drivePreviewUrl','visibility','published','uploadedByUid','createdAt','updatedAt'])
+          && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+          && data.description is string && data.description.size() <= 500
+          && data.category in ['Collections','Fashion shows','Promotional videos','Training','Company news','Gallery']
+          && data.mediaType in ['image','video']
+          && data.fileName is string && data.contentType in ['image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime']
+          && data.size is int && data.size > 0
+          && ((data.mediaType == 'image' && data.size <= 20971520) || (data.mediaType == 'video' && data.size <= 104857600))
+          && data.driveFileId is string && data.driveUrl is string && data.previewUrl is string && data.drivePreviewUrl is string
+          && data.visibility == 'public' && data.published is bool && data.uploadedByUid == request.auth.uid;
+      }
+      allow read: if (resource.data.published == true && resource.data.visibility == 'public')
+        || isSuperAdmin() || hasStaffRole(['manager']);
+      allow create: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && validSiteMedia(request.resource.data)
+        && request.resource.data.published == false
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow update: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['published','updatedAt'])
+        && request.resource.data.published is bool
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin() || hasStaffRole(['manager']);
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
