@@ -402,3 +402,13 @@ button:disabled{cursor:not-allowed}
 .category-disclaimer{margin:20px 0 0;color:#81756c;font-size:10px;line-height:1.7}
 @media(max-width:900px){.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.category-grid{grid-template-columns:1fr}.category-panel{padding:22px}.category-panel-heading h3{font-size:23px}}
+
+
+/* Expanded institutional and special-project service catalogue */
+.industrial-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.industrial-grid article{display:flex;flex-direction:column;align-items:flex-start}
+.industrial-grid article p{flex:1}
+.industrial-grid article a{margin-top:auto}
+.industrial-note{max-width:850px;margin:20px 0 0;color:#756b64;font-size:11px;line-height:1.75}
+@media(max-width:900px){.industrial-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.industrial-grid{grid-template-columns:1fr}.industrial-grid article{padding:23px}}
