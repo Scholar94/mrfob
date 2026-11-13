@@ -184,7 +184,7 @@ export async function shareDriveFileWithEmail(fileId, emailAddress, scope = "htt
  */
 export async function revokeDriveFileAccessForEmail(fileIds, emailAddress) {
   const email = String(emailAddress || "").trim().toLowerCase();
-  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("A valid student email is required to revoke Drive access.");
   }
   const ids = [...new Set((Array.isArray(fileIds) ? fileIds : [fileIds]).map(value => String(value || "").trim()).filter(Boolean))];
