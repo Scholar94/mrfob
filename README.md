@@ -7,7 +7,7 @@ Public website and customer account foundation for **MR FOP FASHIONS COMPANY NIG
 - GitHub Pages hosting and GitHub Actions deployment
 - Firebase Authentication (email/password)
 - Cloud Firestore with role-based Security Rules
-- Google Drive and Apps Script integration planned for later phases
+- Google Drive direct upload integration for shared file storage
 
 ## Local development
 ```bash
@@ -70,7 +70,7 @@ They still need to be added to `public/brand/` and wired into the website's mani
 Phase 1: public brand website and Pages deployment.
 Phase 2 foundation: Firebase-ready customer registration/sign-in, profile creation, role-aware account portal, Super Admin staff assignment interface and Firestore security rules.
 
-Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment, Google Drive document handling and Apps Script automations are subsequent implementation steps.
+Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment, Google Drive document and media uploads are integrated through the Drive API.
 
 ## Free-tier note
 No billing account has been connected or paid service enabled by this code. Firebase Authentication and Firestore have no-cost usage allowances; monitor quotas in Firebase Console. GitHub Pages remains the free public hosting option.
