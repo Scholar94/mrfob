@@ -429,8 +429,11 @@ service cloud.firestore {
         && request.resource.data.customerEmail == request.auth.token.email
         && request.resource.data.paymentId is string
         && refundId == request.resource.data.paymentId
+        && request.resource.data.currency == 'NGN'
         && exists(/databases/$(database)/documents/payments/$(request.resource.data.paymentId))
         && get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.customerUid == request.auth.uid
+        && request.resource.data.orderId == get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.orderId
+        && request.resource.data.orderNumber == get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.orderNumber
         && request.resource.data.amount is number && request.resource.data.amount > 0
         && request.resource.data.amount <= get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.amount
         && request.resource.data.reason is string && request.resource.data.reason.size() >= 10 && request.resource.data.reason.size() <= 1200
