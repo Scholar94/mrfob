@@ -825,6 +825,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         assignedDesignerName: designer ? (designer.displayName || designer.name || designer.email || designer.uid) : "",
         updatedAt: serverTimestamp()
       });
+      await recordAuditEvent({ user, claims, action: "order_assigned", entityType: "order", entityId: order.id, summary: "Assigned order " + (order.orderNumber || order.id) + " to " + (designer?.displayName || designer?.email || designerUid || "no designer") + "." });
       setOrderDesignerEdits(current => ({ ...current, [order.id]: designerUid }));
       setMessage(designer ? "Order assigned to " + (designer.email || designer.uid) + "." : "Order designer assignment cleared.");
       await loadOrders();
@@ -891,6 +892,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         });
       }
       await batch.commit();
+      await recordAuditEvent({ user, claims, action: Object.prototype.hasOwnProperty.call(changes, "status") ? "order_production_updated" : "order_delivery_date_updated", entityType: "order", entityId: id, summary: "Updated order " + (current?.orderNumber || id) + (changes.status ? " production stage to " + productionStageLabel(changes.status) : changes.dueDate ? " expected delivery date to " + changes.dueDate : ".") });
       setOrders(items => items.map(item => item.id === id ? {
         ...item, ...changes,
         events: Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status
