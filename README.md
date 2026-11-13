@@ -187,3 +187,8 @@ A Super Admin-only audit viewer lists up to 150 of the latest application audit 
 ## Public FAQ management
 
 The homepage uses its built-in FAQ list as a fallback. Super Admin and Fashion Manager can add, edit, reorder and archive dynamic FAQs in the account portal. Active questions are publicly readable; inactive records are restricted to managers and Super Admin. FAQ records are retained when archived, and selected FAQ changes are included in the audit trail.
+
+
+## Final acceptance testing
+
+A 22-case role-based acceptance test plan is maintained in docs/QA-TEST-PLAN.md. It is intentionally marked not run until the owner has configured the production Firebase project, published current Firestore rules, configured Drive/Apps Script and prepared separate test accounts. Passing the GitHub Actions build and static source checks does not count as passing the acceptance plan.
