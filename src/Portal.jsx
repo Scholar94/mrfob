@@ -13,6 +13,7 @@ import WebsiteMediaManager from "./WebsiteMedia.jsx";
 import PrivacyRequestCenter from "./PrivacyRequestCenter.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
 import CustomerBenefits from "./CustomerBenefits.jsx";
+import ReferralProgramme from "./ReferralProgramme.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -2286,6 +2287,7 @@ export default function Portal({ onClose }) {
       </section>
       {(!claims.staffRole || claims.superAdmin) && <PrivacyRequestCenter user={user} claims={claims} />}
       {(!claims.staffRole || claims.superAdmin) && <CustomerBenefits user={user} claims={claims} customers={customers} />}
+      {(!claims.staffRole || claims.superAdmin) && <ReferralProgramme user={user} claims={claims} />}
       <InstituteWorkspace />
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
