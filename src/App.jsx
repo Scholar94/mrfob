@@ -132,7 +132,7 @@ export default function App() {
     <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
-    <button className="music-toggle" onClick={() => setMusicNotice(true)}><Play size={14}/> BRAND MUSIC</button>
+    <button className="music-toggle" type="button" onClick={() => setMusicNotice(true)} aria-haspopup="dialog" aria-expanded={musicNotice}> <Play size={14}/> BRAND MUSIC</button>
     <button className="install-button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
     <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
 
@@ -175,7 +175,7 @@ export default function App() {
         <p className="policy-note">These are operational website terms, not a substitute for a separately negotiated order, course agreement or professional legal advice. No unconfirmed refund or cancellation policy is created by this page.</p>
       </>}
     </section></div>}
-    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><div className="music-modal" onClick={e => e.stopPropagation()}><button onClick={() => setMusicNotice(false)} aria-label="Close">×</button><h3>MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></div></div>}
+    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></section></div>}
     {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
   </div>;
 }
