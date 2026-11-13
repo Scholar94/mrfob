@@ -162,3 +162,8 @@ The account portal now includes a customer-benefits panel. Super Admin can set a
 ## Private payment evidence
 
 Customer bank-transfer declarations require a JPG, PNG, WebP or PDF payment receipt (maximum 15 MB). The browser uploads the file directly to Google Drive using the customer's Drive authorization and shares it with the company account `mrfopvi@gmail.com`. Firestore stores only the private Drive file ID, metadata and view link. The evidence is visible in the customer declaration history and to authorized Finance Officer/Super Admin reviewers. A receipt upload never marks a payment as paid; Finance must independently verify the bank transaction and approve the declaration. Staff Google Drive access and the current Firestore rules must be configured before use.
+
+
+## Customer referral programme
+
+Customers receive a shareable referral code and can submit a referral with the prospective customer's name and contact details. Customers see only their own referral submissions; the Super Admin can review all referrals and update status/notes. Referral status changes do not automatically award loyalty points. The Super Admin must verify the referred customer's eligibility and separately record any approved points in Customer loyalty and VIP benefits. Customers should only submit contact details they are authorised to share. Publish the latest Firestore rules before enabling the feature.
