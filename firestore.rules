@@ -565,7 +565,33 @@ service cloud.firestore {
     }
 
     match /instituteEnrollments/{enrollmentId} {
-      allow create, update: if isSuperAdmin();
+      function validVerifiedEnrollment(data) {
+        return data.keys().hasOnly(['studentUid','applicationId','applicationRef','studentId','studentName','studentEmail','courseId','courseTitle','windowId','windowTitle','paymentStatus','verifiedBy','verifiedAt','createdAt'])
+          && data.studentUid is string
+          && data.courseId is string
+          && enrollmentId == data.studentUid + '_' + data.courseId
+          && data.applicationId is string
+          && exists(/databases/$(database)/documents/instituteApplications/$(data.applicationId))
+          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.customerUid == data.studentUid
+          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseId == data.courseId
+          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowId == data.windowId
+          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'admitted'
+          && data.studentEmail == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.email
+          && data.courseTitle == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseTitle
+          && data.windowTitle == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowTitle
+          && data.paymentStatus == 'paid'
+          && data.verifiedBy == request.auth.uid
+          && data.verifiedAt is timestamp
+          && data.createdAt is timestamp;
+      }
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && validVerifiedEnrollment(request.resource.data);
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && validVerifiedEnrollment(request.resource.data)
+        && request.resource.data.studentUid == resource.data.studentUid
+        && request.resource.data.courseId == resource.data.courseId
+        && request.resource.data.applicationId == resource.data.applicationId
+        && request.resource.data.createdAt == resource.data.createdAt;
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
     }
