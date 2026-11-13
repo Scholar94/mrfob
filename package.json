@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:platform": "node scripts/verify-platform.mjs"
   },
   "dependencies": {
     "firebase": "^11.1.0",
