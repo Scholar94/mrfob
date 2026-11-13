@@ -446,7 +446,7 @@ export default function InstituteWorkspace() {
         const studentEmails = [...new Set(allEnrollments
           .filter(en => en.courseId === lessonForm.courseId && en.paymentStatus === "paid")
           .map(en => String(en.studentEmail || "").trim().toLowerCase())
-          .filter(email => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)))];
+          .filter(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))];
         const uploaded = await uploadFileToGoogleDrive(lessonUploadFile, {
           folder: "Institute/Courses/" + lessonForm.courseId + "/Lessons",
           uploadedBy: user.uid,
