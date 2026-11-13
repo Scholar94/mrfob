@@ -118,7 +118,7 @@ export default function Portal({ onClose }) {
     const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
     getFocusable()[0]?.focus();
     function handlePortalKeys(event) {
-      if (selectedReceipt) return;
+      if (document.querySelector('[role="dialog"][aria-label="Sales receipt"]')) return;
       if (event.key === "Escape") { event.preventDefault(); onClose?.(); return; }
       if (event.key !== "Tab") return;
       const items = getFocusable();
@@ -132,7 +132,7 @@ export default function Portal({ onClose }) {
       document.removeEventListener("keydown", handlePortalKeys);
       if (portalReturnFocusRef.current?.isConnected) portalReturnFocusRef.current.focus();
     };
-  }, [onClose, selectedReceipt]);
+  }, [onClose]);
   const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
   const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
   const [mode, setMode] = useState("login");
@@ -1759,7 +1759,7 @@ export default function Portal({ onClose }) {
         <button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : mode === "register" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in"}</button>
       </form>
       {mode === "login" && <p className="portal-switch"><button onClick={()=>{setMode("reset");setError("");setMessage("");}}>Forgot your password?</button></p>}
-      {error && <p className="portal-error">{error}</p>}{message && <p className="portal-success">{message}</p>}
+      {error && <p className="portal-error" role="alert">{error}</p>}{message && <p className="portal-success" role="status">{message}</p>}
       <p className="portal-switch">{mode === "register" ? "Already registered?" : "New to MR FOP?"} <button onClick={()=>{setMode(mode === "register" ? "login" : "register");setError("");setMessage("");}}>{mode === "register" ? "Sign in" : "Create an account"}</button></p>
       {mode === "reset" && <p className="portal-switch"><button onClick={()=>{setMode("login");setError("");setMessage("");}}>Return to sign in</button></p>}
       <p className="portal-hint"><KeyRound size={14}/> Passwords are handled by Firebase Authentication, not stored in the website database.</p>
