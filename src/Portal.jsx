@@ -2254,7 +2254,7 @@ export default function Portal({ onClose }) {
           <p className="portal-hint">For your protection, the portal re-checks your current password with Firebase before saving the new one. If your account uses a non-password sign-in provider, use that provider's account-security settings instead.</p>
         </form>
       </section>
-      {(!claims.staffRole || claims.superAdmin) && <PrivacyRequestCenter user={user} claims={claims} />
+      {(!claims.staffRole || claims.superAdmin) && <PrivacyRequestCenter user={user} claims={claims} />}
       {(!claims.staffRole || claims.superAdmin) && <CustomerBenefits user={user} claims={claims} customers={customers} />}
       <InstituteWorkspace />
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
