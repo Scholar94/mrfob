@@ -1185,6 +1185,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     setBusy(true); setError(""); setMessage("");
     try {
       await updateDoc(doc(db, "roles", member.uid), { availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end, availabilityUpdatedAt: serverTimestamp() });
+      await recordAuditEvent({ user, claims, action: "designer_availability_updated", entityType: "designerAvailability", entityId: member.uid, summary: "Updated working days and hours for Tailor " + (member.displayName || member.email || member.uid) + "." });
       setStaffMembers(rows => rows.map(row => row.uid === member.uid ? { ...row, availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end, availabilityUpdatedAt: new Date() } : row));
       setMessage("Designer working days and hours saved.");
     } catch (err) { setError(err.message || "Could not save designer availability."); }
@@ -1236,6 +1237,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         readAt: null
       });
       await batch.commit();
+      await recordAuditEvent({ user, claims, action: "appointment_assignment_updated", entityType: "appointment", entityId: item.id, summary: "Updated appointment designer and linked customer order." });
       setAppointments(rows => rows.map(row => row.id === item.id ? { ...row, ...patch, updatedAt: new Date() } : row));
       setMessage("Appointment assignment and order link saved. The customer has been notified.");
     } catch (err) { setError(err.message || "Could not save the appointment assignment."); }
