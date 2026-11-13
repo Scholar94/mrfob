@@ -101,6 +101,25 @@ service cloud.firestore {
         );
         allow update, delete: if false;
       }
+
+      match /progressUpdates/{updateId} {
+        allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
+          && request.resource.data.keys().hasOnly(['orderId','orderNumber','customerUid','stage','stageLabel','caption','photoUrl','storagePath','fileName','contentType','size','uploadedByUid','uploadedByName','createdAt'])
+          && request.resource.data.orderId == orderId
+          && request.resource.data.customerUid == get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid
+          && request.resource.data.uploadedByUid == request.auth.uid
+          && request.resource.data.stage is string
+          && request.resource.data.caption is string && request.resource.data.caption.size() <= 240
+          && request.resource.data.photoUrl is string
+          && request.resource.data.storagePath is string
+          && request.resource.data.storagePath.matches('order-progress/' + orderId + '/[^/]+')
+          && request.resource.data.contentType in ['image/jpeg','image/png','image/webp']
+          && request.resource.data.size is int && request.resource.data.size > 0 && request.resource.data.size <= 8388608
+          && request.resource.data.createdAt is timestamp;
+        allow read: if signedIn() && (isSuperAdmin() || isStaff()
+          || get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid);
+        allow update, delete: if false;
+      }
     }
 
     match /appointments/{appointmentId} {
@@ -184,6 +203,14 @@ service cloud.firestore {
             ((isSuperAdmin() || hasStaffRole(['manager','sales'])) && request.resource.data.quotationStatus == 'sent')
             || (signedIn() && request.resource.data.customerUid == request.auth.uid && request.resource.data.quotationStatus in ['accepted','declined'])
           )
+        ) || (
+          (isSuperAdmin() || hasStaffRole(['manager','tailor']))
+          && request.resource.data.type == 'production_photo'
+          && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','stage','stageLabel','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
+          && request.resource.data.stage is string
+          && request.resource.data.stageLabel is string
         ) || (
           isSuperAdmin()
           && request.resource.data.type == 'training_update'
