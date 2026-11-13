@@ -449,9 +449,10 @@ export default function InstituteWorkspace() {
     const actionKey = enrollment.id + ":" + action;
     setMediaAccessAction(actionKey); setError(""); setNotice("");
     try {
-      const lessonSnap = await getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", enrollment.courseId), where("published", "==", true)));
+      const lessonQuery = action === "grant" ? query(collection(db, "instituteLessons"), where("courseId", "==", enrollment.courseId), where("published", "==", true)) : query(collection(db, "instituteLessons"), where("courseId", "==", enrollment.courseId));
+      const lessonSnap = await getDocs(lessonQuery);
       const fileIds = lessonSnap.docs.map(item => item.data().driveFileId).filter(Boolean);
-      if (!fileIds.length) throw new Error("No published Google Drive lesson files were found for this course.");
+      if (!fileIds.length) throw new Error(action === "grant" ? "No published Google Drive lesson files were found for this course." : "No Google Drive lesson files were found for this course.");
       if (action === "grant") {
         for (const fileId of fileIds) await shareDriveFileWithEmail(fileId, enrollment.studentEmail);
         setNotice("Drive lesson access was granted or confirmed for " + enrollment.studentEmail + " across " + fileIds.length + " lesson file(s).");
@@ -541,7 +542,6 @@ export default function InstituteWorkspace() {
           const lessonSnap = await getDocs(query(
             collection(db, "instituteLessons"),
             where("courseId", "==", enrollment.courseId),
-            where("published", "==", true)
           ));
           const fileIds = lessonSnap.docs.map(item => item.data().driveFileId).filter(Boolean);
           if (fileIds.length) {
