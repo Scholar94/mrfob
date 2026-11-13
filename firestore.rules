@@ -1215,61 +1215,7 @@ service cloud.firestore {
         && request.resource.data.referredName.size() <= 100
         && request.resource.data.referredEmail is string
         && request.resource.data.referredEmail.size() <= 254
-        && request.resource.data.referredEmail.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+
-      function validFabric(data) {
-        return data.keys().hasOnly(['name','color','texture','priceRange','availability','suitableCategories','imageUrl','active','createdAt','createdBy','updatedAt'])
-          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
-          && data.color is string && data.color.size() > 0 && data.color.size() <= 80
-          && data.texture is string && data.texture.size() > 0 && data.texture.size() <= 100
-          && data.priceRange is string && data.priceRange.size() <= 100
-          && data.availability in ['available','limited','out_of_stock']
-          && data.suitableCategories is list && data.suitableCategories.size() <= 12
-          && data.imageUrl is string && data.imageUrl.size() <= 1500
-          && (data.imageUrl == '' || data.imageUrl.matches('https://.*'))
-          && data.active is bool
-          && data.createdAt is timestamp && data.createdBy is string
-          && data.updatedAt is timestamp;
-      }
-      allow read: if resource.data.active == true || isSuperAdmin();
-      allow create: if isSuperAdmin()
-        && validFabric(request.resource.data)
-        && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isSuperAdmin()
-        && validFabric(request.resource.data)
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.createdBy == resource.data.createdBy;
-      allow delete: if false;
-    }
-
-    match /privacyRequests/{requestId} {
-      allow create: if signedIn()
-        && roleOf(request.auth.uid) == 'customer'
-        && request.resource.data.keys().hasOnly(['customerUid','customerEmail','requestType','details','status','staffNote','createdAt','updatedAt'])
-        && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.customerEmail == request.auth.token.email
-        && request.resource.data.requestType in ['access','correction','deletion']
-        && request.resource.data.details is string
-        && request.resource.data.details.size() >= 10
-        && request.resource.data.details.size() <= 1500
-        && request.resource.data.status == 'received'
-        && request.resource.data.staffNote == ''
-        && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin());
-      allow update: if isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','staffNote','reviewedBy','updatedAt'])
-        && request.resource.data.status in ['received','reviewing','completed','unable_to_fulfil']
-        && request.resource.data.staffNote is string
-        && request.resource.data.staffNote.size() <= 1500
-        && request.resource.data.reviewedBy == request.auth.uid
-        && request.resource.data.updatedAt is timestamp;
-      allow delete: if isSuperAdmin();
-    }
-
-    match /{document=**} { allow read, write: if false; }
-  }
-}
-)
+        && request.resource.data.referredEmail.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
         && request.resource.data.referredEmail != request.auth.token.email
         && request.resource.data.referredPhone is string
         && request.resource.data.referredPhone.size() <= 30
