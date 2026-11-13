@@ -878,8 +878,7 @@ service cloud.firestore {
         && request.resource.data.checks[2].complete == true
         && request.resource.data.checks[3].complete == true
         && request.resource.data.keys().hasOnly(['studentUid','courseId','certificateRef','status','checks','approvedBy','approvedAt','createdAt'])
-        && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
-        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid';
+        && hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']);
       allow update: if false;
       allow delete: if isSuperAdmin();
@@ -895,8 +894,7 @@ service cloud.firestore {
         && request.resource.data.issuedBy == request.auth.uid
         && request.resource.data.issuedAt is timestamp
         && request.resource.data.keys().hasOnly(['certificateRef','studentUid','studentId','studentName','courseId','courseTitle','windowId','windowTitle','status','issuedAt','issuedBy','createdAt'])
-        && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
-        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid'
+        && hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid)
         && existsAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
         && getAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.status == 'approved'
         && getAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.certificateRef == request.resource.data.certificateRef
@@ -963,7 +961,7 @@ service cloud.firestore {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
         && request.resource.data.studentUid is string
         && request.resource.data.courseId is string
-        && ((isSuperAdmin() || hasStaffRole(['institute','manager'])) || hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid))
+        && hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid)
         && request.resource.data.date is string
         && request.resource.data.status in ['present','absent','late','excused']
         && request.resource.data.markedBy == request.auth.uid
@@ -972,7 +970,7 @@ service cloud.firestore {
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId))
         && request.resource.data.studentUid == resource.data.studentUid
         && request.resource.data.courseId == resource.data.courseId
-        && ((isSuperAdmin() || hasStaffRole(['institute','manager'])) || hasPaidEnrollmentForStudent(resource.data.courseId, resource.data.studentUid))
+        && hasPaidEnrollmentForStudent(resource.data.courseId, resource.data.studentUid)
         && request.resource.data.date == resource.data.date
         && request.resource.data.status in ['present','absent','late','excused']
         && request.resource.data.markedBy == request.auth.uid
