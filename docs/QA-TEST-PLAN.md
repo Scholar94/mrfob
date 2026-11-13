@@ -1,0 +1,58 @@
+# MR FOP FASHIONS — Final acceptance test plan
+
+**Purpose:** Run this plan only after implementation is frozen and the owner has completed Firebase, Google Drive and Apps Script setup.  
+**Current status:** Not executed. The CI build and static source checks are not a substitute for these tests.  
+**Test rule:** Use separate accounts for each role. Never use the Super Admin account to prove customer, Finance, Tailor, Institute or Instructor permissions.
+
+## Test accounts and prerequisites
+
+Prepare separate Firebase Authentication accounts and role documents for:
+
+- Customer A and Customer B
+- Fashion Manager
+- Sales staff
+- Fashion Designer / Tailor A and Tailor B
+- Finance Officer
+- Institute Administrator
+- Instructor assigned to one course
+- Super Admin
+
+Before testing, verify the correct Firebase project, Email/Password authentication, authorized GitHub Pages domain, current Firestore rules, Drive OAuth client, Drive folders, Apps Script grader URL (if used), and company payment instructions. Use test-only orders and test-only Drive files; do not use real customer or bank information.
+
+## Acceptance cases
+
+| ID | Area | Test action | Expected result | Status |
+|---|---|---|---|---|
+| T01 | Deployment | Open the deployed homepage and refresh it; check browser console and network errors. | Homepage renders, assets load, no blank page or fatal console error. | Not run |
+| T02 | Responsive design | Test Android portrait/landscape, tablet and desktop widths. | Navigation, cards, forms, modals and account portal remain usable without horizontal overflow. | Not run |
+| T03 | Deep links | Open /about, /collections/men, /fabric-gallery, /faq, /privacy, /terms, /register, /login, /customer/orders, /student/lessons and /admin/audit-logs directly, including refresh. | GitHub Pages 404 fallback returns to the SPA; public paths scroll to the intended section; account paths open the role-protected portal and focus the matching section where available. | Not run |
+| T04 | Authentication | Register a customer, verify email, sign in, sign out, reset password and sign in again. | Authentication lifecycle works; unverified/invalid credentials are handled safely; password reset does not expose account secrets. | Not run |
+| T05 | Role isolation | Sign in separately as Customer, Manager, Sales, Tailor, Finance, Institute Admin, Instructor and Super Admin. Attempt to open each other's data and actions. | UI visibility and Firestore rules both enforce least privilege; direct Firestore requests cannot bypass role restrictions. | Not run |
+| T06 | Customer profile and privacy | Edit profile, export personal data, submit access/correction/deletion requests and inspect status updates. | Customer sees only own records; Super Admin can review; a deletion request is not reported as completed until actual records and retention obligations are reviewed. | Not run |
+| T07 | Clothing orders | Submit a custom order, attach reference material, inspect it as staff, prepare a quotation and accept/reject it as customer. | Order ownership, reference media, quotation line items and status transitions are consistent; no order is treated as paid merely because a customer submitted evidence. | Not run |
+| T08 | Measurements | Add and edit garment-specific measurements, change units if supported, request verification and review as Tailor/Manager. | Measurements remain private to the owner and authorised staff; unverified measurements are not represented as professionally approved. | Not run |
+| T09 | Appointments | Book same-time appointments, assign designers, configure working hours, confirm, propose alternatives, accept, cancel and complete. | Conflicting slots are rejected; assigned designer availability is respected; customer notifications and slot reservations are consistent. | Not run |
+| T10 | Production tracking | Change an order through each production stage, add notes/media and update expected delivery date. | Stage history is appended, customer notifications are created and the order timeline reflects the latest state. | Not run |
+| T11 | Payment evidence | Customer submits a bank-transfer declaration with a Drive receipt; Customer B attempts to open it. | Evidence is private to the order owner and authorised Finance/Super Admin; other customers and unrelated staff cannot read it. | Not run |
+| T12 | Finance verification | Finance verifies a declaration, retries the same declaration, rejects another and reconciles payment totals. | Duplicate ledger entries are prevented; payment status and outstanding balance are correct; evidence submission alone never marks an order paid. | Not run |
+| T13 | Finance reporting | Record/edit expenses, review POS sales, select reporting periods and export CSV/print report. | Totals reconcile to source records; limitations and excluded refund activity are clearly disclosed. | Not run |
+| T14 | Inventory and POS | Add product, stock-in, stock-out, attempt negative stock, create POS sale and print receipt. | Stock movements are recorded atomically; negative stock is blocked; sales and receipts reconcile. | Not run |
+| T15 | Fabric and customer reviews | Publish/edit/archive a fabric, save a favourite, deliver a test order, submit a review and moderate it. | Only active fabrics and approved reviews are public; customer favourites and review records are private and correctly scoped. | Not run |
+| T16 | Corporate orders | Submit school/corporate/church bulk enquiry and review it as Manager/Super Admin. | Customer sees only own enquiry; authorised staff can update status and response; enquiry is not represented as a confirmed quotation or delivery. | Not run |
+| T17 | Loyalty and referrals | Adjust customer points/tier, inspect transaction history, submit referral and review/qualify/reject it. | Points changes are recorded in history; referral status does not silently award points; only authorised staff can adjust benefits. | Not run |
+| T18 | Public content | Update company profile, payment instructions, FAQs and public media; test public and private views. | Public profile, active FAQs and published media are visible; bank instructions and unpublished/private media remain restricted. | Not run |
+| T19 | Institute admissions | Create course/intake, submit applications at capacity, admit/reject applicant and reconcile capacity. | Capacity cannot be exceeded; rejected applications release only the correct reservation; admissions and student IDs remain consistent. | Not run |
+| T20 | Institute payments and Drive | Verify a test learner's payment, grant Drive lesson access, revoke direct permission and retry after a simulated Drive failure. | Only paid learners receive access; permission failures are surfaced; Firestore course access and Drive permission state are checked separately. | Not run |
+| T21 | Student and instructor learning | Student opens lessons, marks progress, submits assignment/objective assessment; Instructor marks attendance and grades work for assigned courses only. | Student sees only enrolled course data; Instructor sees only assigned course records; answer keys remain private; grading and attendance are auditable. | Not run |
+| T22 | Audit and PWA | Trigger each instrumented action, inspect Super Admin audit viewer, install PWA and test offline shell. | Audit entries are append-only and visible only to Super Admin; installation and offline fallback work on supported devices. | Not run |
+
+## Completion criteria
+
+- All cases pass using the separate role accounts.
+- No critical permission-denied or data-leakage defects remain.
+- No duplicate payment, appointment-slot or enrolment-capacity records are created under concurrent actions.
+- Google Drive permissions are verified independently from Firestore course access.
+- Current Firestore rules are published and tested against the same Firebase project used by the deployed site.
+- Any unsupported or owner-dependent integration is recorded as a blocker, not marked passed.
+
+**Do not mark this plan complete based on CI alone.** The current CI workflow checks production compilation and static source guardrails; it does not sign in to Firebase, upload to Drive, run the Apps Script grader or simulate separate real user roles.
