@@ -421,6 +421,41 @@ service cloud.firestore {
     }
 
 
+    match /refunds/{refundId} {
+      allow create: if signedIn()
+        && roleOf(request.auth.uid) == 'customer'
+        && request.resource.data.keys().hasOnly(['paymentId','orderId','orderNumber','customerUid','customerEmail','amount','currency','reason','status','reviewNote','refundReference','createdAt','updatedAt'])
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerEmail == request.auth.token.email
+        && request.resource.data.paymentId is string
+        && exists(/databases/$(database)/documents/payments/$(request.resource.data.paymentId))
+        && get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.customerUid == request.auth.uid
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.amount <= get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.amount
+        && request.resource.data.reason is string && request.resource.data.reason.size() >= 10 && request.resource.data.reason.size() <= 1200
+        && request.resource.data.status == 'requested'
+        && request.resource.data.reviewNote == ''
+        && request.resource.data.refundReference == ''
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isFinanceOfficer());
+      allow update: if (isSuperAdmin() || isFinanceOfficer())
+        && resource.data.status in ['requested','reviewing','approved']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reviewNote','refundReference','reviewedBy','updatedAt','processedAt'])
+        && request.resource.data.status in ['reviewing','approved','rejected','paid']
+        && request.resource.data.reviewNote is string && request.resource.data.reviewNote.size() <= 1200
+        && request.resource.data.refundReference is string && request.resource.data.refundReference.size() <= 120
+        && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp
+        && (request.resource.data.status != 'paid' || (
+          resource.data.status == 'approved'
+          && request.resource.data.refundReference.size() > 0
+          && request.resource.data.processedAt is timestamp
+        ))
+        && (request.resource.data.status == 'paid' || !('processedAt' in request.resource.data));
+      allow delete: if isSuperAdmin();
+    }
+
     match /expenses/{expenseId} {
       allow create: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.keys().hasOnly(['title', 'category', 'amount', 'currency', 'expenseDate', 'method', 'note', 'createdAt', 'createdBy'])
@@ -1125,8 +1160,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['actorUid','actorRole','action','entityType','entityId','summary','createdAt'])
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.actorRole == roleOf(request.auth.uid)
-        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated','faq_created','faq_updated','faq_archived']
-        && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile','paymentInstructions','designerAvailability','instituteApplication','instituteEnrollment','order','faq']
+        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','refund_status_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated','faq_created','faq_updated','faq_archived']
+        && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile','paymentInstructions','refund','designerAvailability','instituteApplication','instituteEnrollment','order','faq']
         && request.resource.data.entityId is string
         && request.resource.data.entityId.size() <= 150
         && request.resource.data.summary is string
