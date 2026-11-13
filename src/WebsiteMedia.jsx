@@ -41,9 +41,9 @@ export function PublicWebsiteMusic() {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
-    getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public"), where("category", "==", "Company theme song")))
+    getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public")))
       .then(snapshot => {
-        const item = snapshot.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0] || null;
+        const item = snapshot.docs.map(d => ({ id:d.id, ...d.data() })).filter(item => item.category === "Company theme song" && item.mediaType === "audio").sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0] || null;
         if (active) setTrack(item);
       })
       .catch(() => { if (active) setTrack(null); })
