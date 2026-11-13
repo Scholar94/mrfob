@@ -648,3 +648,22 @@ button:disabled{cursor:not-allowed}
   .website-media-manager { padding: 16px; }
   .website-media-admin-list > article { align-items: flex-start; flex-direction: column; }
 }
+
+
+/* Consistent hamburger navigation for every signed-in account role */
+.account-navigation { position: relative; z-index: 8; margin: 12px 0 18px; }
+.account-menu-toggle { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid #cbb895; background: #32151f; color: #f4e6c9; text-align: left; cursor: pointer; font: 700 11px 'DM Sans', sans-serif; }
+.account-menu-toggle svg { flex: none; }
+.account-menu-toggle span { flex: 1; }
+.account-menu-toggle small { color: #d5bd91; font-size: 9px; font-weight: 600; }
+.account-menu-toggle:focus-visible, .account-section-menu button:focus-visible { outline: 3px solid #b88a4d; outline-offset: 2px; }
+.account-section-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; max-height: min(58vh, 440px); overflow-y: auto; padding: 7px; border: 1px solid #d7c8b2; background: #fffdf9; box-shadow: 0 16px 34px #24101830; }
+.account-section-menu button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 42px; padding: 10px 11px; border: 0; border-bottom: 1px solid #eee6dc; background: transparent; color: #40242b; text-align: left; font: 600 10px 'DM Sans', sans-serif; cursor: pointer; }
+.account-section-menu button:last-child { border-bottom: 0; }
+.account-section-menu button:hover, .account-section-menu button.active { background: #f0e7d9; color: #805d31; }
+.account-section-menu button span { overflow-wrap: anywhere; }
+.portal-card section[id^="mrfop-account-section-"] { scroll-margin-top: 18px; }
+@media (max-width: 650px) {
+  .account-menu-toggle { min-height: 52px; padding: 13px; }
+  .account-section-menu { max-height: 62vh; }
+}
