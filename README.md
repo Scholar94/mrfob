@@ -182,3 +182,8 @@ The GitHub Pages deployment workflow runs `npm run verify:platform` after the pr
 ## Privileged action audit trail
 
 A Super Admin-only audit viewer lists up to 150 of the latest application audit events. The append-only Firestore `auditLogs` collection records selected privileged actions, including payment declaration review, staff role assignment, public and payment settings, designer availability, appointment status/assignment, order designer assignment and production/delivery updates, inventory adjustments, privacy-request handling, referral review, fabric changes, corporate enquiry updates, loyalty benefit changes, Institute admission/payment decisions and Drive lesson permission changes. Staff can append only records attributed to their own authenticated UID; only the Super Admin can read the collection; clients cannot update or delete audit entries. This is an application-level log for instrumented actions, not a tamper-proof external ledger and not a complete log of every system event.
+
+
+## Public FAQ management
+
+The homepage uses its built-in FAQ list as a fallback. Super Admin and Fashion Manager can add, edit, reorder and archive dynamic FAQs in the account portal. Active questions are publicly readable; inactive records are restricted to managers and Super Admin. FAQ records are retained when archived, and selected FAQ changes are included in the audit trail.
