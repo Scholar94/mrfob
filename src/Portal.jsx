@@ -199,6 +199,7 @@ export default function Portal({ onClose }) {
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
   const [appointmentEdits, setAppointmentEdits] = useState({});
   const [appointmentAssignmentEdits, setAppointmentAssignmentEdits] = useState({});
+  const [designerAvailabilityEdits, setDesignerAvailabilityEdits] = useState({});
   const [payments, setPayments] = useState([]);
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
@@ -980,6 +981,7 @@ export default function Portal({ onClose }) {
           ? doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime)) : null;
         const oldSlot = oldSlotRef ? await transaction.get(oldSlotRef) : null;
         if (status === "confirmed") {
+          await ensureDesignerAvailability(transaction, item, item.appointmentDate, item.appointmentTime);
           await reserveAppointmentSlot(transaction, item, item.appointmentDate, item.appointmentTime);
         } else if (oldSlot?.exists() && oldSlot.data().appointmentId === id) {
           transaction.delete(oldSlotRef);
@@ -1003,6 +1005,37 @@ export default function Portal({ onClose }) {
       setMessage(status === "confirmed" ? "Appointment confirmed and its date/time slot has been reserved." : "Appointment status updated.");
     } catch (err) { setError(err.message || "Could not update appointment."); }
     finally { setBusy(false); }
+  }
+
+  function designerAvailabilityDraft(member) {
+    return designerAvailabilityEdits[member.uid] || { days: member.availabilityDays || [], start: member.availabilityStart || "", end: member.availabilityEnd || "" };
+  }
+
+  async function saveDesignerAvailability(member) {
+    if (!claims.superAdmin || member?.role !== "tailor") return;
+    const draft = designerAvailabilityDraft(member);
+    const days = [...new Set(draft.days || [])].filter(day => Number.isInteger(day) && day >= 0 && day <= 6).sort();
+    if (!days.length || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(draft.start) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(draft.end) || draft.end <= draft.start) {
+      setError("Set at least one working day and a valid start/end time for this designer. End time must be later than start time.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "roles", member.uid), { availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end, availabilityUpdatedAt: serverTimestamp() });
+      setStaffMembers(rows => rows.map(row => row.uid === member.uid ? { ...row, availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end } : row));
+      setMessage("Designer working days and hours saved.");
+    } catch (err) { setError(err.message || "Could not save designer availability."); }
+    finally { setBusy(false); }
+  }
+
+  async function ensureDesignerAvailability(transaction, item, date, time) {
+    if (!item.assignedDesignerUid) throw new Error("Assign a designer before confirming this appointment.");
+    const roleSnapshot = await transaction.get(doc(db, "roles", item.assignedDesignerUid));
+    if (!roleSnapshot.exists() || roleSnapshot.data().role !== "tailor") throw new Error("The assigned designer is no longer an active Tailor. Reassign the appointment.");
+    const availability = roleSnapshot.data();
+    if (!Array.isArray(availability.availabilityDays) || !availability.availabilityDays.length || !availability.availabilityStart || !availability.availabilityEnd) throw new Error("The assigned designer has no working schedule. Configure their availability in Staff Directory first.");
+    const weekday = new Date(date + "T12:00:00").getDay();
+    if (!availability.availabilityDays.includes(weekday) || time < availability.availabilityStart || time >= availability.availabilityEnd) throw new Error("The selected appointment time falls outside the assigned designer's working days or hours. Propose another time or reassign the designer.");
   }
 
   async function saveAppointmentAssignment(item) {
@@ -1120,6 +1153,7 @@ export default function Portal({ onClose }) {
         if (!currentSnapshot.exists()) throw new Error("This appointment no longer exists.");
         const current = { id: item.id, ...currentSnapshot.data() };
         if (current.customerUid !== user.uid || current.status !== "alternative_proposed") throw new Error("This appointment proposal is no longer available.");
+        await ensureDesignerAvailability(transaction, current, current.proposedDate, current.proposedTime);
         await reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime);
         transaction.update(appointmentRef, { appointmentDate: current.proposedDate, appointmentTime: current.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
       });
@@ -1926,7 +1960,7 @@ export default function Portal({ onClose }) {
         <div className="customer-management-heading"><div><h3>Fashion Institute Enquiries</h3><p>Review course and training enquiries from customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh enquiries</button></div>
         {allTrainingEnquiries.length ? <div className="appointment-list">{allTrainingEnquiries.map(item=><article className="appointment-card" key={item.id}><div><strong>{item.customerName || "Customer"}</strong><span>{item.customerEmail || item.customerUid}</span></div><p>{item.course} · {item.mode}</p>{item.message&&<p>{item.message}</p>}<label className="appointment-status">Enquiry status<select value={item.status || "pending"} disabled={busy} onChange={e=>updateTrainingStatus(item.id,e.target.value)}><option value="pending">Pending</option><option value="contacted">Contacted</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="completed">Completed</option></select></label></article>)}</div> : <p className="staff-empty">No training enquiries have been received.</p>}
       </section>}
-      {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button></article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
+      {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button>{member.role === "tailor" && <div className="designer-availability-editor"><strong>Working availability</strong><div className="designer-weekdays">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((day,index)=><label key={day}><input type="checkbox" checked={designerAvailabilityDraft(member).days.includes(index)} disabled={busy} onChange={e=>setDesignerAvailabilityEdits(current=>({...current,[member.uid]:{...designerAvailabilityDraft(member),days:e.target.checked?[...designerAvailabilityDraft(member).days,index]:designerAvailabilityDraft(member).days.filter(value=>value!==index)}}))}/>{day}</label>)}</div><div className="designer-hours"><label>Start time<input type="time" value={designerAvailabilityDraft(member).start} disabled={busy} onChange={e=>setDesignerAvailabilityEdits(current=>({...current,[member.uid]:{...designerAvailabilityDraft(member),start:e.target.value}}))}/></label><label>End time<input type="time" value={designerAvailabilityDraft(member).end} disabled={busy} onChange={e=>setDesignerAvailabilityEdits(current=>({...current,[member.uid]:{...designerAvailabilityDraft(member),end:e.target.value}}))}/></label></div><small>{member.availabilityUpdatedAt ? "Schedule saved" : "No working schedule saved yet"}</small><button type="button" disabled={busy} onClick={()=>saveDesignerAvailability(member)}>Save working hours</button></div>}</article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
       <section className="customer-management account-security">
         <div className="customer-management-heading"><div><h3>Account security</h3><p>Change your sign-in password after confirming your current password</p></div></div>
