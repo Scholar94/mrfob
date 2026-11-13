@@ -47,6 +47,7 @@ assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log r
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
 assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
+assert.ok(rules.includes("order_production_updated") && portal.includes("order_assigned"), "Order audit instrumentation is missing");
 
 const sourceFiles = fs.readdirSync("src").filter(file => /\.(jsx?|mjs)$/.test(file));
 for (const file of sourceFiles) {
