@@ -168,6 +168,15 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.status == request.resource.data.paymentStatus
           && request.resource.data.paymentStatus in ['verified','rejected']
         ) || (
+          (isSuperAdmin() || hasStaffRole(['manager','sales']))
+          && request.resource.data.type == 'quotation_update'
+          && request.resource.data.keys().hasOnly(['customerUid','orderId','type','quotationStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.orderId is string
+          && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.quotationStatus == request.resource.data.quotationStatus
+          && request.resource.data.quotationStatus in ['sent','accepted','declined']
+        ) || (
           isSuperAdmin()
           && request.resource.data.type == 'appointment_update'
           && request.resource.data.keys().hasOnly(['customerUid','appointmentId','type','appointmentStatus','title','message','createdAt','readAt'])
