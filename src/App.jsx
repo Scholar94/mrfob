@@ -52,8 +52,9 @@ export default function App() {
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
   useEffect(() => {
-    const rawPath = window.location.pathname.replace(/^\\/mrfob(?=\\/|$)/, "") || "/";
-    const path = rawPath.length > 1 ? rawPath.replace(/\\/$/, "") : rawPath;
+    const basePath = "/mrfob";
+    const rawPath = window.location.pathname.startsWith(basePath) ? (window.location.pathname.slice(basePath.length) || "/") : (window.location.pathname || "/");
+    const path = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
     const publicRoutes = {
       "/": ["home", "MR FOP FASHIONS | Premium Bespoke Fashion"],
       "/about": ["about", "About MR FOP FASHIONS"],
