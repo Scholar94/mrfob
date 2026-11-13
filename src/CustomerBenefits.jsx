@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, where } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 
 const DEFAULT_BENEFITS = { points: 0, tier: "standard", discountPercent: 0, prioritySupport: false };
 const TIERS = ["standard", "silver", "gold", "vip"];
@@ -76,6 +77,7 @@ export default function CustomerBenefits({ user, claims, customers = [] }) {
           createdBy: user.uid
         });
       });
+      await recordAuditEvent({ user, claims, action: "customer_benefits_updated", entityType: "customerBenefits", entityId: selectedUid, summary: "Updated loyalty tier, discount, priority support and points balance by " + pointsDelta + " points." });
       setNotice("Customer benefits saved. The points adjustment has been recorded in the loyalty history.");
       await refresh();
     } catch (err) {
