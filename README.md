@@ -147,3 +147,8 @@ These are source-level permissions. The latest `firestore.rules` must be publish
 ## Customer privacy requests
 
 The account portal includes a private privacy-request centre. Customers can submit requests to access, correct or delete personal information; they can see the request status and the company's recorded response. Only the Super Admin can review all requests or change their status. Submitting a deletion request does not automatically erase records: staff must review account records, legal/accounting retention needs and related Google Drive files before confirming completion. Customer data export is also available from My Profile. Publish the latest `firestore.rules` before using this feature.
+
+
+## Fabric gallery
+
+The public homepage includes a live fabric gallery backed by the Firestore `fabrics` collection. Super Admins can add, edit and archive fabrics with a name, colour, texture, indicative price range, availability, suitable garment categories and optional HTTPS image URL. Only active fabric records are publicly readable; writes are restricted to Super Admin by Firestore rules. The catalogue does not claim live physical stock counts or guaranteed prices.
