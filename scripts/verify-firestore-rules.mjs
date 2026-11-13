@@ -1,0 +1,145 @@
+import { readFileSync } from "node:fs";
+import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
+
+const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+const env = await initializeTestEnvironment({
+  projectId: "demo-mrfop-rules",
+  firestore: { rules }
+});
+const now = Timestamp.now();
+const customerA = env.authenticatedContext("customer-a", { email: "customer-a@example.com" }).firestore();
+const customerB = env.authenticatedContext("customer-b", { email: "customer-b@example.com" }).firestore();
+const finance = env.authenticatedContext("finance-a", { email: "finance@example.com" }).firestore();
+const manager = env.authenticatedContext("manager-a", { email: "manager@example.com" }).firestore();
+const superAdmin = env.authenticatedContext("admin-a", { email: "admin@example.com" }).firestore();
+const anonymous = env.unauthenticatedContext().firestore();
+
+try {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    for (const [uid, role] of [
+      ["customer-a", "customer"], ["customer-b", "customer"],
+      ["finance-a", "finance"], ["manager-a", "manager"], ["admin-a", "superAdmin"]
+    ]) await setDoc(doc(db, "roles", uid), { role });
+    await setDoc(doc(db, "payments", "payment-a"), {
+      customerUid: "customer-a", amount: 10000, orderId: "order-a",
+      orderNumber: "MFF-001", currency: "NGN", createdAt: now
+    });
+    await setDoc(doc(db, "fabrics", "active-fabric"), {
+      name: "Test cotton", color: "Navy", texture: "Soft",
+      priceRange: "Price on request", availability: "available",
+      suitableCategories: ["Shirts"], imageUrl: "", active: true,
+      createdAt: now, createdBy: "admin-a", updatedAt: now
+    });
+    await setDoc(doc(db, "fabrics", "archived-fabric"), {
+      name: "Archived cotton", color: "Grey", texture: "Soft",
+      priceRange: "", availability: "out_of_stock",
+      suitableCategories: [], imageUrl: "", active: false,
+      createdAt: now, createdBy: "admin-a", updatedAt: now
+    });
+  });
+
+  // Customer privacy: only the owner can create and read their own privacy request.
+  const privacyRef = doc(customerA, "privacyRequests", "privacy-a");
+  await assertSucceeds(setDoc(privacyRef, {
+    customerUid: "customer-a", customerEmail: "customer-a@example.com",
+    requestType: "access", details: "Please provide a copy of my account records.",
+    status: "received", staffNote: "", createdAt: now, updatedAt: now
+  }));
+  await assertSucceeds(getDoc(privacyRef));
+  await assertFails(getDoc(doc(customerB, "privacyRequests", "privacy-a")));
+  await assertFails(updateDoc(privacyRef, { status: "completed", updatedAt: now }));
+
+  // Refund: one request is bound to the customer's verified payment and cannot be duplicated.
+  const refundRef = doc(customerA, "refunds", "payment-a");
+  await assertSucceeds(setDoc(refundRef, {
+    paymentId: "payment-a", orderId: "order-a", orderNumber: "MFF-001",
+    customerUid: "customer-a", customerEmail: "customer-a@example.com",
+    amount: 5000, currency: "NGN", reason: "The agreed service was cancelled.",
+    status: "requested", reviewNote: "", refundReference: "",
+    createdAt: now, updatedAt: now
+  }));
+  await assertSucceeds(getDoc(refundRef));
+  await assertFails(getDoc(doc(customerB, "refunds", "payment-a")));
+  await assertFails(setDoc(refundRef, {
+    paymentId: "payment-a", orderId: "order-a", orderNumber: "MFF-001",
+    customerUid: "customer-a", customerEmail: "customer-a@example.com",
+    amount: 5000, currency: "NGN", reason: "Duplicate refund request.",
+    status: "requested", reviewNote: "", refundReference: "",
+    createdAt: now, updatedAt: now
+  }));
+  await assertSucceeds(updateDoc(doc(finance, "refunds", "payment-a"), {
+    status: "reviewing", reviewNote: "Reviewing the request.", refundReference: "",
+    reviewedBy: "finance-a", updatedAt: now
+  }));
+  await assertSucceeds(updateDoc(doc(finance, "refunds", "payment-a"), {
+    status: "approved", reviewNote: "Approved after review.", refundReference: "",
+    reviewedBy: "finance-a", updatedAt: now
+  }));
+  await assertFails(updateDoc(doc(finance, "refunds", "payment-a"), {
+    status: "paid", reviewNote: "Transfer sent.", refundReference: "",
+    reviewedBy: "finance-a", updatedAt: now, processedAt: now
+  }));
+  await assertSucceeds(updateDoc(doc(finance, "refunds", "payment-a"), {
+    status: "paid", reviewNote: "Transfer sent.", refundReference: "BANK-TRANSFER-001",
+    reviewedBy: "finance-a", updatedAt: now, processedAt: now
+  }));
+  await assertFails(updateDoc(doc(finance, "refunds", "payment-a"), {
+    status: "approved", reviewNote: "Attempt to change a completed refund.",
+    refundReference: "BANK-TRANSFER-001", reviewedBy: "finance-a", updatedAt: now
+  }));
+
+  // Public fabric visibility: active records are public; archived records remain private.
+  await assertSucceeds(getDoc(doc(anonymous, "fabrics", "active-fabric")));
+  await assertFails(getDoc(doc(anonymous, "fabrics", "archived-fabric")));
+  await assertSucceeds(getDoc(doc(superAdmin, "fabrics", "archived-fabric")));
+  await assertFails(setDoc(doc(customerA, "fabrics", "customer-fabric"), {
+    name: "Invalid", color: "Red", texture: "Soft", priceRange: "",
+    availability: "available", suitableCategories: [], imageUrl: "",
+    active: true, createdAt: now, createdBy: "customer-a", updatedAt: now
+  }));
+
+  // Referral rules compile and preserve owner-only visibility.
+  await assertSucceeds(setDoc(doc(customerA, "referralClaims", "referral-a"), {
+    customerUid: "customer-a", referrerEmail: "customer-a@example.com",
+    referralCode: "MFF-CUSTOMER-A", referredName: "Friend Customer",
+    referredEmail: "friend@example.com", referredPhone: "",
+    note: "", status: "pending", reviewNote: "",
+    createdAt: now, updatedAt: now
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "referralClaims", "referral-a")));
+  await assertFails(getDoc(doc(customerB, "referralClaims", "referral-a")));
+
+  // Product gallery fields are accepted for Super Admin and remain protected from customers.
+  await assertSucceeds(setDoc(doc(superAdmin, "products", "gallery-product"), {
+    name: "Test bespoke jacket", sku: "TEST-001", category: "Custom clothing",
+    description: "Test product for rules verification.", price: 50000, costPrice: 20000,
+    currency: "NGN", stock: 2, imageUrl: "https://example.com/front.webp",
+    galleryImages: ["https://example.com/back.webp"],
+    availableColors: ["Navy", "Black"], fabricOptions: ["Wool"],
+    customizationOptions: ["Monogram"], active: true,
+    createdAt: now, updatedAt: now, createdBy: "admin-a"
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "products", "gallery-product")));
+  await assertFails(setDoc(doc(customerA, "products", "customer-product"), {
+    name: "Customer product", sku: "C-001", category: "Other", description: "",
+    price: 1, costPrice: 1, currency: "NGN", stock: 1, imageUrl: "",
+    galleryImages: [], availableColors: [], fabricOptions: [],
+    customizationOptions: [], active: true, createdAt: now, updatedAt: now,
+    createdBy: "customer-a"
+  }));
+
+  // Finance may review refunds but cannot create them; unrelated collections remain denied.
+  await assertFails(setDoc(doc(finance, "refunds", "finance-created"), {
+    paymentId: "payment-a", orderId: "order-a", orderNumber: "MFF-001",
+    customerUid: "customer-a", customerEmail: "customer-a@example.com",
+    amount: 1000, currency: "NGN", reason: "Finance created a request.",
+    status: "requested", reviewNote: "", refundReference: "",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
+  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+} finally {
+  await env.cleanup();
+}
