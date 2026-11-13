@@ -39,7 +39,7 @@
 | 21 | Performance and UX | Partial | Responsive layout, loading/error/empty states, a React error boundary around the account portal, image lazy loading and Firestore query scoping are present. The error boundary provides a recoverable fallback for render crashes; it does not prove that the previously reported blank Account view root cause has been fixed. Full pagination, image optimization, accessibility audit and low-bandwidth/mobile profiling remain to be completed. |
 | 22 | SEO and brand presentation | Partial | Page metadata, canonical URL, LocalBusiness structured data, robots.txt and a multi-route public sitemap exist. Route-specific title changes are client-side; server-rendered metadata and dynamic sitemap generation remain incomplete. |
 | 23 | Required website pages | Not complete | Most public/customer/staff experiences are sections or portal modules rather than the complete independent route list in the master prompt. A GitHub Pages 404 fallback and route resolver now support requested public paths; collection category routes target their corresponding category panels, and course/admissions routes target separate public sections; other public paths scroll to their relevant homepage section. Customer/student/admin paths open the role-protected portal and scroll to a matching portal section where one exists. These are deep-link aliases, not fully independent page components; several requested admin pages such as audit-log-specific routes remain incomplete. |
-| 24 | Final delivery and mandatory tests | Not complete | Deployment workflow builds and publishes the site when the latest commit passes. A 22-case acceptance test plan is documented in docs/QA-TEST-PLAN.md. Separate-account end-to-end testing, Firebase Emulator rules tests, Drive/Apps Script integration tests, mobile/PWA tests and a final signed-off test report remain outstanding. |
+| 24 | Final delivery and mandatory tests | Not complete | Deployment workflow builds and publishes the site when the latest commit passes. A 22-case manual acceptance plan plus one automated Firestore Emulator regression case is documented in docs/QA-TEST-PLAN.md. Separate-account end-to-end testing, Firebase Emulator rules tests, Drive/Apps Script integration tests, mobile/PWA tests and a final signed-off test report remain outstanding. |
 
 ## Recently added workflows
 
@@ -78,6 +78,6 @@
 4. Complete refunds, delivery/collection lifecycle, appointment conflict prevention and full production event history.
 5. Complete Institute instructor/student lifecycle and validate Drive permission grant/revocation, including refund/withdrawal cases.
 6. Complete accessibility, low-bandwidth, SEO route coverage and PWA installation tests.
-7. Run the full 22-case mandatory test plan using separate customer, designer/tailor, finance, instructor, Institute Administrator and Super Admin accounts.
+7. Run the full 22-case manual test plan using separate customer, designer/tailor, finance, instructor, Institute Administrator and Super Admin accounts.
 
 **Completion rule:** The project must not be described as fully complete until all 24 sections have no outstanding critical requirements, the current Firestore rules are published and tested, all external integrations are verified, and the mandatory end-to-end test report is passed.
