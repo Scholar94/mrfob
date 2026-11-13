@@ -48,6 +48,8 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 
 ### Additional source-level feature check
 
+- Public sitemap includes all currently supported public deep-link routes and excludes private account routes. The sitemap is static and must be updated whenever a new public route is introduced.
+
 - Change every style recommender preference and confirm that the three suggestions and WhatsApp brief reflect the selected occasion, category, garment, colour, personal style, budget and optional reference notes. Confirm that suggestions are not presented as live stock or confirmed prices. This browser test remains Not run until performed.
 
 ## Completion criteria
