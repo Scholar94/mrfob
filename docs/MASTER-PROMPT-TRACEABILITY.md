@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-13 — Fashion Institute public-to-learner pathway:** added a second call to action in the public Institute section that opens the existing account portal, alongside the direct WhatsApp enquiry. This gives existing learners and applicants a direct route to the portal's available training enquiry and learner functions; it does not imply automatic admission or create a new application workflow. Added responsive styling and keyboard focus treatment. No Firestore rules changed. Browser, mobile and learner-flow checks remain pending.
+
+
 - **2026-11-13 — Homepage value proposition:** added a six-point 'Why choose MR FOP?' section and a primary-navigation link. Copy is limited to verifiable company history, stated business scope, existing customer portal capabilities and consultation process; it does not invent awards, customer ratings, guarantees or production capacity. Responsive desktop/tablet/mobile styling added. Source review only; build, browser, accessibility and live deployment checks remain pending. No Firestore rules changed.
 
 
