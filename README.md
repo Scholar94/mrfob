@@ -109,3 +109,10 @@ All uploaders must sign in with a Google account that has Editor access to the s
 ## Objective assessment auto-marking
 
 The Fashion Institute supports objective multiple-choice assessments with server-side automatic marking through the free Google Apps Script option. See [docs/google-apps-script/README.md](docs/google-apps-script/README.md) for setup, permissions and deployment. Add the GitHub Actions variable `VITE_ASSESSMENT_GRADING_URL` with the deployed Apps Script `/exec` URL, then redeploy the site. Correct answers are stored in a separate staff-only Firestore collection; the browser never receives the answer key.
+
+
+## Integrations and setup
+
+- [Google Drive media integration setup and access controls](docs/google-drive/README.md)
+- [Secure Fashion Institute objective assessment grader](docs/google-apps-script/README.md)
+- [24-section master prompt traceability register](docs/MASTER-PROMPT-TRACEABILITY.md)
