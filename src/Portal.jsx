@@ -133,6 +133,13 @@ export default function Portal({ onClose }) {
       if (portalReturnFocusRef.current?.isConnected) portalReturnFocusRef.current.focus();
     };
   }, [onClose]);
+  const filteredSupportTickets = supportTickets.filter(ticket => {
+    const statusMatches = supportStatusFilter === "all" || (ticket.status || "open") === supportStatusFilter;
+    const needle = supportSearch.trim().toLowerCase();
+    const searchMatches = !needle || [ticket.subject, ticket.message, ticket.customerName, ticket.customerEmail, ticket.category, ticket.id]
+      .some(value => String(value || "").toLowerCase().includes(needle));
+    return statusMatches && searchMatches;
+  });
   const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
   const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
   const [mode, setMode] = useState("login");
@@ -177,6 +184,8 @@ export default function Portal({ onClose }) {
   const [appointments, setAppointments] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [supportLoading, setSupportLoading] = useState(false);
+  const [supportSearch, setSupportSearch] = useState("");
+  const [supportStatusFilter, setSupportStatusFilter] = useState("all");
   const [supportForm, setSupportForm] = useState({ category: "Order enquiry", subject: "", message: "" });
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ service: "Measurement", appointmentDate: "", appointmentTime: "", purpose: "" });
@@ -1610,19 +1619,24 @@ export default function Portal({ onClose }) {
       </section>
       <section className="customer-management customer-self-service support-centre">
         <div className="customer-management-heading"><div><h3>{canManageSupport ? "Customer Support Centre" : "Help & Support"}</h3><p>{canManageSupport ? "Review customer enquiries and reply from the account portal." : "Send a private enquiry to the MR FOP team and check its response here."}</p></div><button type="button" onClick={loadSupportTickets} disabled={supportLoading}>{supportLoading ? "Loading…" : "Refresh requests"}</button></div>
+        {canManageSupport && <div className="support-ticket-filters">
+          <label>Search requests<input type="search" value={supportSearch} onChange={e=>setSupportSearch(e.target.value)} placeholder="Subject, customer, category or reference"/></label>
+          <label>Filter by status<select value={supportStatusFilter} onChange={e=>setSupportStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label>
+          <small>Showing {filteredSupportTickets.length} of {supportTickets.length} loaded requests.</small>
+        </div>}
         {!canManageSupport && <form className="portal-form" onSubmit={submitSupportTicket}>
           <label>Enquiry category<select value={supportForm.category} onChange={e=>setSupportForm({...supportForm,category:e.target.value})}><option>Order enquiry</option><option>Appointment</option><option>Quotation or payment</option><option>Measurements or fitting</option><option>Fashion Institute</option><option>Complaint or other</option></select></label>
           <label>Subject<input required minLength="4" maxLength="120" value={supportForm.subject} onChange={e=>setSupportForm({...supportForm,subject:e.target.value})} placeholder="Briefly describe what you need help with"/></label>
           <label>Message<textarea required minLength="10" maxLength="2000" rows="4" value={supportForm.message} onChange={e=>setSupportForm({...supportForm,message:e.target.value})} placeholder="Explain your enquiry. Do not include passwords, bank PINs or card details."/></label>
           <button className="portal-submit" disabled={busy}>{busy ? "Sending…" : "Send support request"}</button>
         </form>}
-        {supportLoading ? <p className="staff-empty">Loading support requests…</p> : supportTickets.length ? <div className="support-ticket-list">{supportTickets.map(ticket=><article className="support-ticket-card" key={ticket.id}>
+        {supportLoading ? <p className="staff-empty">Loading support requests…</p> : filteredSupportTickets.length ? <div className="support-ticket-list">{filteredSupportTickets.map(ticket=><article className="support-ticket-card" key={ticket.id}>
           <div className="support-ticket-heading"><div><strong>{ticket.subject}</strong><span>{ticket.customerName || ticket.customerEmail || "Customer"} · {ticket.category}</span></div><span className={"support-ticket-status status-"+(ticket.status||"open")}>{String(ticket.status||"open").replaceAll("_"," ")}</span></div>
           <p>{ticket.message}</p>
           {ticket.staffReply && <div className="support-ticket-reply"><strong>MR FOP team response</strong><p>{ticket.staffReply}</p></div>}
           {canManageSupport && <div className="support-ticket-actions"><label>Status<select value={ticket.status||"open"} disabled={busy} onChange={e=>updateSupportStatus(ticket,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label><button type="button" disabled={busy} onClick={()=>replyToSupportTicket(ticket)}>{ticket.staffReply ? "Update reply" : "Reply to customer"}</button></div>}
           <small>Reference: {ticket.id}</small>
-        </article>)}</div> : <p className="staff-empty">{canManageSupport ? "No customer support requests have been received." : "You have not sent a support request yet."}</p>}
+        </article>)}</div> : <p className="staff-empty">{canManageSupport ? (supportTickets.length ? "No requests match the current search or status filter." : "No customer support requests have been received.") : "You have not sent a support request yet."}</p>}
       </section>
       {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
         <div className="customer-management-heading"><div><h3>Payment Management</h3><p>Record and review payments linked to customer orders</p></div><button type="button" onClick={loadPayments}>Refresh payments</button></div>
