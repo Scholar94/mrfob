@@ -45,6 +45,7 @@ assert.ok(drive.includes("uploadFileToGoogleDrive"), "Google Drive upload integr
 assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"), "Firestore catch-all deny rule is missing");
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
+assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
 
 const sourceFiles = fs.readdirSync("src").filter(file => /\.(jsx?|mjs)$/.test(file));
 for (const file of sourceFiles) {
