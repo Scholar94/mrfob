@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 
 const TYPES = ["Corporate uniforms", "School uniforms", "Church / ministry outfits", "Wedding party clothing", "Event clothing", "Bulk bespoke garments", "Other institutional order"];
 const STATUSES = ["pending", "in_review", "quotation_preparation", "quoted", "accepted", "declined", "completed"];
@@ -57,6 +58,7 @@ export default function CorporateOrderRequests({ user, claims }) {
     setBusy(true); setError(""); setNotice("");
     try {
       await updateDoc(doc(db, "corporateRequests", item.id), { status, staffNote, updatedBy: user.uid, updatedAt: serverTimestamp() });
+      await recordAuditEvent({ user, claims, action: "corporate_request_updated", entityType: "corporateRequest", entityId: item.id, summary: "Corporate enquiry for " + item.organisation + " moved to " + status + "." });
       setItems(current => current.map(row => row.id === item.id ? { ...row, status, staffNote } : row));
       setNotice("Institutional request updated.");
     } catch (err) { setError(err.message || "Could not update this request."); }
