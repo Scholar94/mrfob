@@ -745,3 +745,6 @@ button:disabled{cursor:not-allowed}
 .benefits-history article strong { color: #71552f; }
 .benefits-history article small { grid-column: 2; color: #837772; }
 @media (max-width: 540px) { .benefits-history article { grid-template-columns: 1fr; } .benefits-history article small { grid-column: 1; } }
+
+
+.payment-declaration-review > p a, .payment-declaration-list a { color: #795c36; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
