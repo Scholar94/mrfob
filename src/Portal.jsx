@@ -2022,7 +2022,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const verifiedOrderPaymentsTotal = payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const outstandingQuotedBalanceTotal = orders.reduce((sum, order) => {
     const quoted = Number(order.amount || 0);
-    return sum + (quoted > 0 ? Math.max(0, quoted - Number(order.amountPaid || 0)) : 0);
+    return sum + (quoted > 0 ? Math.max(0, quoted - orderPaidTotal(order)) : 0);
   }, 0);
   const newCustomerCount30Days = customers.filter(item => {
     const created = item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt instanceof Date ? item.createdAt : null;
