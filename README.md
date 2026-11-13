@@ -46,7 +46,7 @@ firebase deploy --only firestore:rules
 3. Create a document whose document ID is the owner's Firebase Authentication UID.
 4. Add fields: `uid` (string, same UID), `email` (string, owner's email), `role` (string, exactly `superAdmin`).
 5. Sign out and sign in again. The account portal will then identify the Super Admin.
-6. The Super Admin can assign staff roles to users who have already registered: manager, sales, tailor, or institute.
+6. The Super Admin can assign staff roles to users who have already registered: manager, sales, tailor, institute, instructor, or finance. A Tailor sees only clothing orders explicitly assigned to that Tailor; the Super Admin assigns the designer in the Order Management card.
 
 The initial role document must be created by the project owner in Firebase Console. The deployed Firestore rules prevent ordinary users from granting themselves roles or changing their own role. Super Admin cannot change their own role through the staff interface.
 
@@ -55,7 +55,9 @@ The initial role document must be created by the project owner in Firebase Conso
 - Customer profiles are owner-readable; staff access is role-limited.
 - Role documents are self-readable; only the Super Admin can assign roles to other users.
 - Orders, measurements and training enquiries have separate access rules.
-- Review and test the rules in Firebase Emulator before production data is added.
+- Customer payment declarations and payment ledger records are readable only by the owning customer, Finance Officer and Super Admin.
+- Tailor access to order records, event history, reference designs and production media is restricted to orders assigned to that Tailor.
+- Review and test the rules in Firebase Emulator before production data is added. Deploy updated rules with `firebase deploy --only firestore:rules` before relying on the new permission boundaries.
 
 ## Approved branding assets
 The three supplied and approved logo images are committed under `public/` and wired into the live application:
@@ -116,3 +118,14 @@ The Fashion Institute supports objective multiple-choice assessments with server
 - [Google Drive media integration setup and access controls](docs/google-drive/README.md)
 - [Secure Fashion Institute objective assessment grader](docs/google-apps-script/README.md)
 - [24-section master prompt traceability register](docs/MASTER-PROMPT-TRACEABILITY.md)
+
+
+## Staff role boundaries
+
+- **Super Admin:** assigns staff roles, assigns a Tailor to each production order, manages company settings and retains full administrative access.
+- **Fashion Manager / Sales:** manage the clothing orders and customer-service workflows allowed by Firestore rules.
+- **Tailor:** sees only orders assigned to their own UID and can update production stages or upload progress media for those assigned orders.
+- **Finance Officer:** reviews customer bank-transfer declarations, verifies or rejects them, views the payment ledger/sales/expenses, and records expenses. The role does not receive the general clothing-order administration or staff-role controls.
+- **Institute Administrator / Instructor:** work within their respective course, student and learning workflows; Institute staff do not receive the clothing-order or Finance workspace.
+
+These are source-level permissions. The latest `firestore.rules` must be published to Firebase, and the boundaries must be tested with separate role accounts before production use.
