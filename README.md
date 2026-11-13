@@ -201,3 +201,8 @@ The Super Admin product form supports a primary image plus up to eight additiona
 ## Refund requests and manual refund recording
 
 Customers can submit one refund request per verified payment. Finance Officers and Super Admins can review, approve or reject a request. A refund can only be marked paid after it has been approved and a real transfer reference has been entered. This is a record of a manually completed bank transfer; the platform does not initiate or verify bank transfers. Refunds are not automatically netted from POS or statutory financial reports. Publish the latest Firestore rules before use.
+
+
+## Firestore security regression tests
+
+The GitHub Actions deployment workflow starts the local Firestore Emulator and runs `scripts/verify-firestore-rules.mjs`. The focused tests cover customer-owned privacy requests, the one-refund-per-payment lifecycle and Finance review, referral ownership, public/archived fabric visibility, product gallery writes and the deny-by-default rule. The emulator test suite does not yet cover every collection or every role combination. It does not publish rules to the production Firebase project.
