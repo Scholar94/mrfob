@@ -319,3 +319,6 @@
 
 
 - **2026-11-13 — Public metadata and brand-music dialog semantics:** added the canonical production URL as the explicit Open Graph URL so link previews carry a consistent page identity. Updated the brand-music information notice with dialog semantics, an accessible heading reference, a descriptive close-button label and explicit button type; the trigger now exposes that it opens a dialog and its current expanded state. The official audio file is still a company-supplied dependency, so this does not claim music playback is implemented. No Firestore rules changed. Build, screen-reader and live social-preview checks remain pending.
+
+
+- **2026-11-13 — Keyboard-accessible public dialogs:** privacy, terms and brand-music dialogs now move keyboard focus into the opened dialog, keep Tab/Shift+Tab navigation inside it, close on Escape, and restore focus to the control that opened the dialog. The handler is installed only while a dialog is open and is removed on close/unmount. This improves keyboard operation but does not constitute a full WCAG or screen-reader audit, and the customer portal's separate dialogs still require review. No Firestore rules changed. Build, keyboard and assistive-technology checks remain pending.
