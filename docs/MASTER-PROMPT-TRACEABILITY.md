@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-13 — Fashion Institute assessment grading usability:** replaced browser prompt-based grading with an inline, labelled score and optional instructor-feedback form. Scores are validated against the existing per-question maximum before the submission is marked graded; feedback is stored with the grade and shown back in the learner view. The change retains manual grading and does not expose answer keys or claim objective auto-marking. Responsive styling added. No Firestore rules changed. Build, instructor/student workflow and accessibility checks remain pending.
+
+
 - **2026-11-13 — Fashion Institute public-to-learner pathway:** added a second call to action in the public Institute section that opens the existing account portal, alongside the direct WhatsApp enquiry. This gives existing learners and applicants a direct route to the portal's available training enquiry and learner functions; it does not imply automatic admission or create a new application workflow. Added responsive styling and keyboard focus treatment. No Firestore rules changed. Browser, mobile and learner-flow checks remain pending.
 
 
