@@ -6,7 +6,7 @@ import {
 import Portal from "./Portal.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 
 const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
@@ -36,8 +36,24 @@ export default function App() {
   const [portalOpen, setPortalOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState("");
   const [publicReviews, setPublicReviews] = useState([]);
+  const [companyProfile, setCompanyProfile] = useState({});
+  const companyName = companyProfile.companyName || "MR FOP FASHIONS COMPANY NIGERIA LIMITED";
+  const companyPhone = companyProfile.phone || "+234 805 547 2913";
+  const companyEmail = companyProfile.email || "mrfopvi@gmail.com";
+  const companyAddress = companyProfile.address || "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria";
+  const companyHours = companyProfile.openingHours || "Monday – Saturday · 9:00 AM – 6:00 PM (WAT)";
+  const companyWhatsappDigits = String(companyProfile.whatsapp || "+234 805 547 2913").replace(/\D/g, "");
+  const companyWa = "https://wa.me/" + companyWhatsappDigits + "?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
+  useEffect(() => {
+    if (!firebaseReady || !db) return;
+    let active = true;
+    getDoc(doc(db, "publicSettings", "siteProfile"))
+      .then(snapshot => { if (active && snapshot.exists()) setCompanyProfile(snapshot.data()); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     if (!firebaseReady || !db) return;
     let active = true;
@@ -268,24 +284,24 @@ export default function App() {
         <div className="promise-items"><article><ShieldCheck/><h3>Professional Craft</h3><p>Careful workmanship and attention to the details that make a difference.</p></article><article><Ruler/><h3>Personal Fit</h3><p>Thoughtful measurement and design choices built around the individual.</p></article><article><Heart/><h3>Customer Happiness</h3><p>Service shaped around listening, trust and lasting relationships.</p></article></div>
       </section>
       <section className="contact section-pad" id="contact"><div><p className="eyebrow light"><i/> YOUR NEXT LOOK STARTS HERE</p><h2>Let's create<br/><em>something remarkable.</em></h2></div>
-        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><a className="contact-detail" href="tel:+2348055472913"><Phone size={15}/> +234 805 547 2913</a><a className="contact-detail" href="mailto:mrfopvi@gmail.com"><MessageCircle size={15}/> mrfopvi@gmail.com</a><div className="contact-detail contact-address"><span>VISIT US</span><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store,<br/>Ijebu Ode, Ogun State, Nigeria.</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</p></div></div>
+        <div className="contact-side"><p>Tell us what you have in mind. Our team will be happy to guide you through styles, measurements, appointments and training enquiries.</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Start a conversation <ArrowUpRight size={17}/></a><a className="contact-detail" href={"tel:" + companyPhone.replace(/[^+0-9]/g,"")}><Phone size={15}/> {companyPhone}</a><a className="contact-detail" href={"mailto:" + companyEmail}><MessageCircle size={15}/> {companyEmail}</a><div className="contact-detail contact-address"><span>VISIT US</span><p>{companyAddress}</p></div><div className="contact-detail contact-address"><span>OPENING HOURS</span><p>{companyHours}</p></div></div>
       </section>
     </main>
     <section className="location section-pad" id="location">
       <div className="section-heading"><div><p className="eyebrow"><i/> FIND THE FASHION HOUSE</p><h2>Visit us in <em>Ijebu Ode.</em></h2></div><p>We welcome enquiries and scheduled visits. Please contact the team before travelling to confirm appointment availability.</p></div>
       <div className="location-grid">
         <div className="location-map"><iframe title="MR FOP FASHIONS location on Google Maps" src="https://www.google.com/maps?q=Bonojo%20Road%2C%20Eka%20Junction%2C%20via%20Blooms%20Pharmacy%20Store%2C%20Ijebu%20Ode%2C%20Ogun%20State%2C%20Nigeria&output=embed" loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/></div>
-        <div className="location-details"><p className="eyebrow"><i/> OUR STUDIO</p><h3>MR FOP FASHIONS COMPANY NIGERIA LIMITED</h3><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria.</p><div><strong>Opening hours</strong><span>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</span></div><div><strong>Telephone</strong><span>+234 805 547 2913</span></div><a className="button button-gold" href="https://www.google.com/maps/search/?api=1&query=Bonojo%20Road%2C%20Eka%20Junction%2C%20via%20Blooms%20Pharmacy%20Store%2C%20Ijebu%20Ode%2C%20Ogun%20State%2C%20Nigeria" target="_blank" rel="noreferrer">Get directions <ArrowUpRight size={17}/></a></div>
+        <div className="location-details"><p className="eyebrow"><i/> OUR STUDIO</p><h3>{companyName}</h3><p>{companyAddress}</p><div><strong>Opening hours</strong><span>{companyHours}</span></div><div><strong>Telephone</strong><span>{companyPhone}</span></div><a className="button button-gold" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(companyAddress)} target="_blank" rel="noreferrer">Get directions <ArrowUpRight size={17}/></a></div>
       </div>
     </section>
     <CertificateVerification />
-    <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image brand-image-footer" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
+    <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image brand-image-footer" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={companyWa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
     <button className="music-toggle" type="button" onClick={() => setMusicNotice(true)} aria-haspopup="dialog" aria-expanded={musicNotice}> <Play size={14}/> BRAND MUSIC</button>
     <button className="install-button" type="button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
     {installMessage && <p className="install-feedback" role="status" aria-live="polite">{installMessage}</p> }
-    <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
+    <a className="whatsapp-float" href={companyWa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
 
     {policyOpen && <div className="modal-backdrop policy-backdrop" onClick={() => setPolicyOpen("")}><section ref={dialogRef} className="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-title" onClick={e => e.stopPropagation()}>
       <button className="policy-close" onClick={() => setPolicyOpen("")} aria-label="Close policy">×</button>
