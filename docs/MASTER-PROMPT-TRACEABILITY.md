@@ -334,3 +334,6 @@
 
 
 - **2026-11-13 — Nested dialog focus and authentication feedback refinement:** corrected the account-portal keyboard handler so opening the nested POS receipt does not cause the parent portal effect to rerun and steal initial focus. The parent now detects the active receipt dialog at key-event time and yields Escape handling while that nested dialog exists. Login, registration and password-reset feedback now expose errors as alerts and successful/informational messages as status announcements. No Firestore rules changed. Build, nested-dialog keyboard and screen-reader checks remain pending.
+
+
+- **2026-11-13 — Account portal and nested receipt accessibility:** the customer/admin account portal and Firebase-setup notice now expose modal-dialog semantics, move focus into the active portal, keep keyboard focus within it, close on Escape, and restore focus to the opener. The POS sales-receipt dialog has its own focus trap and Escape/restore behaviour; the parent portal deliberately yields keyboard handling while the receipt is open so nested dialogs do not compete for focus. Login, registration and password-reset feedback now use alert/status live regions. This is a source-level accessibility improvement only: browser, screen-reader, mobile keyboard and full portal-dialog regression checks remain pending. No Firestore rules were changed.
