@@ -461,3 +461,12 @@ button:disabled{cursor:not-allowed}
 .institute-assessment-result{margin-top:10px;padding:12px 14px;background:#f7f3ec;border-left:3px solid #a77d43}
 .institute-assessment-result p{margin:4px 0;white-space:pre-wrap}
 @media(max-width:620px){.institute-grade-form{grid-template-columns:1fr}.institute-grade-form button{grid-column:auto;justify-self:stretch}}
+
+
+/* Certificate withdrawal is auditable and visibly distinct from active awards */
+.certificate-revoke-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:14px;padding:13px;background:#faf5f3;border:1px solid #ead8d5;border-radius:8px}
+.certificate-revoke-form label{display:grid;gap:6px;font-size:11px;font-weight:600;color:#49383d}
+.certificate-revoke-form input{width:100%;min-width:0;padding:10px;border:1px solid #d9cfc4;border-radius:6px;background:#fff;color:#32151f;font:13px inherit}
+.certificate-revoke-form button{padding:10px 13px;border:1px solid #9a4545;border-radius:6px;background:#fff;color:#8d3030;font-weight:700;cursor:pointer}
+.certificate-revoked-note{margin-top:12px;padding:10px 12px;background:#f8eeee;border-left:3px solid #9a4545;color:#783333;font-size:12px;line-height:1.6}
+@media(max-width:620px){.certificate-revoke-form{grid-template-columns:1fr}.certificate-revoke-form button{width:100%}}
