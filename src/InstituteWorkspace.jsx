@@ -143,7 +143,58 @@ export default function InstituteWorkspace() {
   useEffect(() => { load(); }, [user?.uid, isAdmin]);
 
   const availableWindows = useMemo(() => windows.filter(w => w.status !== "closed" && (!w.applicationClose || w.applicationClose >= new Date().toISOString().slice(0,10))), [windows]);
+
   const activeCourses = useMemo(() => courses.filter(c => c.active !== false), [courses]);
+
+  function getCourseCompletionStatus(enrollment) {
+    if (!enrollment) return { eligible: false, checks: [], blockers: ["Select a paid enrolment."] };
+    const courseId = enrollment.courseId;
+    const courseLessons = lessons.filter(item => item.courseId === courseId && item.published === true);
+    const completedLessonIds = new Set(allLessonProgress
+      .filter(item => item.studentUid === enrollment.studentUid && item.courseId === courseId && item.completed === true)
+      .map(item => item.lessonId));
+    const incompleteLessons = courseLessons.filter(item => !completedLessonIds.has(item.id));
+
+    const courseAssignments = assignments.filter(item => item.courseId === courseId && item.published === true);
+    const assignmentRecords = submissions.filter(item => item.studentUid === enrollment.studentUid && item.courseId === courseId);
+    const incompleteAssignments = courseAssignments.filter(item => {
+      const submission = assignmentRecords.find(record => record.assignmentId === item.id);
+      return !submission || submission.status !== "graded";
+    });
+
+    const courseAssessments = assessments.filter(item => item.courseId === courseId && item.published === true);
+    const assessmentRecords = assessmentSubmissions.filter(item => item.studentUid === enrollment.studentUid && item.courseId === courseId);
+    const incompleteAssessments = courseAssessments.filter(item => {
+      const submission = assessmentRecords.find(record => record.assessmentId === item.id);
+      return !submission || submission.status !== "graded";
+    });
+
+    const completedSessions = sessions.filter(item => item.courseId === courseId && item.status === "completed");
+    const attendanceRecords = attendance.filter(item => item.studentUid === enrollment.studentUid && item.courseId === courseId);
+    const missingAttendance = completedSessions.filter(session => {
+      const sessionDate = String(session.startsAt || "").slice(0, 10);
+      const record = attendanceRecords.find(item => item.date === sessionDate);
+      return !record || !["present", "late", "excused"].includes(record.status);
+    });
+
+    const blockers = [];
+    if (!courseLessons.length) blockers.push("No published lessons are available to verify learning completion.");
+    if (incompleteLessons.length) blockers.push(`${incompleteLessons.length} published lesson(s) remain incomplete.`);
+    if (incompleteAssignments.length) blockers.push(`${incompleteAssignments.length} published assignment(s) are not yet submitted and graded.`);
+    if (incompleteAssessments.length) blockers.push(`${incompleteAssessments.length} published assessment(s) are not yet submitted and graded.`);
+    if (missingAttendance.length) blockers.push(`${missingAttendance.length} completed session(s) have missing, absent, or unconfirmed attendance.`);
+
+    return {
+      eligible: blockers.length === 0,
+      blockers,
+      checks: [
+        { label: "Published lessons", complete: courseLessons.length > 0 && incompleteLessons.length === 0, detail: `${completedLessonIds.size} of ${courseLessons.length} completed` },
+        { label: "Assignments", complete: incompleteAssignments.length === 0, detail: `${courseAssignments.length - incompleteAssignments.length} of ${courseAssignments.length} graded` },
+        { label: "Assessments", complete: incompleteAssessments.length === 0, detail: `${courseAssessments.length - incompleteAssessments.length} of ${courseAssessments.length} graded` },
+        { label: "Completed-session attendance", complete: missingAttendance.length === 0, detail: `${completedSessions.length - missingAttendance.length} of ${completedSessions.length} confirmed` }
+      ]
+    };
+  }
 
   function editCourse(course) {
     setEditingCourseId(course.id);
@@ -520,6 +571,8 @@ export default function InstituteWorkspace() {
     try {
       const enrollment = allEnrollments.find(item => item.id === certificateEnrollmentId);
       if (!enrollment || enrollment.paymentStatus !== "paid") throw new Error("Select a student with verified paid-course access.");
+      const completion = getCourseCompletionStatus(enrollment);
+      if (!completion.eligible) throw new Error("Certificate issuance is blocked until all completion checks are satisfied: " + completion.blockers.join(" "));
       const certificateId = enrollment.studentUid + "_" + enrollment.courseId;
       if (allCertificates.some(item => item.id === certificateId)) throw new Error("A certificate has already been issued for this student and course.");
       const certificateRef = "MFO-CERT-" + Date.now().toString(36).toUpperCase();
@@ -541,7 +594,7 @@ export default function InstituteWorkspace() {
       batch.set(doc(db, "publicCertificateVerifications", certificateRef), publicCertificateData);
       await batch.commit();
       setCertificateEnrollmentId("");
-      setNotice("Certificate issued: " + certificateRef + ". Confirm course completion before issuing.");
+      setNotice("Certificate issued: " + certificateRef + ". All recorded course completion checks were satisfied.");
       await load();
     } catch(e) { setError(e.message || "Could not issue certificate."); } finally { setBusy(false); }
   }
@@ -785,7 +838,17 @@ export default function InstituteWorkspace() {
         <option value="">Select a paid enrolment</option>
         {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
-      <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
+      {certificateEnrollmentId && (() => {
+        const selectedEnrollment = allEnrollments.find(item => item.id === certificateEnrollmentId);
+        const completion = getCourseCompletionStatus(selectedEnrollment);
+        return <div className="certificate-completion-checklist" aria-live="polite">
+          <strong>{completion.eligible ? "Completion checks satisfied" : "Certificate not yet eligible"}</strong>
+          {completion.checks.map(check => <p key={check.label}>{check.complete ? "✓" : "•"} {check.label}: {check.detail}</p>)}
+          {completion.blockers.map((blocker, index) => <p className="certificate-revoked-note" key={index}>{blocker}</p>)}
+          <small>All published lessons must be completed, all published assignments and assessments must be graded, and attendance must be confirmed for sessions marked completed. The Institute must still apply any course-specific pass mark or graduation policy that has not been configured in the system.</small>
+        </div>;
+      })()}
+      <button type="button" disabled={busy||!certificateEnrollmentId||!getCourseCompletionStatus(allEnrollments.find(item => item.id === certificateEnrollmentId)).eligible} onClick={issueCertificate}>Issue course completion certificate</button>
       {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><p className="certificate-public-reference">Public verification reference: <strong>{c.certificateRef}</strong></p><button type="button" className="certificate-sync-button" disabled={busy} onClick={()=>publishCertificateVerification(c)}>Publish / refresh public verification record</button>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
       <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
     </section>}
