@@ -152,3 +152,8 @@ The account portal includes a private privacy-request centre. Customers can subm
 ## Fabric gallery
 
 The public homepage includes a live fabric gallery backed by the Firestore `fabrics` collection. Super Admins can add, edit and archive fabrics with a name, colour, texture, indicative price range, availability, suitable garment categories and optional HTTPS image URL. Only active fabric records are publicly readable; writes are restricted to Super Admin by Firestore rules. The catalogue does not claim live physical stock counts or guaranteed prices.
+
+
+## Customer loyalty and VIP benefits
+
+The account portal now includes a customer-benefits panel. Super Admin can set a customer tier (Standard, Silver, Gold or VIP), an approved discount percentage (0–50%), priority-support access and manual loyalty-point adjustments. Point changes are written to an append-only `loyaltyTransactions` history so customers can see the recorded reason and points movement. Customers can read only their own benefits and points history. Automatic purchase-based or referral-based point accrual is not enabled; points are currently managed manually. Publish the latest Firestore rules before use.
