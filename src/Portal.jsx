@@ -293,7 +293,7 @@ export default function Portal({ onClose }) {
         const snapshot = await getDocs(query(collection(db, collectionName), where(field, "==", user.uid)));
         return snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       };
-      const [profileSnapshot, orderRows, appointmentRows, measurementRows, trainingRows, paymentRows, declarationRows, supportRows] = await Promise.all([
+      const [profileSnapshot, orderRows, appointmentRows, measurementRows, trainingRows, paymentRows, declarationRows, supportRows, notificationRows] = await Promise.all([
         getDoc(doc(db, "users", user.uid)),
         ownQuery("orders"),
         ownQuery("appointments"),
@@ -301,7 +301,8 @@ export default function Portal({ onClose }) {
         ownQuery("trainingEnquiries"),
         ownQuery("payments"),
         ownQuery("paymentDeclarations"),
-        ownQuery("supportTickets")
+        ownQuery("supportTickets"),
+        ownQuery("notifications")
       ]);
       const ordersWithEvents = await Promise.all(orderRows.map(async order => {
         const eventSnapshot = await getDocs(collection(db, "orders", order.id, "events"));
@@ -319,7 +320,8 @@ export default function Portal({ onClose }) {
         payments: paymentRows,
         paymentDeclarations: declarationRows,
         supportTickets: supportRows,
-        scopeNote: "This export contains the customer account and records available through the customer portal at export time. It does not include private staff notes, internal finance records, records stored in external services, or files that are not stored in these Firestore records."
+        notifications: notificationRows,
+        scopeNote: "This export contains the customer account and records available through the customer portal at export time, including customer-owned in-app notifications. It does not include private staff notes, internal finance records, records stored in external services, or files that are not stored in these Firestore records."
       };
       const json = JSON.stringify(makeExportSafe(exportData), null, 2);
       const blob = new Blob([json], { type: "application/json;charset=utf-8" });
