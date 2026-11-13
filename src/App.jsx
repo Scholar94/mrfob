@@ -38,8 +38,8 @@ export default function App() {
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
       <a className="brand" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a>
-      <button className="mobile-menu" onClick={() => setMenu(!menu)} aria-label="Toggle navigation">{menu ? <X/> : <Menu/>}</button>
-      <nav className={menu ? "nav nav-open" : "nav"}>
+      <button className="mobile-menu" type="button" onClick={() => setMenu(!menu)} aria-label={menu ? "Close navigation" : "Open navigation"} aria-expanded={menu} aria-controls="primary-navigation">{menu ? <X/> : <Menu/>}</button>
+      <nav id="primary-navigation" className={menu ? "nav nav-open" : "nav"}>
         <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#how-to-order" onClick={close}>How to Order</a>
         <a href="#institute" onClick={close}>Fashion Institute</a><a href="#story" onClick={close}>Our Story</a>
         <a href="#contact" onClick={close}>Contact</a>
@@ -47,7 +47,8 @@ export default function App() {
         <a className="nav-cta" href={wa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
       </nav>
     </header>
-    <main>
+    <a className="skip-link" href="#main-content">Skip to main content</a>
+    <main id="main-content" tabIndex="-1">
       <section className="hero" id="home">
         <div className="hero-photo"/><div className="hero-shade"/>
         <div className="hero-content"><p className="eyebrow light"><i/> THE ART OF PERSONAL STYLE</p>
