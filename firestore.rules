@@ -353,11 +353,11 @@ service cloud.firestore {
     match /payments/{paymentId} {
       allow create: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'note', 'declarationId', 'createdAt', 'createdBy'])
-        && request.resource.data.declarationId is string
-        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.status == 'verified'
-        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.orderId == request.resource.data.orderId
-        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.customerUid == request.resource.data.customerUid
-        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.amount == request.resource.data.amount
+        && (isSuperAdmin() || (request.resource.data.declarationId is string
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.status == 'verified'
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.orderId == request.resource.data.orderId
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.amount == request.resource.data.amount))
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
