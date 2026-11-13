@@ -356,3 +356,11 @@
 .policy-modal .policy-note{border-left:3px solid #b99652;padding:12px 15px;background:#eee7db;font-size:11px}
 .policy-close{position:absolute;right:17px;top:12px;border:0;background:transparent;color:#32151f;font-size:30px;cursor:pointer}
 @media(max-width:680px){.footer-legal{gap:12px}.footer-bottom{align-items:flex-start;flex-direction:column}.policy-modal{max-height:90vh}}
+
+
+/* Keyboard navigation and motion accessibility */
+.skip-link{position:fixed;left:16px;top:12px;z-index:300;padding:12px 16px;background:#f7f3ec;color:#32151f;border:2px solid #a77e47;transform:translateY(-160%);transition:transform .18s ease}
+.skip-link:focus{transform:translateY(0)}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #b68b4c;outline-offset:3px}
+button:disabled{cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
