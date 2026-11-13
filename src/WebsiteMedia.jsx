@@ -5,12 +5,14 @@ import { setDriveFilePublic, uploadFileToGoogleDrive } from "./googleDrive.js";
 
 const MAX_IMAGE = 20 * 1024 * 1024;
 const MAX_VIDEO = 100 * 1024 * 1024;
-const TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
+const MAX_AUDIO = 50 * 1024 * 1024;
+const TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg"];
 
 function MediaCard({ item }) {
   const video = item.mediaType === "video";
+  const audio = item.mediaType === "audio";
   return <article className="site-media-card">
-    {video ? <iframe src={item.drivePreviewUrl} title={item.title} allow="autoplay; encrypted-media" allowFullScreen loading="lazy"/> : <img src={item.previewUrl} alt={item.title} loading="lazy"/>}
+    {audio ? <iframe className="site-media-audio" src={item.drivePreviewUrl} title={item.title + " audio player"} allow="autoplay" loading="lazy"/> : video ? <iframe src={item.drivePreviewUrl} title={item.title} allow="autoplay; encrypted-media" allowFullScreen loading="lazy"/> : <img src={item.previewUrl} alt={item.title} loading="lazy"/>}
     <div><h3>{item.title}</h3>{item.description && <p>{item.description}</p>}<small>{item.category}</small></div>
   </article>;
 }
@@ -22,7 +24,7 @@ export function PublicWebsiteMedia() {
     if (!db) { setLoading(false); return; }
     let active = true;
     getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public")))
-      .then(snapshot => { if (active) setItems(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))); })
+      .then(snapshot => { if (active) setItems(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(item => item.mediaType !== "audio").sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))); })
       .catch(() => { if (active) setItems([]); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -32,6 +34,30 @@ export function PublicWebsiteMedia() {
     <div className="section-heading"><div><p className="eyebrow">THE LATEST FROM MR FOP</p><h2>Made to be <em>seen.</em></h2></div><p>Explore our latest designs, fashion stories and company highlights.</p></div>
     <div className="site-media-grid">{items.map(item => <MediaCard key={item.id} item={item}/>)}</div>
   </section>;
+}
+
+export function PublicWebsiteMusic() {
+  const [track, setTrack] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public"), where("category", "==", "Company theme song")))
+      .then(snapshot => {
+        const item = snapshot.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))[0] || null;
+        if (active) setTrack(item);
+      })
+      .catch(() => { if (active) setTrack(null); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  if (loading) return <p>Checking for the official company theme song…</p>;
+  if (!track) return <p>The official theme song has not been uploaded and published yet. An administrator can add it under Public Website Media → Company theme song.</p>;
+  return <div className="site-public-music">
+    <strong>{track.title}</strong>
+    {track.description && <p>{track.description}</p>}
+    <iframe className="site-media-audio" src={track.drivePreviewUrl} title={track.title + " audio player"} allow="autoplay" loading="lazy"/>
+    <small>Use the player controls to start, pause or adjust the volume.</small>
+  </div>;
 }
 
 export default function WebsiteMediaManager({ user }) {
@@ -51,15 +77,19 @@ export default function WebsiteMediaManager({ user }) {
   async function upload(event) {
     event.preventDefault();
     const formElement = event.currentTarget;
-    if (!file) { setError("Choose an image or video first."); return; }
+    if (!file) { setError("Choose an image, video or audio file first."); return; }
     const video = file.type.startsWith("video/");
-    if (!TYPES.includes(file.type)) { setError("Use JPG, PNG, WebP, MP4, WebM or MOV."); return; }
-    if (file.size > (video ? MAX_VIDEO : MAX_IMAGE)) { setError(video ? "Videos must be 100 MB or smaller." : "Images must be 20 MB or smaller."); return; }
+    const audio = file.type.startsWith("audio/");
+    if (!TYPES.includes(file.type)) { setError("Use JPG, PNG, WebP, MP4, WebM, MOV, MP3, M4A, WAV or OGG."); return; }
+    const limit = audio ? MAX_AUDIO : video ? MAX_VIDEO : MAX_IMAGE;
+    if (file.size > limit) { setError(audio ? "Audio files must be 50 MB or smaller." : video ? "Videos must be 100 MB or smaller." : "Images must be 20 MB or smaller."); return; }
+    if (audio && category !== "Company theme song") { setError("Choose the Company theme song category for audio uploads."); return; }
+    if (!audio && category === "Company theme song") { setError("The Company theme song category accepts audio files only."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
-      const uploaded = await uploadFileToGoogleDrive(file, { folder: "Website Media", uploadedBy: user.uid, visibility: "public" });
+      const uploaded = await uploadFileToGoogleDrive(file, { folder: audio ? "Company Theme Song" : "Website Media", uploadedBy: user.uid, visibility: "public" });
       const id = await addDoc(collection(db, "siteMedia"), {
-        title: title.trim(), description: description.trim(), category, mediaType: video ? "video" : "image",
+        title: title.trim(), description: description.trim(), category, mediaType: audio ? "audio" : video ? "video" : "image",
         fileName: uploaded.name, contentType: uploaded.mimeType, size: uploaded.size, driveFileId: uploaded.fileId,
         driveUrl: uploaded.webViewLink, previewUrl: uploaded.previewUrl, drivePreviewUrl: uploaded.drivePreviewUrl,
         visibility: "public", published: false, uploadedByUid: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
@@ -93,12 +123,12 @@ export default function WebsiteMediaManager({ user }) {
   return <section className="website-media-manager">
     <div className="customer-management-heading"><div><h3>Public Website Media</h3><p>Admin-only uploads to Google Drive. Visitors can view published items without an account or email.</p></div><button type="button" onClick={() => refresh().catch(err => setError(err.message))}>Refresh</button></div>
     <form className="portal-form" onSubmit={upload}>
-      <h4>Upload website image or video</h4>
+      <h4>Upload website image, video or company audio</h4>
       <label>Title<input required maxLength="100" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. New bespoke collection"/></label>
       <label>Description<textarea maxLength="500" value={description} onChange={e => setDescription(e.target.value)} placeholder="A short public description"/></label>
-      <label>Category<select value={category} onChange={e => setCategory(e.target.value)}><option>Collections</option><option>Fashion shows</option><option>Promotional videos</option><option>Training</option><option>Company news</option><option>Gallery</option></select></label>
-      <label>Image or video<input required type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)}/></label>
-      <small>Images: up to 20 MB. Videos: up to 100 MB. New uploads are private drafts until published.</small>
+      <label>Category<select value={category} onChange={e => setCategory(e.target.value)}><option>Collections</option><option>Fashion shows</option><option>Promotional videos</option><option>Training</option><option>Company news</option><option>Gallery</option><option>Company theme song</option></select></label>
+      <label>Image, video or audio<input required type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp4,audio/wav,audio/ogg" onChange={e => setFile(e.target.files?.[0] || null)}/></label>
+      <small>Images: up to 20 MB. Videos: up to 100 MB. Audio: up to 50 MB (MP3, M4A, WAV or OGG). New uploads are private drafts until published.</small>
       <button className="portal-submit" disabled={busy}>{busy ? "Uploading…" : "Upload draft to Google Drive"}</button>
     </form>
     {error && <p role="alert" className="portal-error">{error}</p>}{notice && <p role="status" className="portal-success">{notice}</p>}
