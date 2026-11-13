@@ -466,12 +466,30 @@ export default function Portal({ onClose }) {
   }
 
   async function updateTrainingStatus(id, status) {
-    if (!claims.superAdmin || !id) return;
+    if (!claims.superAdmin || !id || !["pending","contacted","accepted","declined","completed"].includes(status)) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "trainingEnquiries", id), { status, updatedAt: serverTimestamp() });
+      const enquiryRef = doc(db, "trainingEnquiries", id);
+      const noticeRef = doc(collection(db, "notifications"));
+      await runTransaction(db, async transaction => {
+        const enquirySnap = await transaction.get(enquiryRef);
+        if (!enquirySnap.exists()) throw new Error("This training enquiry no longer exists.");
+        const enquiry = enquirySnap.data();
+        if (enquiry.status === status) return;
+        transaction.update(enquiryRef, { status, updatedAt: serverTimestamp() });
+        transaction.set(noticeRef, {
+          customerUid: enquiry.customerUid,
+          trainingEnquiryId: id,
+          type: "training_update",
+          trainingStatus: status,
+          title: "Your Fashion Institute enquiry was updated",
+          message: "Your training enquiry status is now: " + status.replaceAll("_", " ") + ". Sign in to view your enquiry and contact the team if you need clarification.",
+          createdAt: serverTimestamp(),
+          readAt: null
+        });
+      });
       setAllTrainingEnquiries(items => items.map(item => item.id === id ? { ...item, status } : item));
-      setMessage("Training enquiry status updated.");
+      setMessage("Training enquiry status updated and the customer has been notified.");
     } catch (err) { setError(err.message || "Could not update the training enquiry."); }
     finally { setBusy(false); }
   }
