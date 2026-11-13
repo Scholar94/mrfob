@@ -466,6 +466,105 @@ export default function InstituteWorkspace() {
     }
   }
 
+  async function withdrawEnrollment(enrollment) {
+    if (!isAdmin || !enrollment?.id) return;
+    if (enrollment.enrollmentStatus === "withdrawn") {
+      setError("This learner is already withdrawn. Use the Drive revoke control to retry any remaining direct file permissions.");
+      return;
+    }
+    const reason = window.prompt("Reason for withdrawing this learner and disabling course access (at least 5 characters):");
+    if (reason === null) return;
+    const cleanReason = reason.trim();
+    if (cleanReason.length < 5 || cleanReason.length > 500) {
+      setError("Enter a withdrawal reason between 5 and 500 characters.");
+      return;
+    }
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const result = await runTransaction(db, async transaction => {
+        const enrollmentRef = doc(db, "instituteEnrollments", enrollment.id);
+        const applicationRef = doc(db, "instituteApplications", enrollment.applicationId);
+        const windowRef = doc(db, "trainingWindows", enrollment.windowId);
+        const enrollmentSnap = await transaction.get(enrollmentRef);
+        const applicationSnap = await transaction.get(applicationRef);
+        const windowSnap = await transaction.get(windowRef);
+        if (!enrollmentSnap.exists() || !applicationSnap.exists() || !windowSnap.exists()) {
+          throw new Error("The enrolment, application or training intake could not be found. Refresh and try again.");
+        }
+        const currentEnrollment = enrollmentSnap.data();
+        const currentApplication = applicationSnap.data();
+        const currentWindow = windowSnap.data();
+        if (currentEnrollment.enrollmentStatus === "withdrawn" || currentApplication.status === "withdrawn") return false;
+        if (currentEnrollment.paymentStatus !== "paid" || currentApplication.status !== "admitted") {
+          throw new Error("Only an admitted learner with verified paid enrolment can be withdrawn here.");
+        }
+        const enrolledCount = Number(currentWindow.enrolledCount || 0);
+        if (!Number.isInteger(enrolledCount) || enrolledCount < 1) {
+          throw new Error("The intake enrolment count is inconsistent. Review the intake before withdrawing this learner.");
+        }
+        transaction.update(enrollmentRef, {
+          enrollmentStatus: "withdrawn", withdrawalReason: cleanReason,
+          withdrawnBy: user.uid, withdrawnAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
+        transaction.update(applicationRef, {
+          status: "withdrawn", withdrawalReason: cleanReason,
+          withdrawnBy: user.uid, withdrawnAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
+        transaction.update(windowRef, {
+          enrolledCount: enrolledCount - 1, updatedAt: serverTimestamp()
+        });
+        return true;
+      });
+      if (!result) {
+        setNotice("This learner was already withdrawn. Check Drive access and retry revocation if needed.");
+        await load();
+        return;
+      }
+      setAllEnrollments(rows => rows.map(row => row.id === enrollment.id
+        ? { ...row, enrollmentStatus: "withdrawn", withdrawalReason: cleanReason }
+        : row));
+      setApplications(rows => rows.map(row => row.id === enrollment.applicationId
+        ? { ...row, status: "withdrawn", withdrawalReason: cleanReason }
+        : row));
+      try {
+        await recordAuditEvent({
+          user, claims, action: "institute_enrollment_withdrawn",
+          entityType: "instituteEnrollment", entityId: enrollment.id,
+          summary: "Withdrew " + (enrollment.studentName || enrollment.studentEmail || enrollment.studentUid) + " from " + (enrollment.courseTitle || enrollment.courseId) + " and disabled Firestore course access."
+        });
+      } catch (auditError) {
+        console.warn("Institute withdrawal audit event could not be recorded:", auditError);
+      }
+      let driveSummary = "";
+      if (enrollment.studentEmail) {
+        try {
+          const lessonSnap = await getDocs(query(
+            collection(db, "instituteLessons"),
+            where("courseId", "==", enrollment.courseId),
+            where("published", "==", true)
+          ));
+          const fileIds = lessonSnap.docs.map(item => item.data().driveFileId).filter(Boolean);
+          if (fileIds.length) {
+            const revoked = await revokeDriveFileAccessForEmail(fileIds, enrollment.studentEmail);
+            driveSummary = " Google Drive revocation processed: " + revoked.revoked + " direct permission(s) removed across " + revoked.filesChecked + " file(s)." + (revoked.skippedInherited ? " " + revoked.skippedInherited + " inherited permission(s) require owner review." : "");
+          } else {
+            driveSummary = " No published Drive lesson files were found for this course.";
+          }
+        } catch (driveError) {
+          driveSummary = " Firestore course access is disabled, but Google Drive permission removal failed. Use the Drive revoke control below to retry. " + (driveError.message || "");
+        }
+      } else {
+        driveSummary = " Firestore course access is disabled, but no student email is recorded for Drive permission removal.";
+      }
+      setNotice("Learner withdrawn. Course access is disabled in Firestore. This action does not refund the course fee." + driveSummary);
+      await load();
+    } catch (err) {
+      setError(err.message || "Could not withdraw this learner.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createLesson(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
