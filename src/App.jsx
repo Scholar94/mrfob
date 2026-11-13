@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import Portal from "./Portal.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
-import { PublicWebsiteMedia } from "./WebsiteMedia.jsx";
+import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 
 const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
 const collections = [
@@ -300,7 +300,7 @@ export default function App() {
         <p className="policy-note">These are operational website terms, not a substitute for a separately negotiated order, course agreement or professional legal advice. No unconfirmed refund or cancellation policy is created by this page.</p>
       </>}
     </section></div>}
-    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></section></div>}
+    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>Play the official MR FOP FASHIONS theme song using the player below. Playback starts only when you press play.</p><PublicWebsiteMusic/></section></div>}
     {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
   </div>;
 }
