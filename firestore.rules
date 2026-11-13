@@ -688,6 +688,13 @@ service cloud.firestore {
           && request.resource.data.withdrawnBy == request.auth.uid
           && request.resource.data.withdrawnAt is timestamp
         ))
+        && (request.resource.data.status != 'withdrawn' || resource.data.paymentStatus != 'paid' || (
+          existsAfter(/databases/$(database)/documents/instituteEnrollments/$(resource.data.customerUid + '_' + resource.data.courseId))
+          && getAfter(/databases/$(database)/documents/instituteEnrollments/$(resource.data.customerUid + '_' + resource.data.courseId)).data.enrollmentStatus == 'withdrawn'
+          && getAfter(/databases/$(database)/documents/instituteEnrollments/$(resource.data.customerUid + '_' + resource.data.courseId)).data.withdrawalReason == request.resource.data.withdrawalReason
+          && getAfter(/databases/$(database)/documents/instituteEnrollments/$(resource.data.customerUid + '_' + resource.data.courseId)).data.withdrawnBy == request.resource.data.withdrawnBy
+          && getAfter(/databases/$(database)/documents/instituteEnrollments/$(resource.data.customerUid + '_' + resource.data.courseId)).data.withdrawnAt == request.resource.data.withdrawnAt
+        ))
         && (!(request.resource.data.status in ['rejected','withdrawn']) || resource.data.status in ['rejected','withdrawn']
           || getAfter(/databases/$(database)/documents/trainingWindows/$(resource.data.windowId)).data.enrolledCount
             == get(/databases/$(database)/documents/trainingWindows/$(resource.data.windowId)).data.enrolledCount - 1);
