@@ -224,6 +224,16 @@
 .measurement-guide p,.measurement-guide li{font-size:11px;line-height:1.65;color:#66595a}
 .measurement-guide ul{padding-left:17px;margin:8px 0}
 .measurement-guide small{display:block;font-size:9px;line-height:1.6;color:#88796f}
+.measurement-guide-copy{min-width:0}
+.measurement-guide-art{padding:10px}
+.measurement-guide-art svg{overflow:visible}
+.measurement-tape-lines path{fill:none;stroke:#a77d43;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}
+.measurement-tape-lines text{fill:#704b27;font-size:8px;font-weight:700;paint-order:stroke;stroke:#fbf8f2;stroke-width:2px;stroke-linejoin:round}
+.measurement-guide-focus{margin:9px 0;padding:8px 10px;border-left:3px solid #a77d43;background:#f1e9dc;font-size:10px;line-height:1.6;color:#604b3d}
+.measurement-guide-focus b{color:#4a202c}
+.measurement-guide-copy ul{padding-left:18px}
+.measurement-guide-copy li{margin:4px 0}
+
 @media(max-width:560px){.measurement-guide{grid-template-columns:1fr}.measurement-guide-art{min-height:155px}.measurement-guide-art svg{max-height:175px}}
 
 
