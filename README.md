@@ -38,7 +38,7 @@ Install Firebase CLI locally, sign in, select the correct Firebase project, then
 ```bash
 firebase login
 firebase use --add
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules
 ```
 
 ## First Super Admin setup
@@ -76,10 +76,21 @@ Firebase must be configured and its rules deployed before account registration o
 No billing account has been connected or paid service enabled by this code. Firebase Authentication and Firestore have no-cost usage allowances; monitor quotas in Firebase Console. GitHub Pages remains the free public hosting option.
 
 
-## Production progress photos
-- Authorized Super Admin, Manager and Tailor accounts can attach JPG, PNG or WebP progress photos (maximum 8 MB) to a specific customer order.
-- Each photo records the order, production stage, uploader, timestamp, caption, file type and size in `orders/{orderId}/progressUpdates`.
-- Customers can view the same order-linked photo history in My Orders and receive an in-app notification when a photo is published.
-- Files are stored in Firebase Storage under `order-progress/{orderId}/`. Storage and Firestore rules restrict access to the order's customer and authorized staff; uploads cannot be overwritten or deleted through the client.
-- Before using this feature, confirm that the Firebase project's Storage bucket is enabled and that `VITE_FIREBASE_STORAGE_BUCKET` is configured in the GitHub Actions environment. Deploy both Firestore and Storage rules using the command above.
-- Download URLs are bearer links. Do not repost them publicly; for highly confidential imagery, a future authenticated media-proxy service should replace tokenized download URLs.
+## Production progress photos and videos
+- Authorized Super Admin, Manager and Tailor accounts can upload JPG, PNG, WebP, MP4, WebM and MOV files to the shared Google Drive folder.
+- Images are limited to 20 MB and videos to 100 MB per file. Resumable Drive uploads are used for larger media.
+- Each upload records the order, production stage, uploader, timestamp, caption, Drive file ID, file type and size in `orders/{orderId}/progressUpdates`.
+- Customers receive an in-app notification when a production media update is published. Private Drive files must be shared with the customer's Google account for access.
+- Firebase Storage is not used. Firestore stores metadata and Drive references only.
+
+## Google Drive file storage setup
+1. In Google Cloud Console, enable the Google Drive API for the project used by the app's OAuth client. Enabling this API does not require billing.
+2. Configure the OAuth consent screen and add the staff Google accounts as test users while the app remains in testing mode.
+3. Create an OAuth 2.0 Web application client ID. Add `https://scholar94.github.io` as an authorized JavaScript origin.
+4. Create a shared folder in the owner's Google Drive for MR FOP FASHIONS uploads. Share it with staff Google accounts as Editors.
+5. Add these GitHub Actions repository **Variables** (Settings → Secrets and variables → Actions → Variables):
+   - `VITE_GOOGLE_DRIVE_CLIENT_ID` — OAuth web client ID.
+   - `VITE_GOOGLE_DRIVE_FOLDER_ID` — ID of the shared Drive folder.
+6. Redeploy the GitHub Pages site. On first upload, staff authorize Google Drive access. Files are uploaded directly to the shared folder.
+
+All uploaders must sign in with a Google account that has Editor access to the shared folder. Customer viewing of private media requires sharing the individual file with the customer's Google account. Google Drive storage quotas and file-size limits apply; no paid Google Cloud billing is required for this Drive API integration.
