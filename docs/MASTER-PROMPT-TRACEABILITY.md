@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-13 — Public Fashion Institute certificate verification:** added a public reference lookup that returns only the limited verification fields (reference, learner name, course, intake, issue date and current status). Certificate issuance now writes the private learner certificate and public verification record in one Firestore batch; revocation updates both records atomically and displays the revocation reason. Public visitors can fetch one known reference but cannot list the verification collection. Firestore rules were updated to restrict public reads to single-document gets and staff writes, and to allow authorized Institute/manager revocations with a required reason, actor and server timestamps. Existing certificates issued before this feature will not automatically have public records; they require a controlled migration/republish step. **Owner must publish the complete updated `firestore.rules` in Firebase Console before the new issue/revoke/verification flow can work.** Build, rules-emulator, public lookup and role-permission tests remain pending.
+
+
 - **2026-11-13 — Fashion Institute certificate revocation:** added an administrator-only revocation action for issued certificates, requiring a meaningful reason before changing status. The record is retained with revocation reason, actor and server timestamp; revoked certificates remain visible in staff and student records and are no longer printable from the learner view. Existing issue/print flow remains unchanged for active certificates. This is an administrative correction workflow, not public certificate verification or an automatic completion check. No Firestore rules changed. Build, permission and student/staff workflow checks remain pending.
 
 
