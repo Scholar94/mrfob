@@ -15,6 +15,8 @@ import FabricCatalogue from "./FabricCatalogue.jsx";
 import CustomerBenefits from "./CustomerBenefits.jsx";
 import ReferralProgramme from "./ReferralProgramme.jsx";
 import CorporateOrderRequests from "./CorporateOrderRequests.jsx";
+import AuditLogViewer from "./AuditLogViewer.jsx";
+import { recordAuditEvent } from "./auditLog.js";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -2244,6 +2246,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         {expensesLoading?<p>Loading expenses…</p>:visibleExpenses.length?<div className="finance-expense-list">{visibleExpenses.map(item=><article className="finance-expense-card" key={item.id}><div><strong>{item.title}</strong><span>{item.category} · {item.expenseDate} · {item.method}</span>{item.note&&<small>{item.note}</small>}</div><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b>{claims.superAdmin && <div className="finance-record-actions"><button type="button" onClick={()=>editExpense(item)}>Edit</button><button type="button" onClick={()=>removeExpense(item)}>Delete</button></div>}</article>)}</div>:<p>No matching expenses.</p>}
       </section>}
       {claims.superAdmin && <FabricCatalogue admin user={user} />}
+      {claims.superAdmin && <AuditLogViewer />}
       {(claims.superAdmin || claims.staffRole === "manager") && <WebsiteMediaManager user={user} />}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
