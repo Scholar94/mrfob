@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 import { useAuth } from "./AuthProvider.jsx";
 import { uploadFileToGoogleDrive, shareDriveFileWithEmail, revokeDriveFileAccessForEmail } from "./googleDrive.js";
 
@@ -414,6 +415,7 @@ export default function InstituteWorkspace() {
           updatedAt: serverTimestamp()
         });
       });
+      await recordAuditEvent({ user, claims, action: "training_payment_verified", entityType: "instituteEnrollment", entityId: item.customerUid + "_" + item.courseId, summary: "Verified paid access for " + (item.fullName || item.email || item.customerUid) + " in " + (item.courseTitle || item.courseId) + "." });
       let mediaNotice = "";
       if (item.email) {
         try {
