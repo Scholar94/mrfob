@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 
 const emptyForm = { name: "", color: "", texture: "", priceRange: "", availability: "available", suitableCategories: "", imageUrl: "", active: true };
@@ -14,6 +14,7 @@ export default function FabricCatalogue({ admin = false, user = null }) {
   const [notice, setNotice] = useState("");
 
   async function refresh() {
+    if (!db) { setFabrics([]); setLoading(false); return; }
     setLoading(true); setError("");
     try {
       const source = admin ? collection(db, "fabrics") : query(collection(db, "fabrics"), where("active", "==", true));
