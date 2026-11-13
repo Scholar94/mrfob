@@ -31,7 +31,7 @@ const ruleStructure = (() => {
     const ch = rules[i];
     if (quote) {
       if (escaped) escaped = false;
-      else if (ch === "\\\\") escaped = true;
+      else if (ch.charCodeAt(0) === 92) escaped = true;
       else if (ch === quote) quote = null;
       continue;
     }
