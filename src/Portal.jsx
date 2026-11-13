@@ -958,6 +958,18 @@ export default function Portal({ onClose }) {
           });
           transaction.update(orderRef, { amountPaid: newPaid, paymentStatus, updatedAt: serverTimestamp() });
           transaction.update(declarationRef, { status: "verified", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
+          const noticeRef = doc(collection(db, "notifications"));
+          transaction.set(noticeRef, {
+            customerUid: item.customerUid,
+            declarationId: item.id,
+            orderId: item.orderId,
+            type: "payment_update",
+            paymentStatus: "verified",
+            title: "Your bank transfer has been verified",
+            message: "Your payment of ₦" + Number(declarationSnap.data().amount).toLocaleString("en-NG") + " has been verified and added to your order balance.",
+            createdAt: serverTimestamp(),
+            readAt: null
+          });
         });
         setMessage("Transfer declaration verified and added to the payment ledger. The order payment status has been reconciled.");
       } else {
@@ -965,6 +977,18 @@ export default function Portal({ onClose }) {
           const declarationSnap = await transaction.get(declarationRef);
           if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
           transaction.update(declarationRef, { status: "rejected", reviewNote, reviewedAt: serverTimestamp(), reviewedBy: user.uid, updatedAt: serverTimestamp() });
+          const noticeRef = doc(collection(db, "notifications"));
+          transaction.set(noticeRef, {
+            customerUid: declarationSnap.data().customerUid,
+            declarationId: item.id,
+            orderId: declarationSnap.data().orderId,
+            type: "payment_update",
+            paymentStatus: "rejected",
+            title: "Your bank transfer needs attention",
+            message: (reviewNote || "Your transfer declaration was not verified. Please contact the team for assistance.").slice(0, 500),
+            createdAt: serverTimestamp(),
+            readAt: null
+          });
         });
         setMessage("Transfer declaration rejected. The customer can see the review note.");
       }
