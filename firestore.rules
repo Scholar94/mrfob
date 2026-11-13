@@ -88,7 +88,7 @@ service cloud.firestore {
         || (isFinanceOfficer()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amountPaid', 'paymentStatus', 'lastPaymentId', 'updatedAt'])
         && request.resource.data.amountPaid is number
-        && request.resource.data.amountPaid > resource.data.amountPaid
+        && request.resource.data.amountPaid > (('amountPaid' in resource.data) ? resource.data.amountPaid : 0)
         && request.resource.data.paymentStatus in ['part_paid', 'paid']
         && request.resource.data.lastPaymentId is string
         && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.orderId == orderId
@@ -346,7 +346,15 @@ service cloud.firestore {
         && resource.data.status == 'pending'
         && request.resource.data.status in ['verified', 'rejected']
         && request.resource.data.reviewedBy == request.auth.uid
-        && request.resource.data.reviewedAt is timestamp;
+        && request.resource.data.reviewedAt is timestamp
+        && (request.resource.data.status != 'verified' || (
+          getAfter(/databases/$(database)/documents/payments/$(declarationId)).data.declarationId == declarationId
+          && getAfter(/databases/$(database)/documents/payments/$(declarationId)).data.orderId == resource.data.orderId
+          && getAfter(/databases/$(database)/documents/payments/$(declarationId)).data.customerUid == resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/payments/$(declarationId)).data.amount == resource.data.amount
+          && getAfter(/databases/$(database)/documents/orders/$(resource.data.orderId)).data.lastPaymentId is string
+          && getAfter(/databases/$(database)/documents/payments/$(getAfter(/databases/$(database)/documents/orders/$(resource.data.orderId)).data.lastPaymentId)).data.declarationId == declarationId
+        ));
       allow delete: if isSuperAdmin();
     }
 
