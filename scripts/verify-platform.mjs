@@ -90,6 +90,9 @@ assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
+assert.ok(institute.includes("withdrawEnrollment") && institute.includes("revokeDriveFileAccessForEmail"), "Institute withdrawal and Drive revocation workflow is missing");
+assert.ok(rules.includes("enrollmentStatus") && rules.includes("institute_enrollment_withdrawn"), "Withdrawn enrolments are not blocked by Firestore access rules");
+assert.ok(read("scripts/verify-firestore-rules.mjs").includes("Institute withdrawal"), "Institute withdrawal security test is missing");
 assert.ok(portal.includes("RefundManagement"), "Refund management workflow is not mounted");
 assert.ok(portal.includes("verifiedOrderPaymentsTotal") && portal.includes("outstandingQuotedBalanceTotal") && portal.includes("newCustomerCount30Days"), "Super Admin dashboard KPI summaries are missing");
 assert.ok(rules.includes("match /refunds/{refundId}") && rules.includes("refund_status_updated"), "Refund rules and audit event are missing");
