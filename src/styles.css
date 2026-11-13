@@ -667,3 +667,5 @@ button:disabled{cursor:not-allowed}
   .account-menu-toggle { min-height: 52px; padding: 13px; }
   .account-section-menu { max-height: 62vh; }
 }
+
+.site-media-audio{display:block;width:100%;min-height:80px;border:0;background:var(--cream);border-radius:8px}.site-public-music{display:grid;gap:10px;margin-top:18px}.site-public-music p,.site-public-music small{font-size:12px;line-height:1.6;color:var(--muted)}.site-public-music iframe{max-width:100%}
