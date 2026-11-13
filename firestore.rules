@@ -147,6 +147,24 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    match /notifications/{notificationId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
+        && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','stage','stageLabel','createdAt','readAt'])
+        && request.resource.data.type == 'production_update'
+        && request.resource.data.customerUid is string
+        && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
+        && request.resource.data.title is string && request.resource.data.title.size() <= 160
+        && request.resource.data.message is string && request.resource.data.message.size() <= 500
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.readAt == null;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager','sales','tailor']));
+      allow update: if signedIn()
+        && resource.data.customerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+        && request.resource.data.readAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /supportTickets/{ticketId} {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
