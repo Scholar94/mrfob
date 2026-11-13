@@ -79,24 +79,39 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
   let parentId = configuredFolder;
   for (const part of pathParts) parentId = await ensureDriveFolder(part, parentId);
   const safeName = String(file.name || "upload").replace(/[\\/\\?%*:|"<>]/g, "_").slice(-180);
-  const boundary = "mrfop_" + crypto.randomUUID().replace(/-/g, "");
   const fileMetadata = {
     name: safeName,
     mimeType: file.type || "application/octet-stream",
     parents: [parentId],
     description: JSON.stringify({ app: "MR FOP FASHIONS", orderId: metadata.orderId || "", uploadedBy: metadata.uploadedBy || "" })
   };
-  const body = new Blob([
-    "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(fileMetadata) + "\r\n",
-    "--" + boundary + "\r\nContent-Type: " + (file.type || "application/octet-stream") + "\r\n\r\n",
-    file,
-    "\r\n--" + boundary + "--"
-  ], { type: "multipart/related; boundary=" + boundary });
-  const uploaded = await driveRequest("/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink,thumbnailLink", {
+  const token = await getDriveToken();
+  const session = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,webViewLink,thumbnailLink", {
     method: "POST",
-    headers: { "Content-Type": "multipart/related; boundary=" + boundary },
-    body
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": file.type || "application/octet-stream",
+      "X-Upload-Content-Length": String(file.size)
+    },
+    body: JSON.stringify(fileMetadata)
   });
+  if (!session.ok) {
+    const detail = await session.json().catch(() => ({}));
+    throw new Error(detail.error?.message || "Google Drive could not start the file upload.");
+  }
+  const uploadUrl = session.headers.get("Location");
+  if (!uploadUrl) throw new Error("Google Drive did not return a resumable upload URL.");
+  const uploadResponse = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+    body: file
+  });
+  if (!uploadResponse.ok) {
+    const detail = await uploadResponse.json().catch(() => ({}));
+    throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
+  }
+  const uploaded = await uploadResponse.json();
   if (metadata.customerEmail) {
     await driveRequest("/files/" + uploaded.id + "/permissions?sendNotificationEmail=false", {
       method: "POST",
