@@ -416,7 +416,7 @@ export default function Portal({ onClose }) {
     if (comment.length < 10 || comment.length > 1000) { setError("Write a review between 10 and 1,000 characters."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
-      const reviewRef = doc(collection(db, "reviews"));
+      const reviewRef = doc(db, "reviews", order.id);
       await setDoc(reviewRef, { orderId: order.id, customerUid: user.uid, customerName: profileForm.displayName || user.displayName || "Verified customer", rating, comment, status: "pending", createdAt: serverTimestamp() });
       setMyProductReviews(items => [...items, { id: reviewRef.id, orderId: order.id, rating, comment, status: "pending" }]);
       setReviewDrafts(current => ({ ...current, [order.id]: { rating: "5", comment: "" } }));
