@@ -17,6 +17,7 @@ const app = read("src/App.jsx");
 const portal = read("src/Portal.jsx");
 const rules = read("firestore.rules");
 const drive = read("src/googleDrive.js");
+const institute = read("src/InstituteWorkspace.jsx");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
