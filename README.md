@@ -177,3 +177,8 @@ Customers can submit private enquiries for corporate uniforms, school uniforms, 
 ## Automated source verification
 
 The GitHub Pages deployment workflow runs `npm run verify:platform` after the production build. These checks guard required source files, public/account route entry, GitHub Pages fallback, PWA metadata, Drive integration, Firestore deny-by-default and the no-Storage/no-Functions constraints. These are static regression checks, not substitutes for Firebase Emulator tests or live end-to-end testing with separate user roles.
+
+
+## Privileged action audit trail
+
+A Super Admin-only audit viewer lists up to 150 of the latest application audit events. The append-only Firestore `auditLogs` collection records selected privileged actions, including payment declaration review, staff role assignment, company profile updates, appointment status changes, inventory adjustments, privacy-request handling, referral review, fabric changes, corporate enquiry updates and loyalty benefit changes. Staff can append only records attributed to their own authenticated UID; only the Super Admin can read the collection; clients cannot update or delete audit entries. This is an application-level log for instrumented actions, not a tamper-proof external ledger and not a complete log of every system event.
