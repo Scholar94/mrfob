@@ -16,6 +16,7 @@ import CustomerBenefits from "./CustomerBenefits.jsx";
 import ReferralProgramme from "./ReferralProgramme.jsx";
 import CorporateOrderRequests from "./CorporateOrderRequests.jsx";
 import AuditLogViewer from "./AuditLogViewer.jsx";
+import FAQManager from "./FAQManager.jsx";
 import { recordAuditEvent } from "./auditLog.js";
 
 const PRODUCTION_STAGES = [
@@ -2263,6 +2264,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       </section>}
       {claims.superAdmin && <FabricCatalogue admin user={user} claims={claims} />}
       {claims.superAdmin && <AuditLogViewer />}
+      {(claims.superAdmin || claims.staffRole === "manager") && <FAQManager user={user} claims={claims} />}
       {(claims.superAdmin || claims.staffRole === "manager") && <WebsiteMediaManager user={user} />}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
