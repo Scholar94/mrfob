@@ -579,3 +579,21 @@ button:disabled{cursor:not-allowed}
 .appointment-calendar-status.status-completed{background:#e2e5ed;color:#394765}
 .appointment-calendar-empty-state{margin:0;padding:10px 0;color:#75696a;font-size:10px}
 @media(max-width:520px){.appointment-calendar{padding:10px}.appointment-calendar-heading{align-items:flex-start;flex-direction:column}.appointment-calendar-nav{width:100%;justify-content:space-between}.appointment-calendar-day,.appointment-calendar-empty{min-height:38px}.appointment-calendar-weekdays span{font-size:8px}}
+
+
+/* AI measurement assistant — transparent no-cost integration placeholder */
+.ai-measurement-module{margin:16px 0 22px;padding:18px;border:1px solid #d9cbb8;border-radius:12px;background:linear-gradient(135deg,#fbf8f2 0%,#f4eee5 100%);color:#49333a}
+.ai-measurement-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ai-measurement-kicker{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#84643e}
+.ai-measurement-status{padding:5px 9px;border:1px solid #d3b98f;border-radius:99px;background:#fffaf1;color:#79592f;font-size:10px;font-weight:800}
+.ai-measurement-module h3{margin:9px 0 7px;color:#4a202c;font-family:'Playfair Display',serif;font-size:19px}
+.ai-measurement-intro,.ai-measurement-notice p,.ai-measurement-roadmap li,.ai-measurement-footnote{font-size:12px;line-height:1.65;color:#66595a}
+.ai-measurement-notice{margin:13px 0;padding:13px;border-left:4px solid #a77d43;border-radius:7px;background:#fff}
+.ai-measurement-notice strong{color:#4a202c;font-size:13px}
+.ai-measurement-notice a{display:inline-block;margin-top:5px;color:#754a2e;font-size:12px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.ai-measurement-roadmap{padding-top:5px}
+.ai-measurement-roadmap>strong{font-size:12px;color:#4a202c}
+.ai-measurement-roadmap ol{margin:8px 0;padding-left:20px}
+.ai-measurement-roadmap li{margin:5px 0}
+.ai-measurement-footnote{margin:12px 0 0;font-size:10px;color:#82746c}
+@media(max-width:560px){.ai-measurement-module{padding:14px}.ai-measurement-module h3{font-size:17px}}
