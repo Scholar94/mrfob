@@ -520,14 +520,36 @@ export default function Portal({ onClose }) {
     if (!["pending", "verified", "revision-needed"].includes(verificationStatus)) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const reviewedAt = serverTimestamp();
-      await updateDoc(doc(db, "measurements", id), {
-        verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000),
+      const measurementRef = doc(db, "measurements", id);
+      const measurementSnapshot = await getDoc(measurementRef);
+      if (!measurementSnapshot.exists()) throw new Error("This measurement record no longer exists.");
+      const existing = measurementSnapshot.data();
+      const cleanNote = String(verificationNote || "").trim().slice(0,1000);
+      const statusChanged = (existing.verificationStatus || "pending") !== verificationStatus;
+      const noteChanged = (existing.verificationNote || "") !== cleanNote;
+      const batch = writeBatch(db);
+      batch.update(measurementRef, {
+        verificationStatus, verificationNote: cleanNote,
         verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff",
-        verifiedAt: reviewedAt, updatedAt: serverTimestamp()
+        verifiedAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
-      setAllMeasurements(items => items.map(item => item.id === id ? { ...item, verificationStatus, verificationNote: String(verificationNote || "").trim().slice(0,1000), verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff" } : item));
-      setMessage("Measurement review saved.");
+      if (statusChanged || noteChanged) {
+        const noticeRef = doc(collection(db, "notifications"));
+        const statusText = verificationStatus === "verified" ? "verified" : verificationStatus === "revision-needed" ? "requires revision" : "returned to pending review";
+        batch.set(noticeRef, {
+          customerUid: existing.customerUid,
+          measurementId: id,
+          type: "measurement_review",
+          verificationStatus,
+          title: verificationStatus === "verified" ? "Your measurements have been reviewed" : verificationStatus === "revision-needed" ? "Your measurements need revision" : "Your measurement review was updated",
+          message: cleanNote ? "The designer reviewed your " + (existing.profileName || existing.garmentType || "measurement") + " profile: " + cleanNote.slice(0, 360) : "Your " + (existing.profileName || existing.garmentType || "measurement") + " profile " + statusText + ". Please review your measurement record or contact the team if you need help.",
+          createdAt: serverTimestamp(),
+          readAt: null
+        });
+      }
+      await batch.commit();
+      setAllMeasurements(items => items.map(item => item.id === id ? { ...item, verificationStatus, verificationNote: cleanNote, verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized staff" } : item));
+      setMessage(statusChanged || noteChanged ? "Measurement review saved and the customer has been notified." : "Measurement review saved.");
     } catch (err) { setError(err.message || "Could not save the measurement review."); }
     finally { setBusy(false); }
   }
