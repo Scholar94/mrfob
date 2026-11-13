@@ -767,10 +767,26 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','dueAt','questions','published','createdBy','createdAt','updatedAt']);
+        && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','dueAt','questions','assessmentType','published','createdBy','createdAt','updatedAt']);
       allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
+      allow delete: if isSuperAdmin();
+    }
+
+    match /instituteAssessmentAnswerKeys/{assessmentId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
+        && request.resource.data.assessmentId == assessmentId
+        && request.resource.data.courseId is string
+        && request.resource.data.correctOptions is list
+        && request.resource.data.correctOptions.size() > 0
+        && request.resource.data.correctOptions.size() <= 30
+        && request.resource.data.pointsPerQuestion == 10
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly(['assessmentId','courseId','correctOptions','pointsPerQuestion','createdBy','createdAt']);
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId);
+      allow update: if false;
       allow delete: if isSuperAdmin();
     }
 
