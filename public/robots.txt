@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://scholar94.github.io/mrfob/sitemap.xml
