@@ -181,7 +181,7 @@ export default function App() {
         <div className="institute-content"><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
           <p>Our Fashion Institute is the learning arm of MR FOP FASHIONS. Whether you are starting from the beginning or developing your craft, take the next step with practical fashion training.</p>
           <div className="training-points"><span><CheckCircle2/> Online learning pathway</span><span><CheckCircle2/> Onsite practical training</span><span><CheckCircle2/> Guided professional development</span></div>
-          <a href={wa} target="_blank" rel="noreferrer" className="button button-gold">Enquire about training <ArrowUpRight size={17}/></a>
+          <div className="institute-actions"><a href={wa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
         </div>
       </section>
       <section className="industrial section-pad" id="industrial">
