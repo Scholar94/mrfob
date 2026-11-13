@@ -23,6 +23,7 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState("");
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
@@ -128,11 +129,51 @@ export default function App() {
       </div>
     </section>
     <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
-      <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><a href="#home">BACK TO TOP ↑</a></div>
+      <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
     <button className="music-toggle" onClick={() => setMusicNotice(true)}><Play size={14}/> BRAND MUSIC</button>
     <button className="install-button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
     <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
+
+    {policyOpen && <div className="modal-backdrop policy-backdrop" onClick={() => setPolicyOpen("")}><section className="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-title" onClick={e => e.stopPropagation()}>
+      <button className="policy-close" onClick={() => setPolicyOpen("")} aria-label="Close policy">×</button>
+      <p className="eyebrow"><i/> MR FOP FASHIONS COMPANY NIGERIA LIMITED</p>
+      <h2 id="policy-title">{policyOpen === "privacy" ? "Privacy notice" : "Terms of service"}</h2>
+      <p className="policy-updated">Last reviewed: 13 November 2026 · Please contact us if you need clarification.</p>
+      {policyOpen === "privacy" ? <>
+        <h3>1. Information we may collect</h3>
+        <p>When you use our customer or Fashion Institute portal, we may process the details you provide, such as your name, email address, telephone number, delivery/contact address, order requests, garment measurements, appointment requests, course applications, learning activity, support messages and payment declarations. Staff records and business transaction records may also be processed for administration.</p>
+        <h3>2. Why we use information</h3>
+        <p>We use information to respond to enquiries, prepare and manage clothing orders, review measurements, arrange appointments, administer training, verify payments, provide customer support, maintain business records and protect the platform. A request submitted online is not automatically an accepted order or confirmed appointment.</p>
+        <h3>3. Measurements and account security</h3>
+        <p>Garment measurements can be personal and should be accurate and relevant to the service requested. Keep your sign-in credentials private and sign out on shared devices. Do not submit another person's information unless you are authorised to do so. Access to portal records is intended to be restricted by account ownership and staff permissions.</p>
+        <h3>4. Service providers and external links</h3>
+        <p>The portal uses Firebase services for account authentication and cloud data storage. Our public site may link to or embed Google Maps and open WhatsApp. Those services are operated by their respective providers and their own privacy terms apply when you use them. We do not claim that information sent directly to those external services is stored only by MR FOP FASHIONS.</p>
+        <h3>5. Payments</h3>
+        <p>Bank-transfer declarations are reviewed by authorised staff. Do not send card PINs, passwords or one-time passcodes. Payment information shown in the portal reflects records entered or verified by the company; it is not a connection to your bank account.</p>
+        <h3>6. Access, correction and data requests</h3>
+        <p>You can download a JSON copy of the customer information currently made available through your signed-in portal. That export is not a complete company backup and may not include external files, private staff notes or internal records. To request correction, discuss a privacy concern or ask about deletion, contact us using the details below. Some business, payment or legal records may need to be retained where applicable.</p>
+        <h3>7. Contact</h3>
+        <p>MR FOP FASHIONS COMPANY NIGERIA LIMITED · Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria · +234 805 547 2913 · mrfopvi@gmail.com.</p>
+        <p className="policy-note">This notice describes the current platform at a practical level. It is not a statement that every privacy compliance, retention, consent or deletion process has been independently audited.</p>
+      </> : <>
+        <h3>1. Enquiries and order acceptance</h3>
+        <p>Website and portal submissions are requests for discussion. A clothing order becomes confirmed only after the company has reviewed and agreed the garment specification, quotation, payment arrangement and production schedule. Prices and availability are not guaranteed by an enquiry alone.</p>
+        <h3>2. Measurements and garment specifications</h3>
+        <p>Customers should provide careful, current measurements and clear design instructions. The company may request an in-person measurement or fitting where needed. Online measurement entries are customer-supplied information and are not automatically professionally verified.</p>
+        <h3>3. Quotations, payments and records</h3>
+        <p>Review the itemised quotation and agreed scope before approving. A transfer declaration remains pending until the company verifies receipt. Only payments recorded as verified by the company should be treated as credited in the portal. Any deposit, balance, refund or cancellation arrangement should be agreed with the company in writing before payment.</p>
+        <h3>4. Production, fitting and collection</h3>
+        <p>Production stages and expected dates are provided as operational updates. A displayed target date is not an unconditional guarantee. Fitting, alterations, collection and delivery arrangements should be confirmed with the company.</p>
+        <h3>5. Fashion Institute</h3>
+        <p>Course information, intake dates, fees, admission and access conditions are subject to the published course details and confirmation by the Institute. Paid access is tied to the enrolled learner's account. Learners must not share credentials, redistribute protected learning materials or submit work on behalf of another person.</p>
+        <h3>6. Acceptable use</h3>
+        <p>Use accurate information, respect other users and staff, and do not attempt to access another person's account, records or learning materials, interfere with the service, or upload unlawful or harmful content.</p>
+        <h3>7. Changes and contact</h3>
+        <p>We may update these terms as the service changes. Material order, payment or training arrangements should be confirmed directly with the company. Contact MR FOP FASHIONS COMPANY NIGERIA LIMITED at +234 805 547 2913 or mrfopvi@gmail.com, or visit Bonojo Road, Eka Junction, Ijebu Ode, Ogun State, Nigeria.</p>
+        <p className="policy-note">These are operational website terms, not a substitute for a separately negotiated order, course agreement or professional legal advice. No unconfirmed refund or cancellation policy is created by this page.</p>
+      </>}
+    </section></div>}
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><div className="music-modal" onClick={e => e.stopPropagation()}><button onClick={() => setMusicNotice(false)} aria-label="Close">×</button><h3>MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></div></div>}
     {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
   </div>;
