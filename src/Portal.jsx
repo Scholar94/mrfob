@@ -182,6 +182,7 @@ export default function Portal({ onClose }) {
   const [trainingEnquiries, setTrainingEnquiries] = useState([]);
   const [trainingLoading, setTrainingLoading] = useState(false);
   const [allMeasurements, setAllMeasurements] = useState([]);
+  const [designerMeasurementForm, setDesignerMeasurementForm] = useState({ customerUid: "", profileName: "", garmentType: "General body profile", unit: "cm", notes: "", ...Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, ""])) });
   const [allTrainingEnquiries, setAllTrainingEnquiries] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
@@ -514,6 +515,49 @@ export default function Portal({ onClose }) {
       setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load customer measurement and training records."); }
+  }
+
+  async function saveDesignerMeasurement(e) {
+    e.preventDefault();
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) return;
+    const customer = allMeasurements.find(item => item.customerUid === designerMeasurementForm.customerUid);
+    if (!customer) { setError("Select a customer with an existing measurement profile."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const values = {};
+      ALL_MEASUREMENT_FIELDS.forEach(key => {
+        const raw = String(designerMeasurementForm[key] ?? "").trim();
+        if (raw && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) throw new Error("Enter a positive number for " + key + " or leave it blank.");
+        values[key] = raw ? Number((designerMeasurementForm.unit === "in" ? Number(raw) * 2.54 : Number(raw)).toFixed(1)) : null;
+      });
+      const fields = MEASUREMENT_PROFILES[designerMeasurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"];
+      if (!fields.some(([key]) => values[key] !== null)) throw new Error("Enter at least one measurement for this garment profile.");
+      const profileName = designerMeasurementForm.profileName.trim() || designerMeasurementForm.garmentType;
+      const measurementRef = doc(collection(db, "measurements"));
+      const noticeRef = doc(collection(db, "notifications"));
+      const batch = writeBatch(db);
+      batch.set(measurementRef, {
+        customerUid: customer.customerUid, customerName: customer.customerName || "Customer",
+        profileName, garmentType: designerMeasurementForm.garmentType, ...values,
+        notes: designerMeasurementForm.notes.trim(), entrySource: "designer",
+        createdByUid: user.uid, createdByName: user.displayName || user.email || "Authorized designer",
+        verificationStatus: "pending", verificationNote: "",
+        verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized designer",
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(), verifiedAt: serverTimestamp()
+      });
+      batch.set(noticeRef, {
+        customerUid: customer.customerUid, measurementId: measurementRef.id,
+        type: "measurement_review", verificationStatus: "pending",
+        title: "A designer recorded measurements for you",
+        message: "A new " + designerMeasurementForm.garmentType + " measurement profile was recorded by the MR FOP team. Please review it in your account and contact the team if any detail needs correction.",
+        createdAt: serverTimestamp(), readAt: null
+      });
+      await batch.commit();
+      setDesignerMeasurementForm(current => ({ ...current, profileName: "", notes: "", ...Object.fromEntries(ALL_MEASUREMENT_FIELDS.map(key => [key, ""])) }));
+      await loadAdminCustomerServices();
+      setMessage("Designer-entered measurement profile saved. The customer has been notified and the profile is awaiting review.");
+    } catch (err) { setError(err.message || "Could not save designer-entered measurements."); }
+    finally { setBusy(false); }
   }
 
   async function reviewMeasurement(id, verificationStatus, verificationNote) {
@@ -1802,8 +1846,22 @@ export default function Portal({ onClose }) {
         {customerOrders.length ? customerOrders.map(order=><article className="customer-order" key={order.id}><strong>{order.orderNumber || order.id}</strong><span>{order.status || "Status not set"}</span><small>{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : "Date not recorded"}</small></article>) : <p className="staff-empty">No orders found for this customer yet.</p>}
       </section>}
       {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
+        <div className="customer-management-heading"><div><h3>Designer-entered measurements</h3><p>Record an in-studio fitting for a customer with an existing measurement profile. Values are stored in centimetres.</p></div></div>
+        <form className="portal-form inventory-form" onSubmit={saveDesignerMeasurement}>
+          <label>Customer<select required value={designerMeasurementForm.customerUid} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,customerUid:e.target.value})}><option value="">Select a measurement customer</option>{[...new Map(allMeasurements.map(item=>[item.customerUid,item])).values()].map(item=><option key={item.customerUid} value={item.customerUid}>{item.customerName || "Customer"} · {item.customerUid.slice(0,8)}</option>)}</select></label>
+          <label>Profile name<input maxLength={60} value={designerMeasurementForm.profileName} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,profileName:e.target.value})} placeholder="e.g. In-studio suit fitting"/></label>
+          <label>Garment profile<select value={designerMeasurementForm.garmentType} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
+          <label>Input unit<select value={designerMeasurementForm.unit} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
+          <div className="measurement-grid">{(MEASUREMENT_PROFILES[designerMeasurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"]).map(([key,label])=><label key={key}>{label} ({designerMeasurementForm.unit})<input type="number" min="0.1" step="0.1" value={designerMeasurementForm[key] || ""} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,[key]:e.target.value})} placeholder={designerMeasurementForm.unit}/></label>)}</div>
+          <MeasurementGuide garmentType={designerMeasurementForm.garmentType}/>
+          <label>Fitting notes<textarea maxLength={1000} value={designerMeasurementForm.notes} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,notes:e.target.value})} placeholder="Record fitting observations or customer-approved adjustments"/></label>
+          <p className="portal-hint">The customer receives an in-app notification. This entry is marked as pending review; it does not authorize cutting or production until the measurements are confirmed.</p>
+          <button className="portal-submit" disabled={busy || !allMeasurements.some(item=>item.customerUid===designerMeasurementForm.customerUid)}>{busy ? "Saving measurements…" : "Save designer-entered measurements"}</button>
+        </form>
+      </section>}
+      {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Measurements</h3><p>Private fitting records submitted by customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh records</button></div>
-        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]].filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<p><strong>Designer review:</strong> {item.verificationStatus || "Awaiting review"}</p>{item.verificationNote&&<p>{item.verificationNote}</p>}<label>Review status<select value={item.verificationStatus || "pending"} disabled={busy} onChange={e=>reviewMeasurement(item.id,e.target.value,item.verificationNote || "")}><option value="pending">Awaiting review</option><option value="verified">Verified by designer</option><option value="revision-needed">Revision needed</option></select></label><label>Designer notes<textarea defaultValue={item.verificationNote || ""} maxLength={1000} id={"measurement-note-"+item.id}/></label><button type="button" disabled={busy} onClick={()=>reviewMeasurement(item.id,item.verificationStatus || "pending",document.getElementById("measurement-note-"+item.id)?.value || "")}>Save review</button></article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
+        {allMeasurements.length ? <div className="measurement-list">{allMeasurements.map(item=><article className="appointment-card" key={item.id}><strong>{item.customerName || "Customer"} · {item.customerUid}</strong><span>{item.entrySource === "designer" ? "Entered by designer" : "Customer-submitted"} · {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString("en-NG") : "Date not available"}</span><div className="measurement-values">{ALL_MEASUREMENT_FIELDS.map(key=>[key.replace(/[A-Z]/g," {[["Chest",item.chest],["Waist",item.waist],["Hip",item.hip],["Shoulder",item.shoulder],["Sleeve",item.sleeve],["Length",item.length],["Neck",item.neck],["Inseam",item.inseam]]").replace(/^./,c=>c.toUpperCase()),item[key]]).filter(([,value])=>value!==null&&value!==undefined&&value!=="").map(([label,value])=><span key={label}>{label}: {value} cm</span>)}</div>{item.notes&&<p>{item.notes}</p>}<p><strong>Designer review:</strong> {item.verificationStatus || "Awaiting review"}</p>{item.verificationNote&&<p>{item.verificationNote}</p>}<label>Review status<select value={item.verificationStatus || "pending"} disabled={busy} onChange={e=>reviewMeasurement(item.id,e.target.value,item.verificationNote || "")}><option value="pending">Awaiting review</option><option value="verified">Verified by designer</option><option value="revision-needed">Revision needed</option></select></label><label>Designer notes<textarea defaultValue={item.verificationNote || ""} maxLength={1000} id={"measurement-note-"+item.id}/></label><button type="button" disabled={busy} onClick={()=>reviewMeasurement(item.id,item.verificationStatus || "pending",document.getElementById("measurement-note-"+item.id)?.value || "")}>Save review</button></article>)}</div> : <p className="staff-empty">No customer measurements have been submitted.</p>}
       </section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Fashion Institute Enquiries</h3><p>Review course and training enquiries from customers</p></div><button type="button" onClick={loadAdminCustomerServices}>Refresh enquiries</button></div>
