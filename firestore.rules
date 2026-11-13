@@ -148,7 +148,7 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow create: if (
+      allow create: if ((
           (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
           && request.resource.data.type == 'production_update'
           && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','stage','stageLabel','createdAt','readAt'])
@@ -165,7 +165,7 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.resource.data.customerUid
           && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == request.resource.data.appointmentStatus
           && request.resource.data.appointmentStatus in ['confirmed','alternative_proposed','completed','cancelled']
-        )
+        ))
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.message is string && request.resource.data.message.size() <= 500
         && request.resource.data.createdAt is timestamp
