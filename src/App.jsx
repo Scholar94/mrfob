@@ -110,6 +110,14 @@ export default function App() {
           <div className="welcome-bottom"><p>From bespoke menswear and women's elegance to bridal creations, traditional attire and professional training, we make style personal.</p><a className="round-link" href="#services" aria-label="Explore services"><ArrowUpRight/></a></div>
         </div>
       </section>
+      <section className="about-company section-pad" id="about">
+        <div className="about-company-heading"><p className="eyebrow"><i/> OUR COMPANY · RC 1089546</p><h2>Built on service.<br/><em>Driven by excellence.</em></h2><p>Established in 2010, MR FOP FASHIONS COMPANY NIGERIA LIMITED brings clothing design, industrial tailoring and professional fashion training together under one company.</p></div>
+        <div className="about-company-details">
+          <article><span>OUR MISSION</span><p>To make customers feel brand new and happy always through excellent and professional services.</p></article>
+          <article><span>OUR VISION</span><p>To be recognized as a leading service delivery company providing maximum customer satisfaction.</p></article>
+          <article><span>WHAT WE DO</span><p>Clothing designing and industrial tailoring, alongside the MR FOP FASHIONS Fashion Institute and professional fashion training.</p></article>
+        </div>
+      </section>
       <section className="collections section-pad" id="collections">
         <div className="section-heading"><div><p className="eyebrow"><i/> MADE FOR YOUR MOMENTS</p><h2>Find your <em>signature.</em></h2></div><p>Explore expressions of style, made with care and finished with intention.</p></div>
         <div className="collection-grid">{collections.map(item => <a className="collection-card" href={wa} target="_blank" rel="noreferrer" key={item.name}>
