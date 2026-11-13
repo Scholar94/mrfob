@@ -7,6 +7,7 @@ service cloud.firestore {
       return exists(rolePath(uid)) ? get(rolePath(uid)).data.role : 'customer';
     }
     function isSuperAdmin() { return signedIn() && roleOf(request.auth.uid) == 'superAdmin'; }
+    function isFinanceOfficer() { return signedIn() && roleOf(request.auth.uid) == 'finance'; }
     function isStaff() {
       return signedIn() && roleOf(request.auth.uid) in ['manager', 'sales', 'tailor', 'institute'];
     }
@@ -83,7 +84,17 @@ service cloud.firestore {
         && request.resource.data.amount == resource.data.amount
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quotationStatus', 'updatedAt']))
         || (hasStaffRole(['manager', 'sales', 'tailor'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
+        || (isFinanceOfficer()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amountPaid', 'paymentStatus', 'lastPaymentId', 'updatedAt'])
+        && request.resource.data.amountPaid is number
+        && request.resource.data.amountPaid > resource.data.amountPaid
+        && request.resource.data.paymentStatus in ['part_paid', 'paid']
+        && request.resource.data.lastPaymentId is string
+        && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.orderId == orderId
+        && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.customerUid == resource.data.customerUid
+        && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.amount == request.resource.data.amountPaid - resource.data.amountPaid
+        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.declarationId)).data.status == 'verified');
       allow delete: if isSuperAdmin();
 
       match /events/{eventId} {
@@ -329,8 +340,8 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp
         && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.auth.uid;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
-      allow update: if isSuperAdmin()
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
+      allow update: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedAt', 'reviewedBy', 'updatedAt'])
         && resource.data.status == 'pending'
         && request.resource.data.status in ['verified', 'rejected']
@@ -340,12 +351,17 @@ service cloud.firestore {
     }
 
     match /payments/{paymentId} {
-      allow create: if isSuperAdmin()
+      allow create: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.keys().hasOnly(['orderId', 'orderNumber', 'customerUid', 'customerName', 'amount', 'currency', 'method', 'reference', 'note', 'declarationId', 'createdAt', 'createdBy'])
+        && request.resource.data.declarationId is string
+        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.status == 'verified'
+        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.orderId == request.resource.data.orderId
+        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.customerUid == request.resource.data.customerUid
+        && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.amount == request.resource.data.amount
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
       allow update, delete: if isSuperAdmin();
     }
 
@@ -359,7 +375,7 @@ service cloud.firestore {
         && request.resource.data.expenseDate is string
         && request.resource.data.category is string
         && request.resource.data.method is string;
-      allow read: if isSuperAdmin() || hasStaffRole(['manager']);
+      allow read: if isSuperAdmin() || hasStaffRole(['manager']) || isFinanceOfficer();
       allow update, delete: if isSuperAdmin();
     }
 
@@ -375,7 +391,7 @@ service cloud.firestore {
         && request.resource.data.amountPaid is number && request.resource.data.amountPaid >= 0
         && request.resource.data.balance is number && request.resource.data.balance >= 0
         && request.resource.data.paymentStatus in ['unpaid', 'part_paid', 'paid'];
-      allow read: if isSuperAdmin() || hasStaffRole(['manager', 'sales']);
+      allow read: if isSuperAdmin() || hasStaffRole(['manager', 'sales']) || isFinanceOfficer();
       allow update, delete: if isSuperAdmin();
     }
 
