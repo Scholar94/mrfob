@@ -1288,19 +1288,31 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     setBusy(true); setError(""); setMessage("");
     try {
       const patch = { status: "alternative_proposed", proposedDate: edit.proposedDate, proposedTime: edit.proposedTime, adminMessage: (edit.adminMessage || "").trim(), updatedAt: serverTimestamp() };
-      const batch = writeBatch(db);
-      batch.update(doc(db, "appointments", item.id), patch);
-      batch.set(doc(collection(db, "notifications")), {
-        customerUid: item.customerUid,
-        appointmentId: item.id,
-        type: "appointment_update",
-        appointmentStatus: "alternative_proposed",
-        title: "An alternative appointment time has been proposed",
-        message: (patch.adminMessage || "Please review and accept or discuss the proposed appointment time in My Appointments.").slice(0, 500),
-        createdAt: serverTimestamp(),
-        readAt: null
+      await runTransaction(db, async transaction => {
+        const appointmentRef = doc(db, "appointments", item.id);
+        const currentSnapshot = await transaction.get(appointmentRef);
+        if (!currentSnapshot.exists()) throw new Error("This appointment no longer exists.");
+        const current = currentSnapshot.data();
+        if (!["pending", "confirmed", "alternative_proposed"].includes(current.status || "pending")) throw new Error("Only pending or confirmed appointments can receive an alternative proposal.");
+        let oldSlotRef = null;
+        if (current.status === "confirmed" && current.appointmentDate && current.appointmentTime) {
+          oldSlotRef = doc(db, "appointmentSlots", appointmentSlotId(current.appointmentDate, current.appointmentTime));
+          const oldSlot = await transaction.get(oldSlotRef);
+          if (oldSlot.exists() && oldSlot.data().appointmentId === item.id) transaction.delete(oldSlotRef);
+        }
+        transaction.update(appointmentRef, patch);
+        const notificationRef = doc(collection(db, "notifications"));
+        transaction.set(notificationRef, {
+          customerUid: item.customerUid,
+          appointmentId: item.id,
+          type: "appointment_update",
+          appointmentStatus: "alternative_proposed",
+          title: "An alternative appointment time has been proposed",
+          message: (patch.adminMessage || "Please review and accept or discuss the proposed appointment time in My Appointments.").slice(0, 500),
+          createdAt: serverTimestamp(),
+          readAt: null
+        });
       });
-      await batch.commit();
       setAppointments(items => items.map(row => row.id === item.id ? { ...row, ...patch, updatedAt: new Date() } : row));
       setMessage("Alternative appointment proposed. The customer must accept it before it is treated as confirmed.");
     } catch (err) { setError(err.message || "Could not propose an alternative appointment."); }
