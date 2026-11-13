@@ -93,7 +93,7 @@ service cloud.firestore {
         && request.resource.data.lastPaymentId is string
         && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.orderId == orderId
         && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.customerUid == resource.data.customerUid
-        && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.amount == request.resource.data.amountPaid - resource.data.amountPaid
+        && getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.amount == request.resource.data.amountPaid - (('amountPaid' in resource.data) ? resource.data.amountPaid : 0)
         && getAfter(/databases/$(database)/documents/paymentDeclarations/$(getAfter(/databases/$(database)/documents/payments/$(request.resource.data.lastPaymentId)).data.declarationId)).data.status == 'verified');
       allow delete: if isSuperAdmin();
 
