@@ -154,6 +154,7 @@ export default function Portal({ onClose }) {
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
+  const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
   const [paymentInstructions, setPaymentInstructions] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
   const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
   const [declarationReviewNotes, setDeclarationReviewNotes] = useState({});
@@ -1329,6 +1330,35 @@ export default function Portal({ onClose }) {
     } catch (err) { setError(err.message || "Could not load payment history."); }
   }
 
+  async function loadCompanyProfile() {
+    try {
+      const snapshot = await getDoc(doc(db, "publicSettings", "siteProfile"));
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+      setCompanyProfileDraft(current => ({
+        companyName: data.companyName || current.companyName, phone: data.phone || current.phone,
+        whatsapp: data.whatsapp || current.whatsapp, email: data.email || current.email,
+        address: data.address || current.address, openingHours: data.openingHours || "",
+        mission: data.mission || "", vision: data.vision || "", businessScope: data.businessScope || ""
+      }));
+    } catch (err) { setError(err.message || "Could not load company profile settings."); }
+  }
+
+  async function saveCompanyProfile(e) {
+    e.preventDefault();
+    if (!claims.superAdmin) return;
+    const next = Object.fromEntries(Object.entries(companyProfileDraft).map(([key,value]) => [key,String(value || "").trim()]));
+    if (!next.companyName || !next.phone || !next.email || !next.address) { setError("Company name, phone, email and address are required."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next.email)) { setError("Enter a valid company email address."); return; }
+    if (next.whatsapp && !/^\+?[0-9\s()-]{8,40}$/.test(next.whatsapp)) { setError("Enter a valid WhatsApp number."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await setDoc(doc(db, "publicSettings", "siteProfile"), { ...next, updatedAt: serverTimestamp(), updatedBy: user.uid });
+      setMessage("Public company profile settings have been saved.");
+    } catch (err) { setError(err.message || "Could not save company profile settings."); }
+    finally { setBusy(false); }
+  }
+
   async function loadPaymentInstructions() {
     if (!user) return;
     try {
@@ -1839,7 +1869,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadCompanyProfile(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   useEffect(() => {
     if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
@@ -2055,6 +2085,18 @@ export default function Portal({ onClose }) {
             <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save bank instructions"}</button>
           </form>
         </section>}
+        {claims.superAdmin && <section className="customer-management company-profile-admin"><div className="customer-management-heading"><div><h3>Public Company Profile</h3><p>Manage the company information displayed on the public website. Bank account details remain in the separate private payment settings.</p></div><button type="button" onClick={loadCompanyProfile}>Reload profile</button></div><form className="portal-form" onSubmit={saveCompanyProfile}>
+          <label>Company name<input maxLength="120" required value={companyProfileDraft.companyName} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,companyName:e.target.value})}/></label>
+          <label>Telephone<input maxLength="40" required value={companyProfileDraft.phone} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,phone:e.target.value})}/></label>
+          <label>WhatsApp number<input maxLength="40" value={companyProfileDraft.whatsapp} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,whatsapp:e.target.value})}/></label>
+          <label>Public email<input type="email" maxLength="120" required value={companyProfileDraft.email} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,email:e.target.value})}/></label>
+          <label>Business address<textarea maxLength="300" required value={companyProfileDraft.address} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,address:e.target.value})}/></label>
+          <label>Opening hours<textarea maxLength="300" value={companyProfileDraft.openingHours} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,openingHours:e.target.value})}/></label>
+          <label>Mission<textarea maxLength="600" value={companyProfileDraft.mission} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,mission:e.target.value})}/></label>
+          <label>Vision<textarea maxLength="600" value={companyProfileDraft.vision} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,vision:e.target.value})}/></label>
+          <label>Business scope<textarea maxLength="1000" value={companyProfileDraft.businessScope} onChange={e=>setCompanyProfileDraft({...companyProfileDraft,businessScope:e.target.value})}/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save public company profile"}</button>
+        </form></section>}
         {(claims.superAdmin || claims.staffRole === "finance") && <section className="payment-declaration-admin">
           <div className="customer-management-heading"><div><h3>Customer Transfer Declarations</h3><p>Verify the funds in your bank independently before approving a declaration</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
           {paymentDeclarations.filter(item=>item.status==="pending").length ? paymentDeclarations.filter(item=>item.status==="pending").map(item=><article className="payment-declaration-review" key={item.id}><div><strong>{item.orderNumber} · {item.customerName || "Customer"}</strong><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b></div><p>Transfer date: {item.transferDate} · Reference: {item.reference}</p><p>Payer: {item.payerName || "Not supplied"}{item.note ? " · "+item.note : ""}</p><label>Review note<textarea value={declarationReviewNotes[item.id] || ""} onChange={e=>setDeclarationReviewNotes({...declarationReviewNotes,[item.id]:e.target.value})} placeholder="Optional note to customer"/></label><div className="verification-actions"><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"verified")}>Verify and record payment</button><button type="button" disabled={busy} onClick={()=>reviewPaymentDeclaration(item,"rejected")}>Reject declaration</button></div></article>) : <p className="staff-empty">No declarations are awaiting review.</p>}
