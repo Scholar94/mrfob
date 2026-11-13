@@ -39,18 +39,16 @@
 | 21 | Performance and UX | Partial | Responsive layout, loading/error/empty states, image lazy loading and Firestore query scoping are present. Full pagination, image optimization, accessibility audit and low-bandwidth/mobile profiling remain to be completed. |
 | 22 | SEO and brand presentation | Partial | Page metadata, canonical URL, LocalBusiness structured data, robots.txt and a multi-route public sitemap exist. Route-specific title changes are client-side; server-rendered metadata and dynamic sitemap generation remain incomplete. |
 | 23 | Required website pages | Not complete | Most public/customer/staff experiences are sections or portal modules rather than the complete independent route list in the master prompt. A GitHub Pages 404 fallback and route resolver now support requested public paths and open the role-protected portal for customer/student/admin paths, scrolling to a matching portal section where one exists. These are deep-link aliases, not fully independent page components; several requested admin pages such as audit-log-specific routes remain incomplete. |
-| 24 | Final delivery and mandatory tests | Not complete | Deployment workflow builds and publishes the site when the latest commit passes. A 22-case acceptance test plan is now documented in docs/QA-TEST-PLAN.md. Separate-account end-to-end testing, Firebase Emulator rules tests, Drive/Apps Script integration tests, mobile/PWA tests and a final signed-off test report remain outstanding. |
+| 24 | Final delivery and mandatory tests | Not complete | Deployment workflow builds and publishes the site when the latest commit passes. A 22-case acceptance test plan is documented in docs/QA-TEST-PLAN.md. Separate-account end-to-end testing, Firebase Emulator rules tests, Drive/Apps Script integration tests, mobile/PWA tests and a final signed-off test report remain outstanding. |
 
 ## Recently added workflows
 
-- Refund request and manual refund record workflow: customers can request a refund against their own verified payment; Finance/Super Admin can review, approve/reject and record a completed bank-transfer reference. The platform does not initiate transfers or automatically reconcile refunds into POS/statutory accounts.
+- Refund request and manual refund record workflow: customers can submit one refund request per verified payment; Finance/Super Admin can review, approve/reject and record a completed bank-transfer reference. Firestore binds the refund document to its payment and owner. The platform does not initiate transfers or automatically reconcile refunds into POS/statutory accounts.
 
 - Product catalogue enhancement: Super Admin can configure up to eight additional HTTPS image views, colours, fabric options and customisation options; customers can switch product image views and inspect the available design options. Existing product records without the new optional arrays remain eligible for stock adjustments.
 
-- Guided style recommendation wizard: customers choose occasion, category, garment, colour, style direction and budget, then send the brief to the configured WhatsApp contact. Suggestions are deterministic and explicitly not AI, live inventory or quotations.
-- Appointment alternative proposals now release the previously reserved confirmed slot in the same Firestore transaction; customer acceptance reserves the proposed slot atomically.
-
-- Interactive fashion style recommender: captures occasion, category, garment, colour, style preference, budget and optional reference notes; produces three starting directions and a prefilled WhatsApp consultation brief. It is a rules-based suggestion tool, not an AI stylist, live stock feed or quotation.
+- Guided style recommendation wizard: customers choose occasion, category, garment, colour, style direction, budget and optional reference notes, then receive three deterministic starting suggestions and can send the brief to the configured WhatsApp contact. It is not AI, live inventory or a quotation.
+- Appointment alternative proposals release the previously reserved confirmed slot in the same Firestore transaction; customer acceptance reserves the proposed slot atomically.
 
 - Customer privacy request centre for access, correction and deletion requests. A request is not an automatic data erasure; staff must review retention requirements and connected Drive records.
 - Public fabric catalogue with Super Admin create/edit/archive controls.
@@ -78,6 +76,6 @@
 4. Complete refunds, delivery/collection lifecycle, appointment conflict prevention and full production event history.
 5. Complete Institute instructor/student lifecycle and validate Drive permission grant/revocation, including refund/withdrawal cases.
 6. Complete accessibility, low-bandwidth, SEO route coverage and PWA installation tests.
-7. Run the full 20-item mandatory test plan using separate customer, designer/tailor, finance, instructor, Institute Administrator and Super Admin accounts.
+7. Run the full 22-case mandatory test plan using separate customer, designer/tailor, finance, instructor, Institute Administrator and Super Admin accounts.
 
 **Completion rule:** The project must not be described as fully complete until all 24 sections have no outstanding critical requirements, the current Firestore rules are published and tested, all external integrations are verified, and the mandatory end-to-end test report is passed.
