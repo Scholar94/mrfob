@@ -289,7 +289,39 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  async function loadProgressUpdates(order) {\n    const snapshot = await getDocs(query(collection(db, "orders", order.id, "progressUpdates")));\n    return snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));\n  }\n\n  async function uploadProductionPhoto(order, file) {\n    if (!file) return;\n    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) { setError("You do not have permission to upload production photos."); return; }\n    if (!storage) { setError("Firebase Storage is not configured. Set the Firebase storage bucket and deploy storage.rules first."); return; }\n    if (!file.type.startsWith("image/") || !["image/jpeg","image/png","image/webp"].includes(file.type)) { setError("Upload a JPG, PNG or WebP image."); return; }\n    if (file.size > 8 * 1024 * 1024) { setError("Each production photo must be 8 MB or smaller."); return; }\n    setBusy(true); setError(""); setMessage("");\n    try {\n      const caption = (window.prompt("Add a short customer-visible note for this production photo (optional)") || "").trim().slice(0, 240);\n      const updateRef = doc(collection(db, "orders", order.id, "progressUpdates"));\n      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "production-photo";\n      const path = "order-progress/" + order.id + "/" + updateRef.id + "-" + safeName;\n      const objectRef = storageRef(storage, path);\n      await uploadBytes(objectRef, file, { contentType: file.type, customMetadata: { orderId: order.id, uploadedBy: user.uid } });\n      const photoUrl = await getDownloadURL(objectRef);\n      const update = { orderId: order.id, orderNumber: order.orderNumber || order.id, customerUid: order.customerUid, stage: order.status || "received", stageLabel: productionStageLabel(order.status), caption, photoUrl, storagePath: path, fileName: safeName, contentType: file.type, size: file.size, uploadedByUid: user.uid, uploadedByName: user.displayName || user.email || "Production team", createdAt: serverTimestamp() };\n      await setDoc(updateRef, update);\n      const noticeRef = doc(collection(db, "notifications"));\n      await setDoc(noticeRef, { customerUid: order.customerUid, orderId: order.id, orderNumber: order.orderNumber || order.id, type: "production_photo", title: "New production photo added", message: caption || "The team has shared a new photo of your order at the " + productionStageLabel(order.status) + " stage.", stage: order.status || "received", stageLabel: productionStageLabel(order.status), createdAt: serverTimestamp(), readAt: null });\n      const visibleUpdate = { ...update, id: updateRef.id, createdAt: { toDate: () => new Date() } };\n      setOrders(items => items.map(item => item.id === order.id ? { ...item, progressUpdates: [...(item.progressUpdates || []), visibleUpdate] } : item));\n      setMyOrders(items => items.map(item => item.id === order.id ? { ...item, progressUpdates: [...(item.progressUpdates || []), visibleUpdate] } : item));\n      setMessage("Production photo uploaded and customer notified.");\n    } catch (err) { setError(err.message || "Could not upload the production photo."); }\n    finally { setBusy(false); }\n  }\n\n  async function loadOrders() {
+  async function loadProgressUpdates(order) {
+    const snapshot = await getDocs(query(collection(db, "orders", order.id, "progressUpdates")));
+    return snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+  }
+
+  async function uploadProductionPhoto(order, file) {
+    if (!file) return;
+    if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) { setError("You do not have permission to upload production photos."); return; }
+    if (!storage) { setError("Firebase Storage is not configured. Set the Firebase storage bucket and deploy storage.rules first."); return; }
+    if (!file.type.startsWith("image/") || !["image/jpeg","image/png","image/webp"].includes(file.type)) { setError("Upload a JPG, PNG or WebP image."); return; }
+    if (file.size > 8 * 1024 * 1024) { setError("Each production photo must be 8 MB or smaller."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const caption = (window.prompt("Add a short customer-visible note for this production photo (optional)") || "").trim().slice(0, 240);
+      const updateRef = doc(collection(db, "orders", order.id, "progressUpdates"));
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "production-photo";
+      const path = "order-progress/" + order.id + "/" + updateRef.id + "-" + safeName;
+      const objectRef = storageRef(storage, path);
+      await uploadBytes(objectRef, file, { contentType: file.type, customMetadata: { orderId: order.id, uploadedBy: user.uid } });
+      const photoUrl = await getDownloadURL(objectRef);
+      const update = { orderId: order.id, orderNumber: order.orderNumber || order.id, customerUid: order.customerUid, stage: order.status || "received", stageLabel: productionStageLabel(order.status), caption, photoUrl, storagePath: path, fileName: safeName, contentType: file.type, size: file.size, uploadedByUid: user.uid, uploadedByName: user.displayName || user.email || "Production team", createdAt: serverTimestamp() };
+      await setDoc(updateRef, update);
+      const noticeRef = doc(collection(db, "notifications"));
+      await setDoc(noticeRef, { customerUid: order.customerUid, orderId: order.id, orderNumber: order.orderNumber || order.id, type: "production_photo", title: "New production photo added", message: caption || "The team has shared a new photo of your order at the " + productionStageLabel(order.status) + " stage.", stage: order.status || "received", stageLabel: productionStageLabel(order.status), createdAt: serverTimestamp(), readAt: null });
+      const visibleUpdate = { ...update, id: updateRef.id, createdAt: { toDate: () => new Date() } };
+      setOrders(items => items.map(item => item.id === order.id ? { ...item, progressUpdates: [...(item.progressUpdates || []), visibleUpdate] } : item));
+      setMyOrders(items => items.map(item => item.id === order.id ? { ...item, progressUpdates: [...(item.progressUpdates || []), visibleUpdate] } : item));
+      setMessage("Production photo uploaded and customer notified.");
+    } catch (err) { setError(err.message || "Could not upload the production photo."); }
+    finally { setBusy(false); }
+  }
+
+  async function loadOrders() {
     if (!claims.superAdmin && !claims.staffRole) return;
     setOrdersLoading(true); setError("");
     try {
