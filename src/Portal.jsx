@@ -31,24 +31,28 @@ const PRODUCTION_STAGES = [
 ];
 
 const MEASUREMENT_PROFILES = {
-  "General body profile": [["chest","Chest"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["neck","Neck"]],
-  "Men’s shirt": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["neck","Neck"],["sleeve","Sleeve length"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["shirtLength","Shirt length"],["acrossBack","Across back"]],
-  "Trousers": [["waist","Waist"],["hip","Hip"],["inseam","Inside leg"],["outseam","Outside leg"],["thigh","Thigh"],["knee","Knee"],["ankle","Ankle opening"],["frontRise","Front rise"],["backRise","Back rise"]],
-  "Dress / Gown": [["bust","Bust"],["underBust","Under bust"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["armhole","Armhole"],["bustPoint","Bust point"],["dressLength","Dress length"]],
-  "Skirt": [["waist","Waist"],["hip","Hip"],["waistToHip","Waist to hip"],["skirtLength","Skirt length"]],
-  "Jacket": [["chest","Chest"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["jacketLength","Jacket length"],["acrossBack","Across back"]],
-  "Blouse": [["bust","Bust"],["waist","Waist"],["shoulder","Shoulder"],["sleeve","Sleeve length"],["neck","Neck"],["armhole","Armhole"],["blouseLength","Blouse length"]]
+  "General body profile": [["chest","Chest / bust circumference"],["waist","Natural waist"],["abdomen","Abdomen"],["hip","Full hip / seat"],["shoulder","Shoulder width"],["neck","Neck circumference"],["upperArm","Upper arm"],["wrist","Wrist"]],
+  "Men’s shirt": [["neck","Neck circumference"],["shoulder","Shoulder width"],["chest","Chest circumference"],["waist","Waist"],["abdomen","Abdomen"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["shirtLength","Shirt length"],["acrossBack","Back width"]],
+  "Trousers": [["waist","Trouser waist"],["hip","Trouser hip / seat"],["thigh","Thigh"],["knee","Knee"],["inseam","Inseam"],["outseam","Outseam"],["crotch","Crotch depth / rise"],["frontRise","Front rise"],["backRise","Back rise"],["ankle","Ankle opening"]],
+  "Dress / Gown": [["bust","Bust circumference"],["underBust","Underbust"],["upperWaist","Upper waist"],["waist","Natural waist"],["hip","Full hip"],["shoulder","Shoulder"],["shoulderToBust","Shoulder to bust point"],["bustPoint","Bust point height"],["bustSeparation","Bust separation"],["frontWaistLength","Front waist length"],["backWaistLength","Back waist length"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["elbow","Elbow"],["wrist","Wrist"],["armhole","Armhole"],["dressLength","Dress length"]],
+  "Skirt": [["waist","Waist"],["upperWaist","Upper waist"],["hip","Full hip"],["waistToHip","Waist to hip"],["skirtLength","Skirt length"]],
+  "Jacket": [["neck","Neck circumference"],["chest","Chest circumference"],["waist","Waist"],["abdomen","Abdomen"],["hip","Hip"],["shoulder","Shoulder"],["acrossBack","Back width"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["bicep","Bicep"],["wrist","Wrist"],["armhole","Armhole"],["jacketLength","Jacket length"]],
+  "Blouse": [["bust","Bust circumference"],["underBust","Underbust"],["waist","Waist"],["hip","Hip"],["shoulder","Shoulder"],["shoulderToBust","Shoulder to bust point"],["bustSeparation","Bust separation"],["frontWaistLength","Front waist length"],["backWaistLength","Back waist length"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["elbow","Elbow"],["wrist","Wrist"],["armhole","Armhole"],["blouseLength","Blouse length"]],
+  "Agbada": [["neck","Neck circumference"],["shoulder","Shoulder width"],["chest","Chest circumference"],["waist","Waist"],["abdomen","Abdomen"],["hip","Hip"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["wrist","Wrist"],["shirtLength","Agbada inner / top length"],["acrossBack","Back width"]],
+  "Senator wear": [["neck","Neck circumference"],["shoulder","Shoulder width"],["chest","Chest circumference"],["waist","Waist"],["abdomen","Abdomen"],["hip","Hip"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["wrist","Wrist"],["shirtLength","Senator top length"],["acrossBack","Back width"],["trouserWaist","Trouser waist"],["trouserHip","Trouser hip"],["thigh","Thigh"],["inseam","Inseam"],["outseam","Outseam"],["crotch","Crotch depth"],["ankle","Ankle opening"]],
+  "Bridal / Special occasion": [["bust","Bust circumference"],["underBust","Underbust"],["upperWaist","Upper waist"],["waist","Natural waist"],["hip","Full hip"],["shoulder","Shoulder"],["shoulderToBust","Shoulder to bust point"],["bustSeparation","Bust separation"],["frontWaistLength","Front waist length"],["backWaistLength","Back waist length"],["sleeve","Sleeve length"],["upperArm","Upper arm"],["elbow","Elbow"],["wrist","Wrist"],["armhole","Armhole"],["dressLength","Garment length"]]
 };
-const ALL_MEASUREMENT_FIELDS = [...new Set(Object.values(MEASUREMENT_PROFILES).flat().map(([key]) => key))];
+const ALL_MEASUREMENT_FIELDS = ["chest","waist","hip","shoulder","sleeve","length","neck","inseam","bicep","wrist","armhole","shirtLength","acrossBack","outseam","thigh","knee","ankle","frontRise","backRise","bust","underBust","bustPoint","dressLength","waistToHip","skirtLength","jacketLength","blouseLength","abdomen","upperArm","elbow","shoulderToBust","bustSeparation","frontWaistLength","backWaistLength","upperWaist","crotch","trouserWaist","trouserHip"];
 
 const MEASUREMENT_FIELD_GUIDANCE = {
-  chest: "circumference", waist: "circumference", hip: "circumference", neck: "circumference",
-  bust: "circumference", underBust: "circumference", bicep: "circumference", wrist: "circumference",
-  thigh: "circumference", knee: "circumference", ankle: "circumference",
+  chest: "circumference", waist: "circumference", upperWaist: "circumference", abdomen: "circumference", hip: "circumference", neck: "circumference",
+  bust: "circumference", underBust: "circumference", bicep: "circumference", upperArm: "circumference", elbow: "circumference", wrist: "circumference",
+  thigh: "circumference", knee: "circumference", ankle: "circumference", bustSeparation: "span",
   shoulder: "span", acrossBack: "span", armhole: "circumference",
-  sleeve: "length", length: "length", inseam: "length", outseam: "length",
+  sleeve: "length", length: "length", inseam: "length", outseam: "length", crotch: "length",
   shirtLength: "length", dressLength: "length", skirtLength: "length", jacketLength: "length",
-  blouseLength: "length", waistToHip: "length", frontRise: "length", backRise: "length", bustPoint: "length"
+  blouseLength: "length", waistToHip: "length", frontRise: "length", backRise: "length", bustPoint: "length",
+  shoulderToBust: "length", frontWaistLength: "length", backWaistLength: "length"
 };
 function getMeasurementWarnings(form) {
   const fields = MEASUREMENT_PROFILES[form.garmentType] || MEASUREMENT_PROFILES["General body profile"];
