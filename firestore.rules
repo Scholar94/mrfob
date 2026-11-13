@@ -197,6 +197,15 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == request.resource.data.appointmentStatus
           && request.resource.data.appointmentStatus in ['confirmed','alternative_proposed','completed','cancelled']
         ) || (
+          isSuperAdmin()
+          && request.resource.data.type == 'delivery_date_update'
+          && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','dueDate','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.orderId is string
+          && request.resource.data.dueDate is string
+          && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.dueDate == request.resource.data.dueDate
+        ) || (
           (isSuperAdmin() || isStaff())
           && request.resource.data.type == 'support_update'
           && request.resource.data.keys().hasOnly(['customerUid','supportTicketId','type','supportStatus','title','message','createdAt','readAt'])
