@@ -4,5 +4,19 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   base: "/mrfob/",
-  build: { outDir: "dist", sourcemap: false }
+  build: {
+    outDir: "dist",
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("/node_modules/")) return undefined;
+          if (/\/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react-vendor";
+          if (/\/node_modules\/(firebase|@firebase)\//.test(id)) return "firebase-vendor";
+          if (/\/node_modules\/lucide-react\//.test(id)) return "icons-vendor";
+          return undefined;
+        }
+      }
+    }
+  }
 });
