@@ -37,6 +37,7 @@ export default function App() {
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [initialPortalMode, setInitialPortalMode] = useState("login");
+  const [initialPortalSection, setInitialPortalSection] = useState("");
   const [policyOpen, setPolicyOpen] = useState("");
   const [publicReviews, setPublicReviews] = useState([]);
   const [companyProfile, setCompanyProfile] = useState({});
@@ -84,6 +85,7 @@ export default function App() {
     if (path === "/register" || path === "/login" || path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/")) {
       setPolicyOpen("");
       setInitialPortalMode(path === "/register" ? "register" : "login");
+      setInitialPortalSection(path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/") ? path.split("/").pop() : "");
       setPortalOpen(true);
       document.title = path === "/register" ? "Create Account | MR FOP FASHIONS" : path === "/login" ? "Sign In | MR FOP FASHIONS" : "Account Portal | MR FOP FASHIONS";
       return;
@@ -194,6 +196,13 @@ export default function App() {
     form.reset();
   }
   const close = () => setMenu(false);
+  const closePortal = () => {
+    setPortalOpen(false);
+    if (window.location.pathname.startsWith("/mrfob/") && window.location.pathname !== "/mrfob/") {
+      window.history.replaceState({}, "", "/mrfob/");
+      document.title = "MR FOP FASHIONS | Premium Bespoke Fashion";
+    }
+  };
   return <div className="site-shell">
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
@@ -398,6 +407,6 @@ export default function App() {
       </>}
     </section></div>}
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>Play the official MR FOP FASHIONS theme song using the player below. Playback starts only when you press play.</p><PublicWebsiteMusic/></section></div>}
-    {portalOpen && <Portal onClose={() => setPortalOpen(false)} initialMode={initialPortalMode}/>}
+    {portalOpen && <Portal onClose={closePortal} initialMode={initialPortalMode} initialSection={initialPortalSection}/>}
   </div>;
 }
