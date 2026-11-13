@@ -1046,6 +1046,32 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || hasStaffRole(['manager']);
     }
 
+    match /fabrics/{fabricId} {
+      function validFabric(data) {
+        return data.keys().hasOnly(['name','color','texture','priceRange','availability','suitableCategories','imageUrl','active','createdAt','createdBy','updatedAt'])
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+          && data.color is string && data.color.size() > 0 && data.color.size() <= 80
+          && data.texture is string && data.texture.size() > 0 && data.texture.size() <= 100
+          && data.priceRange is string && data.priceRange.size() <= 100
+          && data.availability in ['available','limited','out_of_stock']
+          && data.suitableCategories is list && data.suitableCategories.size() <= 12
+          && data.imageUrl is string && data.imageUrl.size() <= 1500
+          && (data.imageUrl == '' || data.imageUrl.matches('https://.*'))
+          && data.active is bool
+          && data.createdAt is timestamp && data.createdBy is string
+          && data.updatedAt is timestamp;
+      }
+      allow read: if resource.data.active == true || isSuperAdmin();
+      allow create: if isSuperAdmin()
+        && validFabric(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isSuperAdmin()
+        && validFabric(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if false;
+    }
+
     match /privacyRequests/{requestId} {
       allow create: if signedIn()
         && roleOf(request.auth.uid) == 'customer'
