@@ -148,6 +148,10 @@ function decodeValue_(value) {
   if ("integerValue" in value) return Number(value.integerValue);
   if ("doubleValue" in value) return value.doubleValue;
   if ("booleanValue" in value) return value.booleanValue;
+  if ("timestampValue" in value) return value.timestampValue;
+  if ("nullValue" in value) return null;
+  if ("mapValue" in value) return decodeFields_(value.mapValue.fields || {});
+  if ("arrayValue" in value) return (value.arrayValue.values || []).map(decodeValue_);
   return null;
 }
 
