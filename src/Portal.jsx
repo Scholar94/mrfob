@@ -92,65 +92,6 @@ const QUOTE_LINE_ITEMS = ["Garment / agreed scope", "Fabric", "Labour", "Design"
 
 export default function Portal({ onClose }) {
   const { user, claims, loading, configured } = useAuth();
-  useEffect(() => {
-    if (!selectedReceipt) return;
-    receiptReturnFocusRef.current = document.activeElement;
-    const dialog = receiptDialogRef.current;
-    const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
-    getFocusable()[0]?.focus();
-    function handleReceiptKeys(event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setSelectedReceipt(null);
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = getFocusable();
-      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
-        event.preventDefault(); last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
-        event.preventDefault(); first.focus();
-      }
-    }
-    document.addEventListener("keydown", handleReceiptKeys);
-    return () => {
-      document.removeEventListener("keydown", handleReceiptKeys);
-      if (receiptReturnFocusRef.current?.isConnected) receiptReturnFocusRef.current.focus();
-    };
-  }, [selectedReceipt]);
-  useEffect(() => {
-    portalReturnFocusRef.current = document.activeElement;
-    const dialog = portalDialogRef.current;
-    const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
-    getFocusable()[0]?.focus();
-    function handlePortalKeys(event) {
-      if (document.querySelector('[role="dialog"][aria-label="Sales receipt"]')) return;
-      if (event.key === "Escape") { event.preventDefault(); onClose?.(); return; }
-      if (event.key !== "Tab") return;
-      const items = getFocusable();
-      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
-      const first = items[0], last = items[items.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
-    }
-    document.addEventListener("keydown", handlePortalKeys);
-    return () => {
-      document.removeEventListener("keydown", handlePortalKeys);
-      if (portalReturnFocusRef.current?.isConnected) portalReturnFocusRef.current.focus();
-    };
-  }, [onClose]);
-  const filteredSupportTickets = supportTickets.filter(ticket => {
-    const statusMatches = supportStatusFilter === "all" || (ticket.status || "open") === supportStatusFilter;
-    const needle = supportSearch.trim().toLowerCase();
-    const searchMatches = !needle || [ticket.subject, ticket.message, ticket.customerName, ticket.customerEmail, ticket.category, ticket.id]
-      .some(value => String(value || "").toLowerCase().includes(needle));
-    return statusMatches && searchMatches;
-  });
-  const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
-  const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountNavItems, setAccountNavItems] = useState([]);
   const [activeAccountSection, setActiveAccountSection] = useState("");
@@ -238,6 +179,66 @@ export default function Portal({ onClose }) {
   const [editingProductId, setEditingProductId] = useState("");
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
   const [stockAdjustments, setStockAdjustments] = useState({});
+
+  useEffect(() => {
+    if (!selectedReceipt) return;
+    receiptReturnFocusRef.current = document.activeElement;
+    const dialog = receiptDialogRef.current;
+    const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
+    getFocusable()[0]?.focus();
+    function handleReceiptKeys(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSelectedReceipt(null);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = getFocusable();
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleReceiptKeys);
+    return () => {
+      document.removeEventListener("keydown", handleReceiptKeys);
+      if (receiptReturnFocusRef.current?.isConnected) receiptReturnFocusRef.current.focus();
+    };
+  }, [selectedReceipt]);
+  useEffect(() => {
+    portalReturnFocusRef.current = document.activeElement;
+    const dialog = portalDialogRef.current;
+    const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
+    getFocusable()[0]?.focus();
+    function handlePortalKeys(event) {
+      if (document.querySelector('[role="dialog"][aria-label="Sales receipt"]')) return;
+      if (event.key === "Escape") { event.preventDefault(); onClose?.(); return; }
+      if (event.key !== "Tab") return;
+      const items = getFocusable();
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", handlePortalKeys);
+    return () => {
+      document.removeEventListener("keydown", handlePortalKeys);
+      if (portalReturnFocusRef.current?.isConnected) portalReturnFocusRef.current.focus();
+    };
+  }, [onClose]);
+  const filteredSupportTickets = supportTickets.filter(ticket => {
+    const statusMatches = supportStatusFilter === "all" || (ticket.status || "open") === supportStatusFilter;
+    const needle = supportSearch.trim().toLowerCase();
+    const searchMatches = !needle || [ticket.subject, ticket.message, ticket.customerName, ticket.customerEmail, ticket.category, ticket.id]
+      .some(value => String(value || "").toLowerCase().includes(needle));
+    return statusMatches && searchMatches;
+  });
+  const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
+  const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
 
   async function submit(e) {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
