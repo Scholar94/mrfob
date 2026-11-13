@@ -360,7 +360,7 @@ export default function Portal({ onClose }) {
   }
 
   async function loadOrders() {
-    if (!claims.superAdmin && !claims.staffRole) return;
+    if (!claims.superAdmin && !["manager", "sales", "tailor"].includes(claims.staffRole)) { setOrders([]); return; }
     setOrdersLoading(true); setError("");
     try {
       const orderQuery = claims.staffRole === "tailor"
@@ -1773,7 +1773,7 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor", "institute"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   useEffect(() => {
     if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
@@ -1898,7 +1898,7 @@ export default function Portal({ onClose }) {
         </form>
         {trainingLoading ? <p className="staff-empty">Loading your enquiries…</p> : trainingEnquiries.length ? <div className="appointment-list">{trainingEnquiries.map(item=><article className="appointment-card" key={item.id}><strong>{item.course}</strong><span>{item.mode}</span>{item.message&&<p>{item.message}</p>}<span className="appointment-status-text">Status: {item.status || "pending"}</span></article>)}</div> : <p className="staff-empty">You have not submitted a training enquiry yet.</p>}
       </section>}
-      {(claims.superAdmin || claims.staffRole) && <section className="order-management">
+      {(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole)) && <section className="order-management">
         <div className="customer-management-heading"><div><h3>Order Management</h3><p>Create orders and monitor production and payment</p></div><button type="button" onClick={loadOrders} disabled={ordersLoading}>{ordersLoading ? "Loading…" : "Refresh orders"}</button></div>
         {claims.superAdmin && <form className="portal-form order-create-form" onSubmit={createOrder}>
           <h4>Create a new order</h4>
@@ -1967,7 +1967,7 @@ export default function Portal({ onClose }) {
           <small>Reference: {ticket.id}</small>
         </article>)}</div> : <p className="staff-empty">{canManageSupport ? (supportTickets.length ? "No requests match the current search or status filter." : "No customer support requests have been received.") : "You have not sent a support request yet."}</p>}
       </section>
-      {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
+      {(claims.superAdmin || claims.staffRole === "finance") && <section className="payment-management">
         <div className="customer-management-heading"><div><h3>Payment Management</h3><p>Record and review payments linked to customer orders</p></div><button type="button" onClick={loadPayments}>Refresh payments</button></div>
         {claims.superAdmin && <form className="portal-form payment-form" onSubmit={recordPayment}>
           <h4>Record a payment</h4>
