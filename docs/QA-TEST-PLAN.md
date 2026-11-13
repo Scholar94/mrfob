@@ -46,6 +46,10 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 | T21 | Student and instructor learning | Student opens lessons, marks progress, submits assignment/objective assessment; Instructor marks attendance and grades work for assigned courses only. | Student sees only enrolled course data; Instructor sees only assigned course records; answer keys remain private; grading and attendance are auditable. | Not run |
 | T22 | Audit and PWA | Trigger each instrumented action, inspect Super Admin audit viewer, install PWA and test offline shell. | Audit entries are append-only and visible only to Super Admin; installation and offline fallback work on supported devices. | Not run |
 
+### Automated Firestore Emulator checks
+
+The deployment workflow runs scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
+
 ### Additional source-level feature check
 
 - Public sitemap includes all currently supported public deep-link routes and excludes private account routes. The sitemap is static and must be updated whenever a new public route is introduced.
