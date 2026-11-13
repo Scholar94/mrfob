@@ -536,3 +536,36 @@ button:disabled{cursor:not-allowed}
   .support-ticket-filters { grid-template-columns: 1fr; }
   .support-ticket-filters small { grid-column: auto; }
 }
+
+/* Staff appointment calendar */
+.appointment-calendar{margin:14px 0 18px;padding:15px;background:#f8f4ee;border:1px solid #dfd2c2;border-radius:10px}
+.appointment-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.appointment-calendar-heading h4{margin:0;color:#4c3034;font-size:14px}
+.appointment-calendar-heading p{margin:4px 0 0;color:#75696a;font-size:10px;line-height:1.5}
+.appointment-calendar-nav{display:flex;align-items:center;gap:10px}
+.appointment-calendar-nav strong{font-size:11px;color:#4c3034;min-width:112px;text-align:center}
+.appointment-calendar-nav button{width:30px;height:30px;border:1px solid #cbb9a7;background:#fff;border-radius:6px;color:#4c3034;font-size:19px;cursor:pointer}
+.appointment-calendar-weekdays,.appointment-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.appointment-calendar-weekdays{margin-bottom:5px}
+.appointment-calendar-weekdays span{text-align:center;color:#75696a;font-size:9px;font-weight:700;padding:5px 0}
+.appointment-calendar-day,.appointment-calendar-empty{min-height:43px}
+.appointment-calendar-day{position:relative;display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #e3d9ce;background:#fff;border-radius:6px;color:#49383a;font-size:11px;cursor:pointer}
+.appointment-calendar-day.has-bookings{border-color:#a77b54;background:#f4e8d8;font-weight:700}
+.appointment-calendar-day.is-selected{outline:2px solid #5b343a;outline-offset:1px;background:#5b343a;color:#fff}
+.appointment-calendar-day small{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;padding:0 3px;border-radius:10px;background:#d8c0a5;color:#49383a;font-size:8px}
+.appointment-calendar-day.is-selected small{background:#fff;color:#49383a}
+.appointment-calendar-summary{display:flex;gap:5px;align-items:center;margin:12px 0;color:#75696a;font-size:10px}
+.appointment-calendar-summary strong{color:#4c3034}
+.appointment-calendar-day-list{border-top:1px solid #dfd2c2;padding-top:10px}
+.appointment-calendar-day-list h5{margin:0 0 9px;color:#4c3034;font-size:12px}
+.appointment-calendar-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;padding:10px 0;border-bottom:1px solid #e8ded3}
+.appointment-calendar-item>div{display:grid;gap:3px}
+.appointment-calendar-item strong{font-size:10px;color:#4c3034}
+.appointment-calendar-item span,.appointment-calendar-item p{font-size:9px;color:#75696a;line-height:1.5;margin:0}
+.appointment-calendar-item p{grid-column:1/-1}
+.appointment-calendar-status{align-self:start;padding:3px 6px;border-radius:20px;background:#e8e0d6;text-transform:capitalize;white-space:nowrap}
+.appointment-calendar-status.status-confirmed{background:#dcebdd;color:#285b35}
+.appointment-calendar-status.status-cancelled{background:#f2dddd;color:#873d3d}
+.appointment-calendar-status.status-completed{background:#e2e5ed;color:#394765}
+.appointment-calendar-empty-state{margin:0;padding:10px 0;color:#75696a;font-size:10px}
+@media(max-width:520px){.appointment-calendar{padding:10px}.appointment-calendar-heading{align-items:flex-start;flex-direction:column}.appointment-calendar-nav{width:100%;justify-content:space-between}.appointment-calendar-day,.appointment-calendar-empty{min-height:38px}.appointment-calendar-weekdays span{font-size:8px}}
