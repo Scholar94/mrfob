@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
 
@@ -33,6 +33,8 @@ export default function RefundManagement({ user, claims = {} }) {
   }
   useEffect(() => { refresh(); }, [user?.uid, finance]);
 
+  const requestedPaymentIds = new Set(refunds.map(item => item.paymentId));
+  const availablePayments = payments.filter(item => !requestedPaymentIds.has(item.id));
   const selectedPayment = payments.find(item => item.id === paymentId);
   async function submit(event) {
     event.preventDefault();
@@ -43,7 +45,7 @@ export default function RefundManagement({ user, claims = {} }) {
     if (cleanReason.length < 10 || cleanReason.length > 1200) { setError("Explain the reason in 10 to 1,200 characters."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
-      await addDoc(collection(db, "refunds"), {
+      await setDoc(doc(db, "refunds", selectedPayment.id), {
         paymentId: selectedPayment.id, orderId: selectedPayment.orderId || "",
         orderNumber: selectedPayment.orderNumber || "", customerUid: user.uid,
         customerEmail: user.email || "", amount: refundAmount, currency: "NGN",
@@ -79,11 +81,11 @@ export default function RefundManagement({ user, claims = {} }) {
   return <section className="customer-management refund-management">
     <div className="customer-management-heading"><div><h3>{finance ? "Refund requests and records" : "Refund requests"}</h3><p>{finance ? "Review customer refund requests and record a transfer only after it has actually been completed." : "Request a review of a verified payment. A request is not a payment approval or a bank transfer."}</p></div><button type="button" onClick={refresh} disabled={loading || busy}>{loading ? "Loading…" : "Refresh refunds"}</button></div>
     {!finance && <form className="portal-form refund-request-form" onSubmit={submit}>
-      <label>Verified payment<select required value={paymentId} onChange={event=>setPaymentId(event.target.value)}><option value="">Choose a payment</option>{payments.map(item=><option key={item.id} value={item.id}>{item.orderNumber || item.orderId || "Payment"} · ₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.reference || item.id}</option>)}</select></label>
+      <label>Verified payment<select required value={paymentId} onChange={event=>setPaymentId(event.target.value)}><option value="">Choose a payment</option>{availablePayments.map(item=><option key={item.id} value={item.id}>{item.orderNumber || item.orderId || "Payment"} · ₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.reference || item.id}</option>)}</select></label>
       <label>Requested refund amount (₦)<input type="number" min="0.01" step="0.01" max={selectedPayment?.amount || undefined} required value={amount} onChange={event=>setAmount(event.target.value)}/></label>
       <label>Reason for refund<textarea rows={3} minLength={10} maxLength={1200} required value={reason} onChange={event=>setReason(event.target.value)} placeholder="Explain the reason for your request."/></label>
       <button className="portal-submit" disabled={busy || !payments.length}>{busy ? "Submitting…" : "Submit refund request"}</button>
-      {!payments.length && <p className="portal-hint">No verified payment is available for a refund request yet. Contact the team if you believe a payment is missing.</p>}
+      {!availablePayments.length && <p className="portal-hint">{payments.length ? "A refund request has already been recorded for each verified payment. Contact support if you need to discuss an existing request." : "No verified payment is available for a refund request yet. Contact the team if you believe a payment is missing."}</p>}
     </form>}
     {error && <p className="portal-error" role="alert">{error}</p>}{notice && <p className="portal-success" role="status">{notice}</p>}
     {loading ? <p className="staff-empty">Loading refund records…</p> : refunds.length ? <div className="refund-record-list">{refunds.map(item=><article className="refund-record-card" key={item.id}>
