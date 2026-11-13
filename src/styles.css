@@ -883,3 +883,7 @@ button:disabled{cursor:not-allowed}
 .portal-render-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
 .portal-render-error-actions button { border: 1px solid #b89a6c; border-radius: 8px; padding: 10px 15px; background: #32151f; color: #fff7e9; cursor: pointer; }
 .portal-render-error-actions button + button { background: transparent; color: #32151f; }
+
+
+/* Lazy account workspace loading state */
+.portal-loading { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 24px; background: rgba(24,10,16,.76); color: #fff8ed; text-align: center; font: 600 16px Georgia,serif; }
