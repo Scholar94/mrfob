@@ -552,7 +552,7 @@ service cloud.firestore {
     }
 
     match /instituteCertificates/{certificateId} {
-      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(request.resource.data.courseId))
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.studentUid is string
         && request.resource.data.courseId is string
         && request.resource.data.certificateRef is string
@@ -564,9 +564,31 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
         && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid';
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
-      allow update: if isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['issued','revoked'];
+      allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','revocationReason','revokedBy','revokedAt','updatedAt'])
+        && resource.data.status == 'issued'
+        && request.resource.data.status == 'revoked'
+        && request.resource.data.revocationReason is string
+        && request.resource.data.revocationReason.size() >= 8
+        && request.resource.data.revocationReason.size() <= 500
+        && request.resource.data.revokedBy == request.auth.uid
+        && request.resource.data.revokedAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /publicCertificateVerifications/{certificateRef} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.certificateRef == certificateRef
+        && request.resource.data.studentName is string
+        && request.resource.data.studentName.size() > 0
+        && request.resource.data.courseTitle is string
+        && request.resource.data.status in ['issued','revoked']
+        && request.resource.data.issuedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.keys().hasOnly(['certificateRef','studentName','courseTitle','windowTitle','status','issuedAt','revokedAt','revocationReason','updatedAt']);
       allow delete: if isSuperAdmin();
     }
 
