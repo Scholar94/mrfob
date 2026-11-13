@@ -22,6 +22,7 @@ export default function InstituteWorkspace() {
   const [assessmentSubmissions, setAssessmentSubmissions] = useState([]);
   const [assessmentForm, setAssessmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", questions: "" });
   const [assessmentDrafts, setAssessmentDrafts] = useState({});
+  const [assessmentGradeDrafts, setAssessmentGradeDrafts] = useState({});
   const [allEnrollments, setAllEnrollments] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [lessonProgress, setLessonProgress] = useState([]);
@@ -403,14 +404,20 @@ export default function InstituteWorkspace() {
   }
 
   async function gradeAssessment(item) {
-    const scoreText = window.prompt("Enter assessment score (0 to " + (item.answers.length * 10) + "). Each question is provisionally worth 10 points.");
-    if (scoreText === null) return;
-    const score = Number(scoreText); const maxScore = item.answers.length * 10;
-    if (!Number.isFinite(score) || score < 0 || score > maxScore) { setError("Enter a valid score within the assessment maximum."); return; }
-    const feedback = window.prompt("Optional assessment feedback") || "";
+    const draft = assessmentGradeDrafts[item.id] || {};
+    const score = Number(draft.score);
+    const maxScore = item.answers.length * 10;
+    if (draft.score === undefined || String(draft.score).trim() === "" || !Number.isFinite(score) || score < 0 || score > maxScore) {
+      setError("Enter a valid score between 0 and " + maxScore + ".");
+      return;
+    }
+    const feedback = String(draft.feedback || "").trim();
     setBusy(true); setError(""); setNotice("");
-    try { await updateDoc(doc(db, "instituteAssessmentSubmissions", item.id), { status:"graded", score, maxScore, feedback, gradedBy:user.uid, gradedAt:serverTimestamp(), updatedAt:serverTimestamp() }); setNotice("Assessment graded."); await load(); }
-    catch(e) { setError(e.message || "Could not grade assessment."); } finally { setBusy(false); }
+    try {
+      await updateDoc(doc(db, "instituteAssessmentSubmissions", item.id), { status:"graded", score, maxScore, feedback, gradedBy:user.uid, gradedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      setAssessmentGradeDrafts(current => { const next = { ...current }; delete next[item.id]; return next; });
+      setNotice("Assessment graded and feedback saved."); await load();
+    } catch(e) { setError(e.message || "Could not grade assessment."); } finally { setBusy(false); }
   }
 
   async function assignInstructor(e) {
@@ -693,7 +700,7 @@ export default function InstituteWorkspace() {
       <button className="portal-submit" disabled={busy||!courses.length}>Publish assessment</button>
     </form>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My assessments</h4>{assessments.map(a=>{const prior=assessmentSubmissions.find(s=>s.assessmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle}{a.dueDate?" · Due "+a.dueDate:""}</span>{a.instructions&&<p>{a.instructions}</p>}{prior?<div><p>Submission: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}{prior.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}</div>:<div>{a.questions.map((q,i)=><label key={i}>Q{i+1}. {q}<textarea rows="3" value={assessmentDrafts[a.id+"_"+i]||""} onChange={e=>setAssessmentDrafts(v=>({...v,[a.id+"_"+i]:e.target.value}))}/></label>)}<button type="button" disabled={busy} onClick={()=>submitAssessment(a)}>Submit assessment</button></div>}</article>})}{!assessments.length&&<p className="staff-empty">No assessments are available for your paid courses.</p>}</section>}
-    {(isAdmin || isInstructor) && <section className="institute-window-list"><h4>Assessment submissions & grading</h4>{assessmentSubmissions.length?assessmentSubmissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assessmentTitle}</strong><span>{sub.studentName} · {sub.status}</span>{sub.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}{sub.status==="graded"?<p>Score: {sub.score}/{sub.maxScore} · {sub.feedback}</p>:<button type="button" disabled={busy} onClick={()=>gradeAssessment(sub)}>Grade assessment</button>}</article>):<p className="staff-empty">No assessment submissions yet.</p>}</section>}
+    {(isAdmin || isInstructor) && <section className="institute-window-list"><h4>Assessment submissions & grading</h4>{assessmentSubmissions.length?assessmentSubmissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assessmentTitle}</strong><span>{sub.studentName} · {sub.status}</span>{sub.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}{sub.status==="graded"?<div className="institute-assessment-result"><p><strong>Score:</strong> {sub.score}/{sub.maxScore}</p>{sub.feedback&&<p><strong>Feedback:</strong> {sub.feedback}</p>}</div>:<form className="institute-grade-form" onSubmit={e=>{e.preventDefault();gradeAssessment(sub);}}><label>Score (maximum {sub.answers.length*10})<input type="number" min="0" max={sub.answers.length*10} step="0.5" required value={assessmentGradeDrafts[sub.id]?.score ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),score:e.target.value}}))}/></label><label>Instructor feedback (optional)<textarea rows="2" maxLength="1200" value={assessmentGradeDrafts[sub.id]?.feedback ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),feedback:e.target.value}}))}/></label><button type="submit" disabled={busy}>Save grade and feedback</button></form>}</article>):<p className="staff-empty">No assessment submissions yet.</p>}</section>}
     {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
       <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? activeCourses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : activeCourses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
