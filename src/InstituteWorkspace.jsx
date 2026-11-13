@@ -115,7 +115,7 @@ export default function InstituteWorkspace() {
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
-        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid" && en.enrollmentStatus !== "withdrawn")));
+        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid")));
         setSubmissions(submissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
@@ -441,8 +441,8 @@ export default function InstituteWorkspace() {
       setError("This enrolment has no student email or course reference for Drive access management.");
       return;
     }
-    if (action === "grant" && enrollment.paymentStatus !== "paid") {
-      setError("Drive lesson access can only be granted to a learner with verified paid status.");
+    if (action === "grant" && (enrollment.paymentStatus !== "paid" || enrollment.enrollmentStatus === "withdrawn")) {
+      setError("Drive lesson access can only be granted to a learner with verified paid, active enrolment status.");
       return;
     }
     if (action === "revoke" && !window.confirm("Remove this student's direct Google Drive access to all lesson files in this course? This does not change the enrolment or payment status.")) return;
