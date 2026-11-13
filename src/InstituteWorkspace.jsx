@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
+import { uploadFileToGoogleDrive, shareDriveFileWithEmail } from "./googleDrive.js";
 
 const COURSE_TYPES = ["Basic Fashion Designing","Professional Fashion Designing","Advanced Fashion Designing","Pattern Drafting","Garment Construction","Industrial Tailoring","Bridal Wear Design","Men's Fashion Design","Women's Fashion Design","Fashion Business Management","Fashion Entrepreneurship","Traditional Nigerian Fashion","Fashion Finishing and Decoration"];
 const blankCourse = { title: "", category: "Professional Fashion Designing", description: "", mode: "Online and onsite", duration: "", fee: "", active: true };
@@ -45,6 +46,7 @@ export default function InstituteWorkspace() {
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
+  const [lessonUploadFile, setLessonUploadFile] = useState(null);
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [editingCourseId, setEditingCourseId] = useState("");
   const [windowForm, setWindowForm] = useState(blankWindow);
@@ -411,7 +413,20 @@ export default function InstituteWorkspace() {
           updatedAt: serverTimestamp()
         });
       });
-      setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action."); await load();
+      let mediaNotice = "";
+      if (item.email) {
+        try {
+          const lessonSnap = await getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", item.courseId), where("published", "==", true)));
+          for (const lesson of lessonSnap.docs) {
+            const fileId = lesson.data().driveFileId;
+            if (fileId) await shareDriveFileWithEmail(fileId, item.email);
+          }
+        } catch (shareError) {
+          mediaNotice = " Course access is active, but Drive could not share every existing lesson file. Ask the Institute administrator to retry media access.";
+        }
+      }
+      setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action." + mediaNotice);
+      await load();
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
   }
   async function createLesson(e) {
@@ -419,8 +434,52 @@ export default function InstituteWorkspace() {
     try {
       if (!lessonForm.courseId || !lessonForm.title.trim()) throw new Error("Select a course and enter a lesson title.");
       if ((lessonForm.videoUrl.trim() && !lessonForm.videoUrl.startsWith("https://")) || (lessonForm.resourceUrl.trim() && !lessonForm.resourceUrl.startsWith("https://"))) throw new Error("Learning links must use HTTPS.");
-      await addDoc(collection(db, "instituteLessons"), { courseId:lessonForm.courseId, title:lessonForm.title.trim(), module:lessonForm.module.trim(), type:lessonForm.type, content:lessonForm.content.trim(), videoUrl:lessonForm.videoUrl.trim(), resourceUrl:lessonForm.resourceUrl.trim(), sequence:Number(lessonForm.sequence||1), published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
-      setLessonForm(v=>({...v,title:"",module:"",content:"",videoUrl:"",resourceUrl:""})); setNotice("Lesson published to eligible enrolled students."); await load();
+      let videoUrl = lessonForm.videoUrl.trim();
+      let resourceUrl = lessonForm.resourceUrl.trim();
+      let driveFileId = "";
+      let driveFileName = "";
+      let driveFileType = "";
+      if (lessonUploadFile) {
+        const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
+        if (!allowed.includes(lessonUploadFile.type)) throw new Error("Upload a PDF, JPG, PNG, WebP, MP4, WebM or MOV lesson file.");
+        if (lessonUploadFile.size > 100 * 1024 * 1024) throw new Error("Each Institute lesson file must be 100 MB or smaller.");
+        const studentEmails = [...new Set(allEnrollments
+          .filter(en => en.courseId === lessonForm.courseId && en.paymentStatus === "paid")
+          .map(en => String(en.studentEmail || "").trim().toLowerCase())
+          .filter(email => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)))];
+        const uploaded = await uploadFileToGoogleDrive(lessonUploadFile, {
+          folder: "Institute/Courses/" + lessonForm.courseId + "/Lessons",
+          uploadedBy: user.uid,
+          shareWithEmails: studentEmails
+        });
+        driveFileId = uploaded.fileId;
+        driveFileName = uploaded.name;
+        driveFileType = uploaded.mimeType;
+        if (lessonUploadFile.type.startsWith("video/")) videoUrl = uploaded.drivePreviewUrl;
+        else resourceUrl = uploaded.webViewLink;
+      }
+      await addDoc(collection(db, "instituteLessons"), {
+        courseId:lessonForm.courseId,
+        title:lessonForm.title.trim(),
+        module:lessonForm.module.trim(),
+        type:lessonUploadFile?.type.startsWith("video/") ? "Video lesson" : lessonForm.type,
+        content:lessonForm.content.trim(),
+        videoUrl,
+        resourceUrl,
+        driveFileId,
+        driveFileName,
+        driveFileType,
+        fileAccess: driveFileId ? "paid_enrolment" : "external_link",
+        sequence:Number(lessonForm.sequence||1),
+        published:true,
+        createdBy:user.uid,
+        createdAt:serverTimestamp(),
+        updatedAt:serverTimestamp()
+      });
+      setLessonForm(v=>({...v,title:"",module:"",content:"",videoUrl:"",resourceUrl:""}));
+      setLessonUploadFile(null);
+      setNotice("Lesson published. Uploaded Drive files are shared with current paid students and will be shared with new students when their payment is verified.");
+      await load();
     } catch(e) { setError(e.message || "Could not publish lesson."); } finally { setBusy(false); }
   }
 
@@ -979,6 +1038,8 @@ export default function InstituteWorkspace() {
       <label>Lesson content<textarea rows="5" value={lessonForm.content} onChange={e=>setLessonForm({...lessonForm,content:e.target.value})}/></label>
       <label>Video URL (HTTPS)<input type="url" value={lessonForm.videoUrl} onChange={e=>setLessonForm({...lessonForm,videoUrl:e.target.value})}/></label>
       <label>Resource URL (HTTPS)<input type="url" value={lessonForm.resourceUrl} onChange={e=>setLessonForm({...lessonForm,resourceUrl:e.target.value})}/></label>
+      <label>Upload lesson file (PDF, image or video; maximum 100 MB)<input type="file" accept="application/pdf,image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" disabled={busy} onChange={e=>setLessonUploadFile(e.target.files?.[0] || null)}/></label>
+      {lessonUploadFile && <p className="staff-help">Selected: {lessonUploadFile.name} · {(lessonUploadFile.size/1024/1024).toFixed(1)} MB</p>}
       <label>Sequence number<input type="number" min="1" step="1" value={lessonForm.sequence} onChange={e=>setLessonForm({...lessonForm,sequence:e.target.value})}/></label>
       <button className="portal-submit" disabled={busy||!courses.length}>Publish lesson</button>
     </form>}
