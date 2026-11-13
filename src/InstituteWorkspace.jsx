@@ -72,7 +72,7 @@ export default function InstituteWorkspace() {
       setMyApplications(ownSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       if (!isAdmin && !isInstructor) {
         const enrollmentSnap = await getDocs(query(collection(db, "instituteEnrollments"), where("studentUid", "==", user.uid), where("paymentStatus", "==", "paid")));
-        const active = enrollmentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const active = enrollmentSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(en => en.enrollmentStatus !== "withdrawn");
         setEnrollments(active);
         const sets = await Promise.all(active.map(en => getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", en.courseId), where("published", "==", true)))));
         setLessons(sets.flatMap(s => s.docs.map(d => ({ id: d.id, ...d.data() }))).sort((a,b) => Number(a.sequence||0)-Number(b.sequence||0)));
@@ -115,7 +115,7 @@ export default function InstituteWorkspace() {
         ]);
         setLessons(lessonSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))).sort((a,b)=>Number(a.sequence||0)-Number(b.sequence||0)));
         setAssignments(assignmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
-        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid")));
+        setAllEnrollments(enrollmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() })).filter(en => en.paymentStatus === "paid" && en.enrollmentStatus !== "withdrawn")));
         setSubmissions(submissionSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAttendance(attendanceSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
         setAssessments(assessmentSets.flatMap(s => s.docs.map(d => ({ id:d.id, ...d.data() }))));
@@ -433,8 +433,8 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
   }
   async function manageCourseMediaAccess(enrollment, action) {
-    if (!claims.superAdmin) {
-      setError("Only the Super Admin can manage Google Drive lesson permissions.");
+    if (!isAdmin) {
+      setError("Only Institute administrators, Managers or the Super Admin can manage Google Drive lesson permissions.");
       return;
     }
     if (!enrollment?.studentEmail || !enrollment?.courseId) {
