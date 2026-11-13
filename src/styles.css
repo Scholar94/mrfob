@@ -798,3 +798,20 @@ button:disabled{cursor:not-allowed}
 .audit-log-item-heading strong { text-transform:capitalize; color:#32151f; }
 .audit-log-item-heading span,.audit-log-item small { color:#766b63; font-size:12px; }
 .audit-log-item p { margin:8px 0; overflow-wrap:anywhere; }
+
+
+/* Editable public FAQ */
+.faq-manager { margin-top: 24px; }
+.faq-manager-form { margin: 18px 0 24px; }
+.faq-active-toggle { display:flex !important; align-items:center; gap:9px; }
+.faq-active-toggle input { width:auto !important; }
+.faq-manager-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.faq-manager-actions button:not(.portal-submit),.faq-manager-list button { border:1px solid #d9c9b2; border-radius:8px; padding:8px 12px; background:#faf7f2; color:#38232a; }
+.faq-manager-list { display:grid; gap:10px; }
+.faq-manager-list article { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:14px; border:1px solid #e8e0d8; border-radius:10px; background:#fff; }
+.faq-manager-list article>div:first-child { min-width:0; }
+.faq-manager-list strong { display:block; color:#32151f; }
+.faq-manager-list span { display:block; margin-top:4px; color:#8b765f; font-size:12px; }
+.faq-manager-list p { white-space:pre-wrap; overflow-wrap:anywhere; color:#6d6260; line-height:1.6; }
+.faq-manager-list article>div:last-child { display:flex; flex-wrap:wrap; gap:7px; }
+@media(max-width:640px){.faq-manager-list article{flex-direction:column}.faq-manager-list article>div:last-child{width:100%}}
