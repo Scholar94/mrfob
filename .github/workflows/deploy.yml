@@ -24,8 +24,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Setup Java for Firestore Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
       - name: Install dependencies
         run: npm install
+      - name: Install Firestore rules test tools
+        run: npm install --no-save @firebase/rules-unit-testing firebase-tools
       - name: Build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -39,6 +46,8 @@ jobs:
         run: npm run build
       - name: Verify platform source guardrails
         run: npm run verify:platform
+      - name: Verify Firestore rules in Emulator
+        run: npx firebase emulators:exec --only firestore --project demo-mrfop-rules --non-interactive "node scripts/verify-firestore-rules.mjs"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
