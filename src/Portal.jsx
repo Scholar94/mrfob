@@ -904,7 +904,7 @@ export default function Portal({ onClose }) {
     if (!user) return;
     setAppointmentsLoading(true); setError("");
     try {
-      const source = claims.superAdmin || claims.staffRole ? collection(db, "appointments") : query(collection(db, "appointments"), where("customerUid", "==", user.uid));
+      const source = claims.superAdmin || ["manager", "sales", "institute"].includes(claims.staffRole) ? collection(db, "appointments") : claims.staffRole === "tailor" ? query(collection(db, "appointments"), where("assignedDesignerUid", "==", user.uid)) : query(collection(db, "appointments"), where("customerUid", "==", user.uid));
       const snapshot = await getDocs(source);
       setAppointments(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.appointmentDate || "").localeCompare(b.appointmentDate || "")));
     } catch (err) { setError(err.message || "Could not load appointments."); }
