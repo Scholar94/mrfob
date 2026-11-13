@@ -328,8 +328,11 @@ export default function Portal({ onClose }) {
       const snapshot = await getDocs(collection(db, "orders"));
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       const enriched = await Promise.all(rows.map(async order => {
-        const events = await getDocs(query(collection(db, "orders", order.id, "events")));
-        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
+        const [events, progressUpdates] = await Promise.all([
+          getDocs(query(collection(db, "orders", order.id, "events"))),
+          loadProgressUpdates(order)
+        ]);
+        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)), progressUpdates };
       }));
       setOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load orders."); }
