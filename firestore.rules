@@ -134,6 +134,19 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /appointmentSlots/{slotId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['appointmentId', 'customerUid', 'appointmentDate', 'appointmentTime', 'updatedAt'])
+        && request.resource.data.appointmentId is string
+        && request.resource.data.customerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == 'confirmed'
+        && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.appointmentDate == request.resource.data.appointmentDate
+        && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.appointmentTime == request.resource.data.appointmentTime;
+      allow update, delete: if isSuperAdmin();
+    }
+
     match /supportTickets/{ticketId} {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
