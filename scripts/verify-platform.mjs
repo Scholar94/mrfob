@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md"
 ];
@@ -47,6 +47,8 @@ assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
+assert.ok(app.includes("StyleRecommendations") && app.includes("createWhatsAppLink={whatsappLink}"), "Public style recommendation tool is not mounted");
+assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
 assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
 assert.ok(rules.includes("order_production_updated") && portal.includes("order_assigned"), "Order audit instrumentation is missing");
