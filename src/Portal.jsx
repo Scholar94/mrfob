@@ -7,6 +7,7 @@ import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
 import MeasurementGuide from "./MeasurementGuide.jsx";
+import AIMeasurementAssistant from "./AIMeasurementAssistant.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -1640,7 +1641,8 @@ export default function Portal({ onClose }) {
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Values are stored consistently in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
-        <form className="portal-form inventory-form" onSubmit={saveMeasurement}>
+        <AIMeasurementAssistant />
+        <form id="measurement-manual-entry" className="portal-form inventory-form" onSubmit={saveMeasurement}>
           <label>Profile name<input value={measurementForm.profileName} maxLength={60} onChange={e=>setMeasurementForm({...measurementForm,profileName:e.target.value})} placeholder="e.g. Office shirt measurements"/></label>
           <label>Garment profile<select value={measurementForm.garmentType} onChange={e=>setMeasurementForm({...measurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
           <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
