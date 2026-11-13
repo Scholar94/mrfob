@@ -1302,7 +1302,7 @@ export default function Portal({ onClose }) {
       const declarationRef = doc(db, "paymentDeclarations", item.id);
       const orderRef = doc(db, "orders", item.orderId);
       if (decision === "verified") {
-        const paymentRef = doc(collection(db, "payments"));
+        const paymentRef = doc(db, "payments", item.id);
         const legacyLedger = await getDocs(query(collection(db, "payments"), where("orderId", "==", item.orderId)));
         const legacyPaid = legacyLedger.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
         await runTransaction(db, async transaction => {
