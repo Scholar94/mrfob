@@ -298,3 +298,6 @@
 
 
 - **2026-11-13 — Transactional quotation notifications:** sending a customer quotation now creates a persistent in-app notice in the same Firestore transaction as the quotation update. When a customer accepts or declines, the response and a confirmation notice are also committed together. Firestore rules restrict creation to Super Admin/Manager/Sales and validate the notice against the order's post-write customer owner and quotation status; customers cannot create notices for other accounts. Notices are in-app only and do not send email, SMS, WhatsApp or push messages. Publish the updated Firestore rules before use; build, transaction and role-isolation tests remain pending.
+
+
+- **2026-11-13 — Fashion Institute enquiry status notifications:** when Super Admin changes a customer's training enquiry status, the status update and a customer-owned in-app notice are written in one Firestore transaction. Re-selecting the existing status does not create a duplicate notice. Firestore rules validate the notice against the post-write enquiry owner and resulting status and permit only Super Admin creation. This is an in-app update only, not email/SMS/WhatsApp/push delivery. Publish the updated Firestore rules before use; build and live owner/role tests remain pending.
