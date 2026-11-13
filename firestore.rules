@@ -158,6 +158,17 @@ service cloud.firestore {
           && request.resource.data.stageLabel is string
         ) || (
           isSuperAdmin()
+          && request.resource.data.type == 'payment_update'
+          && request.resource.data.keys().hasOnly(['customerUid','declarationId','orderId','type','paymentStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.declarationId is string
+          && request.resource.data.orderId is string
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.orderId == request.resource.data.orderId
+          && getAfter(/databases/$(database)/documents/paymentDeclarations/$(request.resource.data.declarationId)).data.status == request.resource.data.paymentStatus
+          && request.resource.data.paymentStatus in ['verified','rejected']
+        ) || (
+          isSuperAdmin()
           && request.resource.data.type == 'appointment_update'
           && request.resource.data.keys().hasOnly(['customerUid','appointmentId','type','appointmentStatus','title','message','createdAt','readAt'])
           && request.resource.data.customerUid is string
