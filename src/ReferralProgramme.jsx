@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, doc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 
 const STATES = ["pending", "contacted", "qualified", "rewarded", "declined"];
 
@@ -65,6 +66,7 @@ export default function ReferralProgramme({ user, claims }) {
     setBusy(true); setError(""); setNotice("");
     try {
       await updateDoc(doc(db, "referralClaims", item.id), { status, reviewNote, reviewedBy: user.uid, updatedAt: serverTimestamp() });
+      await recordAuditEvent({ user, claims, action: "referral_reviewed", entityType: "referral", entityId: item.id, summary: "Referral status changed to " + status + "." });
       setRows(current => current.map(row => row.id === item.id ? { ...row, status, reviewNote } : row));
       setNotice("Referral status updated. If a reward is due, record it in the customer's loyalty benefits after verifying the qualifying purchase.");
     } catch (err) { setError(err.message || "Could not update this referral."); }
