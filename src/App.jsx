@@ -83,6 +83,26 @@ export default function App() {
       setInstallPrompt(null);
     }
   }
+  function handleIndustrialEnquiry(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const message = [
+      "Hello MR FOP FASHIONS, I would like to discuss an institutional or group tailoring project.",
+      "",
+      "Contact person: " + data.get("contactName"),
+      "Organisation/group: " + data.get("organisation"),
+      "Project type: " + data.get("projectType"),
+      "Estimated quantity: " + data.get("quantity"),
+      "Project location: " + data.get("projectLocation"),
+      "Preferred timeline: " + (data.get("timeline") || "To be discussed"),
+      "Project details: " + data.get("projectDetails"),
+      "",
+      "Please guide me on the next steps, quotation requirements and consultation."
+    ].join("\\n");
+    window.open("https://wa.me/2348055472913?text=" + encodeURIComponent(message), "_blank", "noopener,noreferrer");
+    form.reset();
+  }
   const close = () => setMenu(false);
   return <div className="site-shell">
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
@@ -161,6 +181,19 @@ export default function App() {
           <article><span>04</span><h3>Wedding party clothing</h3><p>Coordinate clothing enquiries for wedding parties and groups, with styles and quantities discussed together.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to enquire about wedding party clothing.")} target="_blank" rel="noreferrer">Plan wedding party outfits <ArrowUpRight size={15}/></a></article>
           <article><span>05</span><h3>Customized group orders</h3><p>Discuss matching or individually customized garments, group measurements, fabric choices and project details.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to discuss customized clothing for a group.")} target="_blank" rel="noreferrer">Discuss a group order <ArrowUpRight size={15}/></a></article>
           <article><span>06</span><h3>Production coordination</h3><p>Review specifications, quantities, fitting arrangements and proposed timelines before any project is accepted.</p><a href={"https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to discuss production coordination for a tailoring project.")} target="_blank" rel="noreferrer">Plan your production <ArrowUpRight size={15}/></a></article>
+        </div>
+        <div className="industrial-enquiry">
+          <div className="industrial-enquiry-intro"><p className="eyebrow"><i/> START A PROJECT DISCUSSION</p><h3>Tell us what your team <em>needs.</em></h3><p>Share the initial details below. Your message will open in WhatsApp for you to review and send. This form does not submit or store information on this website.</p></div>
+          <form className="industrial-enquiry-form" onSubmit={handleIndustrialEnquiry}>
+            <label>Contact person's name<input name="contactName" autoComplete="name" required maxLength="100" placeholder="Your full name"/></label>
+            <label>Organisation or group<input name="organisation" required maxLength="120" placeholder="School, company, association or group"/></label>
+            <label>Project type<select name="projectType" required defaultValue=""><option value="" disabled>Select a project type</option><option>Corporate uniforms</option><option>School uniforms</option><option>Institutional clothing</option><option>Wedding-party clothing</option><option>Customized group orders</option><option>Other tailoring project</option></select></label>
+            <label>Estimated quantity<input name="quantity" required maxLength="60" placeholder="e.g. 25 sets or to be confirmed"/></label>
+            <label>Project location<input name="projectLocation" required maxLength="120" placeholder="Town / State"/></label>
+            <label>Preferred timeline<input name="timeline" maxLength="100" placeholder="When would you like to discuss or start?"/></label>
+            <label className="industrial-enquiry-wide">Project details<textarea name="projectDetails" required minLength="10" maxLength="1200" rows="4" placeholder="Describe garment types, sizes, fabrics, branding or any other requirements."/></label>
+            <div className="industrial-enquiry-submit"><p>Review and send the prepared enquiry in WhatsApp. Pricing and timelines are confirmed only after company review.</p><button className="button button-gold" type="submit">Prepare WhatsApp enquiry <ArrowUpRight size={17}/></button></div>
+          </form>
         </div>
         <p className="industrial-note">Every institutional or group project is subject to a requirements review and written confirmation of scope, pricing and schedule. Enquiry does not constitute order acceptance.</p>
       </section>
