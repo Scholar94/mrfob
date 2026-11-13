@@ -104,17 +104,22 @@ service cloud.firestore {
 
       match /progressUpdates/{updateId} {
         allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
-          && request.resource.data.keys().hasOnly(['orderId','orderNumber','customerUid','stage','stageLabel','caption','photoUrl','storagePath','fileName','contentType','size','uploadedByUid','uploadedByName','createdAt'])
+          && request.resource.data.keys().hasOnly(['orderId','orderNumber','customerUid','stage','stageLabel','caption','photoUrl','driveFileId','driveUrl','previewUrl','drivePreviewUrl','storagePath','fileName','contentType','size','mediaType','uploadedByUid','uploadedByName','createdAt'])
           && request.resource.data.orderId == orderId
           && request.resource.data.customerUid == get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid
           && request.resource.data.uploadedByUid == request.auth.uid
           && request.resource.data.stage is string
           && request.resource.data.caption is string && request.resource.data.caption.size() <= 240
           && request.resource.data.photoUrl is string
+          && request.resource.data.driveFileId is string
+          && request.resource.data.driveUrl is string
           && request.resource.data.storagePath is string
-          && request.resource.data.storagePath.matches('order-progress/' + orderId + '/[^/]+')
-          && request.resource.data.contentType in ['image/jpeg','image/png','image/webp']
-          && request.resource.data.size is int && request.resource.data.size > 0 && request.resource.data.size <= 8388608
+          && request.resource.data.storagePath.matches('Google Drive/[^/]+')
+          && request.resource.data.contentType in ['image/jpeg','image/png','image/webp','video/mp4','video/webm','video/quicktime']
+          && request.resource.data.mediaType in ['image','video']
+          && request.resource.data.size is int && request.resource.data.size > 0
+          && ((request.resource.data.mediaType == 'image' && request.resource.data.size <= 20971520)
+            || (request.resource.data.mediaType == 'video' && request.resource.data.size <= 104857600))
           && request.resource.data.createdAt is timestamp;
         allow read: if signedIn() && (isSuperAdmin() || isStaff()
           || get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid);
