@@ -46,6 +46,11 @@ try {
     await setDoc(doc(db, "instituteLessons", "lesson-a"), {
       courseId: "course-a", title: "Test lesson", published: true
     });
+    await setDoc(doc(db, "instituteAttendance", "attendance-a"), {
+      studentUid: "customer-a", studentId: "MFF-STU-001", studentName: "Test Learner",
+      courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
+      date: "2026-11-13", status: "present", markedBy: "admin-a", markedAt: now, updatedAt: now
+    });
     await setDoc(doc(db, "fabrics", "active-fabric"), {
       name: "Test cotton", color: "Navy", texture: "Soft",
       priceRange: "Price on request", availability: "available",
@@ -145,6 +150,36 @@ try {
   });
   await assertSucceeds(withdrawalBatch.commit());
   await assertFails(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
+  await assertFails(setDoc(doc(customerA, "instituteLessonProgress", "customer-a_course-a_lesson-a"), {
+    studentUid: "customer-a", courseId: "course-a", lessonId: "lesson-a",
+    lessonTitle: "Test lesson", completed: true, completedAt: now, updatedAt: now
+  }));
+  await assertFails(setDoc(doc(manager, "instituteAttendance", "attendance-after-withdrawal"), {
+    studentUid: "customer-a", studentId: "MFF-STU-001", studentName: "Test Learner",
+    courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
+    date: "2026-11-14", status: "present", markedBy: "manager-a", markedAt: now, updatedAt: now
+  }));
+  await assertFails(updateDoc(doc(manager, "instituteAttendance", "attendance-a"), {
+    status: "absent", markedBy: "manager-a", updatedAt: now
+  }));
+  await assertFails(setDoc(doc(manager, "instituteCompletionApprovals", "customer-a_course-a"), {
+    studentUid: "customer-a", courseId: "course-a", certificateRef: "MFF-CERT-001",
+    status: "approved", checks: Array.from({ length: 4 }, () => ({ complete: true })),
+    approvedBy: "manager-a", approvedAt: now, createdAt: now
+  }));
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "instituteCompletionApprovals", "customer-a_course-a"), {
+      studentUid: "customer-a", courseId: "course-a", certificateRef: "MFF-CERT-001",
+      status: "approved", checks: Array.from({ length: 4 }, () => ({ complete: true })),
+      approvedBy: "manager-a", approvedAt: now, createdAt: now
+    });
+  });
+  await assertFails(setDoc(doc(manager, "instituteCertificates", "customer-a_course-a"), {
+    certificateRef: "MFF-CERT-001", studentUid: "customer-a", studentId: "MFF-STU-001",
+    studentName: "Test Learner", courseId: "course-a", courseTitle: "Test course",
+    windowId: "window-a", windowTitle: "Test intake", status: "issued",
+    issuedAt: now, issuedBy: "manager-a", createdAt: now
+  }));
   const withdrawnApplication = await getDoc(doc(superAdmin, "instituteApplications", "application-a"));
   const withdrawnWindow = await getDoc(doc(superAdmin, "trainingWindows", "window-a"));
   if (withdrawnApplication.data().status !== "withdrawn" || withdrawnWindow.data().enrolledCount !== 0) {
