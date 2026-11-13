@@ -511,9 +511,12 @@ export default function Portal({ onClose }) {
   async function loadAdminCustomerServices() {
     if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) return;
     try {
-      const [measurementSnapshot, trainingSnapshot] = await Promise.all([getDocs(collection(db, "measurements")), getDocs(collection(db, "trainingEnquiries"))]);
+      const measurementSnapshot = await getDocs(collection(db, "measurements"));
       setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-      setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      if (claims.superAdmin || claims.staffRole === "manager") {
+        const trainingSnapshot = await getDocs(collection(db, "trainingEnquiries"));
+        setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      } else setAllTrainingEnquiries([]);
     } catch (err) { setError(err.message || "Could not load customer measurement and training records."); }
   }
 
