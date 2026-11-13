@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
-import { uploadFileToGoogleDrive, shareDriveFileWithEmail } from "./googleDrive.js";
+import { uploadFileToGoogleDrive, shareDriveFileWithEmail, revokeDriveFileAccessForEmail } from "./googleDrive.js";
 
 const COURSE_TYPES = ["Basic Fashion Designing","Professional Fashion Designing","Advanced Fashion Designing","Pattern Drafting","Garment Construction","Industrial Tailoring","Bridal Wear Design","Men's Fashion Design","Women's Fashion Design","Fashion Business Management","Fashion Entrepreneurship","Traditional Nigerian Fashion","Fashion Finishing and Decoration"];
 const blankCourse = { title: "", category: "Professional Fashion Designing", description: "", mode: "Online and onsite", duration: "", fee: "", active: true };
@@ -47,6 +47,7 @@ export default function InstituteWorkspace() {
   const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
   const [lessonUploadFile, setLessonUploadFile] = useState(null);
+  const [mediaAccessAction, setMediaAccessAction] = useState("");
   const [courseForm, setCourseForm] = useState(blankCourse);
   const [editingCourseId, setEditingCourseId] = useState("");
   const [windowForm, setWindowForm] = useState(blankWindow);
@@ -429,6 +430,40 @@ export default function InstituteWorkspace() {
       await load();
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
   }
+  async function manageCourseMediaAccess(enrollment, action) {
+    if (!claims.superAdmin) {
+      setError("Only the Super Admin can manage Google Drive lesson permissions.");
+      return;
+    }
+    if (!enrollment?.studentEmail || !enrollment?.courseId) {
+      setError("This enrolment has no student email or course reference for Drive access management.");
+      return;
+    }
+    if (action === "grant" && enrollment.paymentStatus !== "paid") {
+      setError("Drive lesson access can only be granted to a learner with verified paid status.");
+      return;
+    }
+    if (action === "revoke" && !window.confirm("Remove this student's direct Google Drive access to all lesson files in this course? This does not change the enrolment or payment status.")) return;
+    const actionKey = enrollment.id + ":" + action;
+    setMediaAccessAction(actionKey); setError(""); setNotice("");
+    try {
+      const lessonSnap = await getDocs(query(collection(db, "instituteLessons"), where("courseId", "==", enrollment.courseId), where("published", "==", true)));
+      const fileIds = lessonSnap.docs.map(item => item.data().driveFileId).filter(Boolean);
+      if (!fileIds.length) throw new Error("No published Google Drive lesson files were found for this course.");
+      if (action === "grant") {
+        for (const fileId of fileIds) await shareDriveFileWithEmail(fileId, enrollment.studentEmail);
+        setNotice("Drive lesson access was granted or confirmed for " + enrollment.studentEmail + " across " + fileIds.length + " lesson file(s).");
+      } else {
+        const result = await revokeDriveFileAccessForEmail(fileIds, enrollment.studentEmail);
+        setNotice("Drive access removal processed for " + enrollment.studentEmail + ": " + result.revoked + " direct permission(s) removed across " + result.filesChecked + " file(s)." + (result.skippedInherited ? " " + result.skippedInherited + " inherited permission(s) could not be removed here." : ""));
+      }
+    } catch (e) {
+      setError(e.message || "Could not update Google Drive lesson access.");
+    } finally {
+      setMediaAccessAction("");
+    }
+  }
+
   async function createLesson(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -974,6 +1009,10 @@ export default function InstituteWorkspace() {
           <p>Assignments: {assignmentSubs.length}/{courseAssignments.length} submitted · Assessments: {assessmentSubs.length}/{courseAssessments.length} submitted · {graded.length} graded</p>
           {graded.length>0&&<p>Recorded assessment scores: {graded.map(g=>Number(g.score||0)+"/"+Number(g.maxScore||0)).join(", ")}</p>}
           <p>Attendance: {attended}/{courseAttendance.length} marked sessions attended{courseAttendance.length?" ("+Math.round(attended/courseAttendance.length*100)+"%)":" (not yet recorded)"}</p>
+          {claims.superAdmin && <div className="finance-form-actions">
+            <button type="button" disabled={!!mediaAccessAction || en.paymentStatus !== "paid"} onClick={() => manageCourseMediaAccess(en, "grant")}>{mediaAccessAction===en.id+":grant" ? "Granting access…" : "Retry / grant Drive lesson access"}</button>
+            <button type="button" disabled={!!mediaAccessAction || !en.studentEmail} onClick={() => manageCourseMediaAccess(en, "revoke")}>{mediaAccessAction===en.id+":revoke" ? "Revoking access…" : "Revoke direct Drive lesson access"}</button>
+          </div>}
         </article>;
       })}
       {!allEnrollments.length&&<p className="staff-empty">Student progress will appear after course enrolments are activated.</p>}
