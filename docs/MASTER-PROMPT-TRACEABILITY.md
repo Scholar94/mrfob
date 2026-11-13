@@ -325,3 +325,6 @@
 
 
 - **2026-11-13 — POS receipt keyboard accessibility:** the sales receipt overlay now moves focus to its first action when opened, traps Tab and Shift+Tab within the receipt, closes on Escape and restores focus to the control that opened it. The key listener exists only while a receipt is open and is cleaned up when it closes. This is limited to the POS receipt dialog; it does not complete accessibility work for all portal panels or dialogs. No Firestore rules changed. Build, keyboard and assistive-technology checks remain pending.
+
+
+- **2026-11-13 — Customer directory search usability:** labelled the Super Admin customer search for assistive technology, used the native search input type, trimmed surrounding whitespace when matching names/emails/phone numbers, and added a live status message when a search returns no matches. The empty state now distinguishes an empty customer database from a search with zero results. This is a focused directory usability improvement, not a full customer-management workflow or accessibility audit. No Firestore rules changed. Build and browser/screen-reader checks remain pending.
