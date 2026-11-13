@@ -365,11 +365,12 @@ export default function Portal({ onClose }) {
       const snapshot = await getDocs(collection(db, "orders"));
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       const enriched = await Promise.all(rows.map(async order => {
-        const [events, progressUpdates] = await Promise.all([
+        const [events, progressUpdates, referenceSnapshot] = await Promise.all([
           getDocs(query(collection(db, "orders", order.id, "events"))),
-          loadProgressUpdates(order)
+          loadProgressUpdates(order),
+          getDocs(collection(db, "orders", order.id, "referenceDesigns"))
         ]);
-        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)), progressUpdates };
+        return { ...order, referenceDesigns: referenceSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)), progressUpdates };
       }));
       setOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load orders."); }
@@ -382,11 +383,12 @@ export default function Portal({ onClose }) {
       const snapshot = await getDocs(query(collection(db, "orders"), where("customerUid", "==", user.uid)));
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       const enriched = await Promise.all(rows.map(async order => {
-        const [events, progressUpdates] = await Promise.all([
+        const [events, progressUpdates, referenceSnapshot] = await Promise.all([
           getDocs(query(collection(db, "orders", order.id, "events"))),
-          loadProgressUpdates(order)
+          loadProgressUpdates(order),
+          getDocs(collection(db, "orders", order.id, "referenceDesigns"))
         ]);
-        return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)), progressUpdates };
+        return { ...order, referenceDesigns: referenceSnapshot.docs.map(item => ({ id: item.id, ...item.data() })), events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)), progressUpdates };
       }));
       setMyOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       const noticeSnapshot = await getDocs(query(collection(db, "notifications"), where("customerUid", "==", user.uid)));
