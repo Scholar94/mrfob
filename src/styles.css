@@ -873,3 +873,13 @@ button:disabled{cursor:not-allowed}
 .refund-admin-controls label { display: grid; gap: 6px; font-size: 13px; }
 .refund-admin-controls input, .refund-admin-controls select, .refund-admin-controls textarea { width: 100%; padding: 10px; border: 1px solid #d9d0c7; border-radius: 8px; font: inherit; }
 .refund-admin-controls button { justify-self: start; padding: 10px 14px; border: 0; border-radius: 8px; background: #32151f; color: #fff; }
+
+
+/* Account portal runtime fallback */
+.portal-render-error { position: relative; width: min(560px, calc(100vw - 32px)); margin: 6vh auto; padding: 30px; border: 1px solid #e4d8c9; border-radius: 18px; background: #fffdf9; color: #32151f; box-shadow: 0 20px 70px rgba(28,12,18,.22); text-align: center; }
+.portal-render-error-mark { display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto 14px; border-radius: 50%; background: #f6eee2; color: #8a6035; font: 700 24px Georgia,serif; }
+.portal-render-error h2 { margin: 0 0 12px; font: 600 24px Georgia,serif; }
+.portal-render-error p { color: #6b5d5b; line-height: 1.6; }
+.portal-render-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
+.portal-render-error-actions button { border: 1px solid #b89a6c; border-radius: 8px; padding: 10px 15px; background: #32151f; color: #fff7e9; cursor: pointer; }
+.portal-render-error-actions button + button { background: transparent; color: #32151f; }
