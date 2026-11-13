@@ -1088,6 +1088,33 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /corporateRequests/{requestId} {
+      allow create: if signedIn()
+        && roleOf(request.auth.uid) == 'customer'
+        && request.resource.data.keys().hasOnly(['customerUid','customerEmail','customerName','organisation','contactName','phone','requestType','quantity','preferredDueDate','location','details','status','staffNote','createdAt','updatedAt'])
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerEmail == request.auth.token.email
+        && request.resource.data.organisation is string && request.resource.data.organisation.size() >= 2 && request.resource.data.organisation.size() <= 160
+        && request.resource.data.contactName is string && request.resource.data.contactName.size() >= 2 && request.resource.data.contactName.size() <= 100
+        && request.resource.data.phone is string && request.resource.data.phone.size() >= 7 && request.resource.data.phone.size() <= 30
+        && request.resource.data.requestType in ['Corporate uniforms','School uniforms','Church / ministry outfits','Wedding party clothing','Event clothing','Bulk bespoke garments','Other institutional order']
+        && request.resource.data.quantity is int && request.resource.data.quantity >= 2 && request.resource.data.quantity <= 10000
+        && request.resource.data.preferredDueDate is string && request.resource.data.preferredDueDate.size() <= 10
+        && request.resource.data.location is string && request.resource.data.location.size() <= 200
+        && request.resource.data.details is string && request.resource.data.details.size() >= 10 && request.resource.data.details.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.staffNote == ''
+        && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager']));
+      allow update: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','staffNote','updatedBy','updatedAt'])
+        && request.resource.data.status in ['pending','in_review','quotation_preparation','quoted','accepted','declined','completed']
+        && request.resource.data.staffNote is string && request.resource.data.staffNote.size() <= 1500
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /referralClaims/{referralId} {
       allow create: if signedIn()
         && roleOf(request.auth.uid) == 'customer'
