@@ -763,6 +763,7 @@ service cloud.firestore {
         && request.resource.data.questions is list
         && request.resource.data.questions.size() > 0
         && request.resource.data.questions.size() <= 30
+        && request.resource.data.assessmentType in ['written','objective']
         && request.resource.data.published == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
@@ -781,6 +782,10 @@ service cloud.firestore {
         && request.resource.data.correctOptions is list
         && request.resource.data.correctOptions.size() > 0
         && request.resource.data.correctOptions.size() <= 30
+        && request.resource.data.correctOptions.hasOnly(['A','B','C','D'])
+        && existsAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId))
+        && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.courseId == request.resource.data.courseId
+        && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.assessmentType == 'objective'
         && request.resource.data.pointsPerQuestion == 10
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
