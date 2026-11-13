@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://scholar94.github.io/mrfob/</loc>
-    <lastmod>2026-11-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://scholar94.github.io/mrfob/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/about</loc><changefreq>yearly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections/men</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections/women</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections/bridal</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections/traditional</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/collections/corporate</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/fabric-gallery</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/fashion-institute</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/courses</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/admissions</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/contact</loc><changefreq>yearly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://scholar94.github.io/mrfob/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
 </urlset>
