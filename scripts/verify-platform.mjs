@@ -84,6 +84,7 @@ assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log r
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 assert.ok(portal.includes("RefundManagement"), "Refund management workflow is not mounted");
+assert.ok(portal.includes("verifiedOrderPaymentsTotal") && portal.includes("outstandingQuotedBalanceTotal") && portal.includes("newCustomerCount30Days"), "Super Admin dashboard KPI summaries are missing");
 assert.ok(rules.includes("match /refunds/{refundId}") && rules.includes("refund_status_updated"), "Refund rules and audit event are missing");
 assert.ok(rules.includes("refundId == request.resource.data.paymentId") && read("src/RefundManagement.jsx").includes('setDoc(doc(db, "refunds", selectedPayment.id)'), "Refund requests must be unique per verified payment.");
 assert.ok(portal.includes("galleryImages") && portal.includes("availableColors") && portal.includes("fabricOptions") && portal.includes("customizationOptions"), "Product gallery and customisation fields are missing");
