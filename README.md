@@ -38,7 +38,7 @@ Install Firebase CLI locally, sign in, select the correct Firebase project, then
 ```bash
 firebase login
 firebase use --add
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,storage
 ```
 
 ## First Super Admin setup
@@ -74,3 +74,12 @@ Firebase must be configured and its rules deployed before account registration o
 
 ## Free-tier note
 No billing account has been connected or paid service enabled by this code. Firebase Authentication and Firestore have no-cost usage allowances; monitor quotas in Firebase Console. GitHub Pages remains the free public hosting option.
+
+
+## Production progress photos
+- Authorized Super Admin, Manager and Tailor accounts can attach JPG, PNG or WebP progress photos (maximum 8 MB) to a specific customer order.
+- Each photo records the order, production stage, uploader, timestamp, caption, file type and size in `orders/{orderId}/progressUpdates`.
+- Customers can view the same order-linked photo history in My Orders and receive an in-app notification when a photo is published.
+- Files are stored in Firebase Storage under `order-progress/{orderId}/`. Storage and Firestore rules restrict access to the order's customer and authorized staff; uploads cannot be overwritten or deleted through the client.
+- Before using this feature, confirm that the Firebase project's Storage bucket is enabled and that `VITE_FIREBASE_STORAGE_BUCKET` is configured in the GitHub Actions environment. Deploy both Firestore and Storage rules using the command above.
+- Download URLs are bearer links. Do not repost them publicly; for highly confidential imagery, a future authenticated media-proxy service should replace tokenized download URLs.
