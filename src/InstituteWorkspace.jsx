@@ -863,6 +863,27 @@ export default function InstituteWorkspace() {
   if (!user) return null;
   return <section className="institute-workspace">
     <div className="customer-management-heading institute-workspace-heading"><div><img className="institute-workspace-logo" src="/mrfob/mr-fop-fashion-institute-logo.webp" alt="MR FOP Fashion Institute" /><h3>MR FOP Fashion Institute</h3><p>Courses, training intakes and admission applications</p></div><button type="button" onClick={load}>Refresh institute</button></div>
+    {isAdmin && <div className="dashboard-grid institute-dashboard-summary" aria-label="Institute administration overview">
+      <article className="dashboard-tile"><strong>{courses.length}</strong><span>Course records</span><small>Course catalogue</small></article>
+      <article className="dashboard-tile"><strong>{windows.filter(w=>w.status==="open").length}</strong><span>Open training windows</span><small>Admissions</small></article>
+      <article className="dashboard-tile"><strong>{applications.filter(a=>["pending","submitted","more_information"].includes(a.status)).length}</strong><span>Applications needing review</span><small>Admissions queue</small></article>
+      <article className="dashboard-tile"><strong>{allEnrollments.filter(e=>e.paymentStatus==="paid").length}</strong><span>Recorded enrolments</span><small>Paid course access</small></article>
+      <article className="dashboard-tile"><strong>{sessions.filter(s=>s.status==="scheduled").length}</strong><span>Scheduled teaching sessions</span><small>Timetable</small></article>
+      <article className="dashboard-tile"><strong>{allInstructorAssignments.filter(a=>a.active).length}</strong><span>Active instructor assignments</span><small>Teaching team</small></article>
+    </div>}
+    {isInstructor && <div className="dashboard-grid institute-dashboard-summary" aria-label="Instructor overview">
+      <article className="dashboard-tile"><strong>{instructorAssignments.length}</strong><span>Assigned courses</span><small>Teaching portfolio</small></article>
+      <article className="dashboard-tile"><strong>{allEnrollments.length}</strong><span>Paid learner enrolments</span><small>Assigned courses</small></article>
+      <article className="dashboard-tile"><strong>{assignments.length}</strong><span>Course assignments</span><small>Learning activities</small></article>
+      <article className="dashboard-tile"><strong>{sessions.filter(s=>s.instructorUid===user.uid && s.status==="scheduled").length}</strong><span>Scheduled teaching sessions</span><small>Teaching timetable</small></article>
+    </div>}
+    {!isAdmin && !isInstructor && <div className="dashboard-grid institute-dashboard-summary" aria-label="Student learning overview">
+      <article className="dashboard-tile"><strong>{enrollments.length}</strong><span>Paid course enrolments</span><small>My courses</small></article>
+      <article className="dashboard-tile"><strong>{lessons.length}</strong><span>Published lessons available</span><small>Learning materials</small></article>
+      <article className="dashboard-tile"><strong>{submissions.length}</strong><span>Assignments submitted</span><small>My assignments</small></article>
+      <article className="dashboard-tile"><strong>{attendance.length}</strong><span>Attendance records</span><small>My attendance</small></article>
+    </div>}
+
     {error && <p className="portal-error">{error}</p>}{notice && <p className="portal-success">{notice}</p>}
     <section className="institute-window-list">
       <h4>Institute announcements</h4>
