@@ -64,7 +64,7 @@ service cloud.firestore {
           && request.resource.data.amount >= 0
         )
       );
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager','sales','institute']) || isFinanceOfficer() || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager','sales']) || isFinanceOfficer() || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
       allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
         && request.resource.data.customerUid == resource.data.customerUid
@@ -111,7 +111,7 @@ service cloud.firestore {
           && request.resource.data.stageLabel is string
           && request.resource.data.createdAt is timestamp;
         allow read: if signedIn() && (
-          isSuperAdmin() || hasStaffRole(['manager','sales','institute']) ||
+          isSuperAdmin() || hasStaffRole(['manager','sales']) ||
           (hasStaffRole(['tailor']) && get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid) ||
           get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
         );
