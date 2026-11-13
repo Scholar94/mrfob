@@ -34,6 +34,7 @@ export default function App() {
   const [installMessage, setInstallMessage] = useState("");
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
+  const [initialPortalMode, setInitialPortalMode] = useState("login");
   const [policyOpen, setPolicyOpen] = useState("");
   const [publicReviews, setPublicReviews] = useState([]);
   const [companyProfile, setCompanyProfile] = useState({});
@@ -50,6 +51,50 @@ export default function App() {
   const companyWa = whatsappLink("Hello MR FOP FASHIONS, I would like to make an enquiry.");
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
+  useEffect(() => {
+    const rawPath = window.location.pathname.replace(/^\\/mrfob(?=\\/|$)/, "") || "/";
+    const path = rawPath.length > 1 ? rawPath.replace(/\\/$/, "") : rawPath;
+    const publicRoutes = {
+      "/": ["home", "MR FOP FASHIONS | Premium Bespoke Fashion"],
+      "/about": ["about", "About MR FOP FASHIONS"],
+      "/collections": ["collections", "Fashion Collections | MR FOP FASHIONS"],
+      "/collections/men": ["collections", "Men's Fashion | MR FOP FASHIONS"],
+      "/collections/women": ["collections", "Women's Fashion | MR FOP FASHIONS"],
+      "/collections/bridal": ["collections", "Bridal Fashion | MR FOP FASHIONS"],
+      "/collections/traditional": ["collections", "Traditional Fashion | MR FOP FASHIONS"],
+      "/collections/corporate": ["industrial", "Corporate and Industrial Tailoring | MR FOP FASHIONS"],
+      "/fabric-gallery": ["fabric-gallery", "Fabric Gallery | MR FOP FASHIONS"],
+      "/fashion-institute": ["institute", "Fashion Institute | MR FOP FASHIONS"],
+      "/courses": ["institute", "Fashion Courses | MR FOP FASHIONS"],
+      "/admissions": ["institute", "Fashion Institute Admissions | MR FOP FASHIONS"],
+      "/contact": ["contact", "Contact MR FOP FASHIONS"],
+      "/faq": ["faq", "Frequently Asked Questions | MR FOP FASHIONS"]
+    };
+    if (path === "/privacy" || path === "/terms") {
+      setPortalOpen(false);
+      setPolicyOpen(path === "/privacy" ? "privacy" : "terms");
+      document.title = path === "/privacy" ? "Privacy Notice | MR FOP FASHIONS" : "Terms of Service | MR FOP FASHIONS";
+      return;
+    }
+    if (path === "/register" || path === "/login" || path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/")) {
+      setPolicyOpen("");
+      setInitialPortalMode(path === "/register" ? "register" : "login");
+      setPortalOpen(true);
+      document.title = path === "/register" ? "Create Account | MR FOP FASHIONS" : path === "/login" ? "Sign In | MR FOP FASHIONS" : "Account Portal | MR FOP FASHIONS";
+      return;
+    }
+    const route = publicRoutes[path];
+    if (route) {
+      setPortalOpen(false);
+      setPolicyOpen("");
+      document.title = route[1];
+      if (route[0] !== "home") window.requestAnimationFrame(() => document.getElementById(route[0])?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      else window.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    document.title = "Page Not Found | MR FOP FASHIONS";
+    window.requestAnimationFrame(() => document.getElementById("home")?.scrollIntoView({ behavior: "auto" }));
+  }, []);
   useEffect(() => {
     if (!firebaseReady || !db) return;
     let active = true;
@@ -348,6 +393,6 @@ export default function App() {
       </>}
     </section></div>}
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>Play the official MR FOP FASHIONS theme song using the player below. Playback starts only when you press play.</p><PublicWebsiteMusic/></section></div>}
-    {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
+    {portalOpen && <Portal onClose={() => setPortalOpen(false)} initialMode={initialPortalMode}/>}
   </div>;
 }
