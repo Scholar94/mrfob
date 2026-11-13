@@ -675,3 +675,18 @@ button:disabled{cursor:not-allowed}
 .brand{display:flex;align-items:center;min-width:0}.brand-image{display:block;width:178px;max-width:100%;height:auto;object-fit:contain}.brand-image-footer{width:168px}.institute-brand-logo{display:block;width:min(100%,290px);height:auto;object-fit:contain;object-position:left center;margin:0 0 26px;background:#fff;padding:9px;border-radius:3px}@media(max-width:650px){.brand-image{width:145px}.brand-image-footer{width:150px}.institute-brand-logo{width:min(100%,250px);margin-bottom:22px}}
 
 .institute-workspace-logo{display:block;width:min(100%,260px);height:auto;object-fit:contain;margin:0 0 12px;background:#fff;padding:8px;border-radius:3px}.institute-workspace-heading>div{min-width:0}
+
+
+/* Verified customer review experience */
+.order-review-panel{margin-top:16px;padding:16px;border:1px solid #e3d8c8;background:#fbf8f2;border-radius:10px}
+.order-review-panel>strong{display:block;margin-bottom:10px;color:#4a2730}
+.order-review-panel .portal-form{max-width:620px;margin:10px 0 0}
+.order-review-panel .portal-form label{display:grid;gap:6px;margin:10px 0}
+.order-review-panel .portal-form select,.order-review-panel .portal-form textarea{width:100%}
+.testimonials{background:#f7f3ed}
+.testimonial-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:18px}
+.testimonial-card{margin:0;padding:22px;border:1px solid #e4d9ca;background:#fff}
+.testimonial-rating{color:#a77b3e;letter-spacing:.12em;font-size:1.1rem}
+.testimonial-card blockquote{margin:14px 0;line-height:1.75;color:#463b36}
+.testimonial-author{margin:0;color:#4a2730;font-weight:700}
+.testimonial-author span{font-size:.82rem;font-weight:500;color:#887d72}
