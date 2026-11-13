@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Opening MR FOP FASHIONS…</title>
+</head>
+<body>
+  <p>Opening MR FOP FASHIONS…</p>
+  <script>
+    (function () {
+      var base = "/mrfob/";
+      var prefix = base.slice(0, -1);
+      var path = window.location.pathname.indexOf(prefix) === 0
+        ? window.location.pathname.slice(prefix.length)
+        : window.location.pathname;
+      if (!path) path = "/";
+      var destination = base + "?__route=" + encodeURIComponent(path) + window.location.hash;
+      window.location.replace(destination);
+    })();
+  </script>
+</body>
+</html>
