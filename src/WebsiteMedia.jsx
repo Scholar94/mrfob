@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { setDriveFilePublic, uploadFileToGoogleDrive } from "./googleDrive.js";
 
@@ -19,6 +19,7 @@ export function PublicWebsiteMedia() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (!db) { setLoading(false); return; }
     let active = true;
     getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public")))
       .then(snapshot => { if (active) setItems(snapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))); })
@@ -72,7 +73,6 @@ export default function WebsiteMediaManager({ user }) {
     setBusy(true); setError(""); setNotice("");
     try {
       await setDriveFilePublic(item.driveFileId, !item.published);
-      const { updateDoc } = await import("firebase/firestore");
       await updateDoc(doc(db, "siteMedia", item.id), { published: !item.published, updatedAt: serverTimestamp() });
       await refresh();
       setNotice(item.published ? "Media unpublished. Public Drive access has been revoked." : "Media published and available to all website visitors.");
