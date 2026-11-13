@@ -9,7 +9,7 @@ const requiredFiles = [
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
   "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/PortalErrorBoundary.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
-  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md"
+  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs"
 ];
 for (const file of requiredFiles) assert.ok(fs.existsSync(file), `Missing required platform file: ${file}`);
 
@@ -52,6 +52,7 @@ for (const collectionName of ["referralClaims", "fabrics", "privacyRequests", "r
 }
 assert.equal(rules.split("match /{document=**}").length - 1, 1, "Firestore catch-all deny rule must appear exactly once");
 assert.ok(ruleStructure, "Firestore rule structure check failed");
+assert.ok(read("firebase.json").includes('"firestore": {'), "Firestore Emulator configuration is missing");
 
 
 for (const route of [
