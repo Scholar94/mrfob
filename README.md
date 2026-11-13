@@ -57,19 +57,19 @@ The initial role document must be created by the project owner in Firebase Conso
 - Orders, measurements and training enquiries have separate access rules.
 - Review and test the rules in Firebase Emulator before production data is added.
 
-## Branding assets
-The three supplied logo images have been identified for these uses:
-1. App icon / PWA identity.
-2. Main MR FOP FASHIONS logo.
-3. MR FOP Vocational Institute logo.
+## Approved branding assets
+The three supplied and approved logo images are committed under `public/` and wired into the live application:
+1. `mr-fop-website-logo.webp` — public website header and footer.
+2. `mr-fop-app-logo.webp` — browser favicon, Apple touch icon and PWA manifest icon.
+3. `mr-fop-fashion-institute-logo.webp` — public Fashion Institute section and Institute workspace.
 
-They still need to be added to `public/brand/` and wired into the website's manifest and page components. Do not redraw or substitute these approved logos.
+The integration was deployed successfully in commit `6deadba8b59dd90baa7bb7298c9f1a61c57b33f7`. Do not redraw or substitute these approved logos.
 
 ## Phase scope
 Phase 1: public brand website and Pages deployment.
 Phase 2 foundation: Firebase-ready customer registration/sign-in, profile creation, role-aware account portal, Super Admin staff assignment interface and Firestore security rules.
 
-Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment, Google Drive document and media uploads are integrated through the Drive API.
+Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment, Google Drive document and media uploads are implemented through the Drive API, subject to the owner completing the OAuth client, shared-folder and GitHub Actions variable setup described below. Live upload and access workflows still require verification.
 
 ## Free-tier note
 No billing account has been connected or paid service enabled by this code. Firebase Authentication and Firestore have no-cost usage allowances; monitor quotas in Firebase Console. GitHub Pages remains the free public hosting option.
