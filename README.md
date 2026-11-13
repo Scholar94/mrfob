@@ -172,3 +172,8 @@ Customers receive a shareable referral code and can submit a referral with the p
 ## Corporate and bulk-order enquiries
 
 Customers can submit private enquiries for corporate uniforms, school uniforms, church/ministry outfits, wedding parties, events and other institutional orders. The form captures organisation, contact, quantity, preferred (unconfirmed) completion date, location and requirements. Customers can see their own request and the response; Super Admin and Fashion Manager can review all requests and update status/notes. This is a request-for-quotation workflow, not an automatic quote or a guaranteed production commitment.
+
+
+## Automated source verification
+
+The GitHub Pages deployment workflow runs `npm run verify:platform` after the production build. These checks guard required source files, public/account route entry, GitHub Pages fallback, PWA metadata, Drive integration, Firestore deny-by-default and the no-Storage/no-Functions constraints. These are static regression checks, not substitutes for Firebase Emulator tests or live end-to-end testing with separate user roles.
