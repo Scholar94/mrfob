@@ -55,8 +55,10 @@ export default function App() {
   const returnFocusRef = useRef(null);
   useEffect(() => {
     const basePath = "/mrfob";
-    const rawPath = window.location.pathname.startsWith(basePath) ? (window.location.pathname.slice(basePath.length) || "/") : (window.location.pathname || "/");
+    const routeFromFallback = new URLSearchParams(window.location.search).get("__route");
+    const rawPath = routeFromFallback || (window.location.pathname.startsWith(basePath) ? (window.location.pathname.slice(basePath.length) || "/") : (window.location.pathname || "/"));
     const path = rawPath.length > 1 && rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
+    if (routeFromFallback) window.history.replaceState({}, "", basePath + (path.startsWith("/") ? path : "/" + path));
     const publicRoutes = {
       "/": ["home", "MR FOP FASHIONS | Premium Bespoke Fashion"],
       "/about": ["about", "About MR FOP FASHIONS"],
