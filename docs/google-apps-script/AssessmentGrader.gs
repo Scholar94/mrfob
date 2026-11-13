@@ -42,7 +42,7 @@ function doPost(e) {
     const points = Number(key.pointsPerQuestion || 10);
     const maxScore = correct.length * points;
     const score = answers.reduce((total, answer, index) => total + (answer === correct[index] ? points : 0), 0);
-    const now = new Date().toISOString();
+    const now = new Date();
     const document = {
       assessmentId, courseId:assessment.courseId, assessmentTitle:assessment.title,
       studentUid:uid, studentName:String(identity.displayName || identity.email || "Student"),
@@ -91,7 +91,7 @@ function getDocument_(projectId, collectionName, documentId) {
 function createDocument_(projectId, collectionName, documentId, data) {
   const fields = encodeFields_(data);
   const path = "projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents/" + collectionName + "/" + encodeURIComponent(documentId);
-  const url = "https://firestore.googleapis.com/v1/" + path + ":commit";
+  const url = "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents:commit";
   const response = UrlFetchApp.fetch(url, {
     method:"post", contentType:"application/json",
     headers:{ Authorization:"Bearer " + ScriptApp.getOAuthToken() },
