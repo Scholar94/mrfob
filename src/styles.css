@@ -769,3 +769,21 @@ button:disabled{cursor:not-allowed}
 .referral-review-actions label { display:grid; gap:6px; font-size:13px; }
 .referral-review-actions textarea,.referral-review-actions select { width:100%; border:1px solid #d9d0c7; border-radius:8px; padding:9px; font:inherit; }
 @media(max-width:640px){.referral-review-actions{grid-template-columns:1fr}.referral-code-panel button{margin-left:0}}
+
+
+/* Corporate and bulk order request centre */
+.corporate-request-form { margin:16px 0 22px; }
+.corporate-request-list { display:grid; gap:14px; margin-top:16px; }
+.corporate-request-card { border:1px solid #e8e0d8; border-radius:14px; padding:16px; background:#fff; }
+.corporate-request-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.corporate-request-heading strong { font:600 18px Georgia,serif; color:#32151f; }
+.corporate-request-status { border-radius:999px; padding:5px 10px; background:#f2eee9; font-size:12px; text-transform:capitalize; }
+.corporate-request-status.status-completed,.corporate-request-status.status-accepted { background:#e8f4eb; color:#245a34; }
+.corporate-request-status.status-declined { background:#f9eeee; color:#843939; }
+.corporate-request-card p { overflow-wrap:anywhere; }
+.corporate-request-note { padding:10px; background:#faf7f1; border-left:3px solid #b99a64; }
+.corporate-request-card small { color:#766b63; }
+.corporate-request-admin { display:grid; grid-template-columns:minmax(0,2fr) minmax(170px,1fr); gap:12px; margin:12px 0; }
+.corporate-request-admin label { display:grid; gap:6px; font-size:13px; }
+.corporate-request-admin textarea,.corporate-request-admin select { width:100%; border:1px solid #d9d0c7; border-radius:8px; padding:9px; font:inherit; }
+@media(max-width:640px){.corporate-request-admin{grid-template-columns:1fr}}
