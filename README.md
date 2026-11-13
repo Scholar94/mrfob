@@ -59,6 +59,12 @@ The initial role document must be created by the project owner in Firebase Conso
 - Tailor access to order records, event history, reference designs and production media is restricted to orders assigned to that Tailor.
 - Review and test the rules in Firebase Emulator before production data is added. Deploy updated rules with `firebase deploy --only firestore:rules` before relying on the new permission boundaries.
 
+## Configurable public company profile
+
+The Super Admin account includes a Public Company Profile form for the public-facing company name, telephone, WhatsApp, email, address, opening hours, mission, vision and business scope. The homepage reads the public `publicSettings/siteProfile` document and uses the saved values for its company story, contact details, directions and contact links. If the document is not yet configured, the site falls back to the current company details already in the source.
+
+Only the `siteProfile` document is anonymously readable. Firestore rules restrict its writes to Super Admin and validate field names and lengths. Customer bank-transfer instructions remain in the separate `paymentInstructions` document and are not included in the public profile. Publish the latest Firestore rules before using the settings form.
+
 ## Customer saved designs and verified reviews
 
 - Signed-in customers can save or remove catalogue products in their own `customerFavourites/{uid}/items/{productId}` subcollection. Firestore rules prevent one customer from reading or changing another customer's saved designs.
