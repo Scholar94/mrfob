@@ -95,7 +95,7 @@ function localDateString(date = new Date()) {
 
 const QUOTE_LINE_ITEMS = ["Garment / agreed scope", "Fabric", "Labour", "Design", "Accessories", "Delivery"];
 
-export default function Portal({ onClose, initialMode = "login" }) {
+export default function Portal({ onClose, initialMode = "login", initialSection = "" }) {
   const { user, claims, loading, configured } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountNavItems, setAccountNavItems] = useState([]);
@@ -172,6 +172,7 @@ export default function Portal({ onClose, initialMode = "login" }) {
   const [salesLoading, setSalesLoading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const portalDialogRef = useRef(null);
+  const initialRouteHandledRef = useRef(false);
   const portalReturnFocusRef = useRef(null);
   const receiptDialogRef = useRef(null);
   const receiptReturnFocusRef = useRef(null);
@@ -1894,6 +1895,46 @@ export default function Portal({ onClose, initialMode = "login" }) {
 
   React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadCompanyProfile(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
+  useEffect(() => {
+    if (!user || !initialSection || !accountNavItems.length || initialRouteHandledRef.current) return;
+    const terms = {
+      dashboard: "overview",
+      profile: "profile",
+      orders: "order",
+      "new-order": "order",
+      measurements: "measurement",
+      "ai-measurement": "ai body measurement",
+      appointments: "appointment",
+      payments: "payment",
+      notifications: "notification",
+      support: "support",
+      courses: "course",
+      lessons: "lesson",
+      assignments: "assignment",
+      attendance: "attendance",
+      results: "assessment",
+      customers: "customer management",
+      production: "order management",
+      quotations: "quotation",
+      invoices: "invoice",
+      designers: "designer",
+      "fashion-gallery": "product catalogue",
+      fabrics: "fabric catalogue",
+      media: "website media",
+      reports: "financial management",
+      settings: "company profile",
+      users: "staff",
+      "audit-logs": "audit"
+    };
+    const term = terms[initialSection] || initialSection.replaceAll("-", " ");
+    const target = accountNavItems.find(item => item.label.toLowerCase().includes(term))
+      || (initialSection === "dashboard" ? accountNavItems[0] : null);
+    if (target) {
+      initialRouteHandledRef.current = true;
+      setActiveAccountSection(target.id);
+      window.requestAnimationFrame(() => document.getElementById(target.id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }, [user?.uid, initialSection, accountNavItems]);
   useEffect(() => {
     if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
     const root = portalDialogRef.current;
