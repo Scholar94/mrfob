@@ -4,6 +4,7 @@ import {
   ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play, UserRound
 } from "lucide-react";
 import Portal from "./Portal.jsx";
+import CertificateVerification from "./CertificateVerification.jsx";
 
 const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
 const collections = [
@@ -249,6 +250,7 @@ export default function App() {
         <div className="location-details"><p className="eyebrow"><i/> OUR STUDIO</p><h3>MR FOP FASHIONS COMPANY NIGERIA LIMITED</h3><p>Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria.</p><div><strong>Opening hours</strong><span>Monday – Saturday · 9:00 AM – 6:00 PM (WAT)</span></div><div><strong>Telephone</strong><span>+234 805 547 2913</span></div><a className="button button-gold" href="https://www.google.com/maps/search/?api=1&query=Bonojo%20Road%2C%20Eka%20Junction%2C%20via%20Blooms%20Pharmacy%20Store%2C%20Ijebu%20Ode%2C%20Ogun%20State%2C%20Nigeria" target="_blank" rel="noreferrer">Get directions <ArrowUpRight size={17}/></a></div>
       </div>
     </section>
+    <CertificateVerification />
     <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={wa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
