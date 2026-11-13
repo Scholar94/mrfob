@@ -103,6 +103,7 @@ All uploaders must sign in with a Google account that has Editor access to the s
 - Customer-specific garment production photos and videos remain in the order's private progress updates. They are not made public by the website media publisher.
 - Firestore rules permit anonymous reads only for documents marked both `published: true` and `visibility: 'public'`; media publishing mutations are limited to Super Admin and Manager.
 - Website media supports JPG, PNG, WebP, MP4, WebM and MOV. Image limit: 20 MB. Video limit: 100 MB.
+- The Public Website Media manager also accepts the official company theme song as MP3, M4A, WAV or OGG audio (maximum 50 MB). Upload it with the **Company theme song** category, then publish it. The homepage brand-music player reads the latest published track and waits for the visitor to press Play; it never starts audio automatically.
 
 
 ## Objective assessment auto-marking
