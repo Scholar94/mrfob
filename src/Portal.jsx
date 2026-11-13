@@ -112,6 +112,27 @@ export default function Portal({ onClose }) {
       if (receiptReturnFocusRef.current?.isConnected) receiptReturnFocusRef.current.focus();
     };
   }, [selectedReceipt]);
+  useEffect(() => {
+    portalReturnFocusRef.current = document.activeElement;
+    const dialog = portalDialogRef.current;
+    const getFocusable = () => Array.from(dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
+    getFocusable()[0]?.focus();
+    function handlePortalKeys(event) {
+      if (selectedReceipt) return;
+      if (event.key === "Escape") { event.preventDefault(); onClose?.(); return; }
+      if (event.key !== "Tab") return;
+      const items = getFocusable();
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", handlePortalKeys);
+    return () => {
+      document.removeEventListener("keydown", handlePortalKeys);
+      if (portalReturnFocusRef.current?.isConnected) portalReturnFocusRef.current.focus();
+    };
+  }, [onClose, selectedReceipt]);
   const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
   const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
   const [mode, setMode] = useState("login");
@@ -173,6 +194,8 @@ export default function Portal({ onClose }) {
   const [sales, setSales] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const portalDialogRef = useRef(null);
+  const portalReturnFocusRef = useRef(null);
   const receiptDialogRef = useRef(null);
   const receiptReturnFocusRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
@@ -1436,7 +1459,7 @@ export default function Portal({ onClose }) {
   function exportFinanceCSV(){const periodLabel=financePeriod==="custom"?(financeStart+" to "+financeEnd):financePeriod;const rows=[["MR FOP FASHIONS FINANCIAL REPORT"],["Period",periodLabel],[],["Metric","NGN"],["Sales revenue",financeRevenue],["Cash received",financeReceived],["Cost of goods sold",financeCOGS],["Gross profit",financeGross],["Expenses",financeExpenseTotal],["Estimated net profit",financeNet],[],["Expense","Category","Date","Method","Amount","Note"],...financeExpenses.map(x=>[x.title,x.category,x.expenseDate,x.method,x.amount,x.note||""])];const csv=rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\\r\\n");const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="MR-FOP-Financial-Report.csv";a.click();URL.revokeObjectURL(url);}
   function printFinanceReport(){const w=window.open("","_blank");if(!w){setError("Allow pop-ups to print the report.");return;}const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));const periodLabel=financePeriod==="custom"?(financeStart+" to "+financeEnd):financePeriod;const html="<html><head><title>MR FOP Financial Report</title><style>body{font:12px Arial;padding:25px;color:#32151f}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}</style></head><body><h1>MR FOP FASHIONS</h1><h2>Financial report</h2><p>Reporting period: "+esc(periodLabel)+"</p><p>Revenue: ₦"+financeRevenue.toLocaleString("en-NG")+" · Gross profit: ₦"+financeGross.toLocaleString("en-NG")+" · Expenses: ₦"+financeExpenseTotal.toLocaleString("en-NG")+" · Net profit: ₦"+financeNet.toLocaleString("en-NG")+"</p><table><tr><th>Expense</th><th>Category</th><th>Date</th><th>Method</th><th>Amount</th></tr>"+financeExpenses.map(x=>"<tr><td>"+esc(x.title)+"</td><td>"+esc(x.category)+"</td><td>"+esc(x.expenseDate)+"</td><td>"+esc(x.method)+"</td><td>₦"+Number(x.amount||0).toLocaleString("en-NG")+"</td></tr>").join("")+"</table><script>window.onload=function(){window.print()}<\\/script></body></html>";w.document.write(html);w.document.close();}
   const filteredCustomers = customers.filter(item => [item.displayName, item.email, item.phone].some(value => (value || "").toLowerCase().includes(customerSearch.trim().toLowerCase())));
-  if (!configured) return <div className="portal-backdrop"><section className="portal-card"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
+  if (!configured) return <div className="portal-backdrop"><section ref={portalDialogRef} className="portal-card" role="dialog" aria-modal="true" aria-label="MR FOP Fashions account portal" tabIndex="-1"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
   return <div className="portal-backdrop"><section className="portal-card">
     <button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button>
