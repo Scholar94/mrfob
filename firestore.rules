@@ -148,12 +148,25 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
-        && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','stage','stageLabel','createdAt','readAt'])
-        && request.resource.data.type == 'production_update'
-        && request.resource.data.customerUid is string
-        && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
-        && request.resource.data.title is string && request.resource.data.title.size() <= 160
+      allow create: if (
+          (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
+          && request.resource.data.type == 'production_update'
+          && request.resource.data.keys().hasOnly(['customerUid','orderId','orderNumber','type','title','message','stage','stageLabel','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
+          && request.resource.data.stage is string
+          && request.resource.data.stageLabel is string
+        ) || (
+          isSuperAdmin()
+          && request.resource.data.type == 'appointment_update'
+          && request.resource.data.keys().hasOnly(['customerUid','appointmentId','type','appointmentStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.appointmentId is string
+          && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == request.resource.data.appointmentStatus
+          && request.resource.data.appointmentStatus in ['confirmed','alternative_proposed','completed','cancelled']
+        )
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.message is string && request.resource.data.message.size() <= 500
         && request.resource.data.createdAt is timestamp
         && request.resource.data.readAt == null;
