@@ -64,14 +64,16 @@ service cloud.firestore {
           && request.resource.data.amount >= 0
         )
       );
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager','sales','institute']) || isFinanceOfficer() || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
       allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
         && request.resource.data.customerUid == resource.data.customerUid
         && request.resource.data.status == resource.data.status
         && request.resource.data.paymentStatus == resource.data.paymentStatus)
         || (isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'amount', 'amountPaid', 'quotationNote', 'quotationItems', 'quotationStatus', 'quotationSentAt', 'dueDate', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'paymentStatus', 'amount', 'amountPaid', 'quotationNote', 'quotationItems', 'quotationStatus', 'quotationSentAt', 'dueDate', 'assignedDesignerUid', 'assignedDesignerName', 'updatedAt'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['assignedDesignerUid']) || request.resource.data.assignedDesignerUid == '' || (request.resource.data.assignedDesignerUid is string && roleOf(request.resource.data.assignedDesignerUid) == 'tailor'))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['assignedDesignerName']) || (request.resource.data.assignedDesignerName is string && request.resource.data.assignedDesignerName.size() <= 160))
         && (!('dueDate' in request.resource.data) || request.resource.data.dueDate is string)
         && (!('amount' in request.resource.data) || (request.resource.data.amount is number && request.resource.data.amount > 0))
         && (!('amountPaid' in request.resource.data) || (request.resource.data.amountPaid is number && request.resource.data.amountPaid >= 0))
@@ -84,6 +86,7 @@ service cloud.firestore {
         && request.resource.data.amount == resource.data.amount
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quotationStatus', 'updatedAt']))
         || (hasStaffRole(['manager', 'sales', 'tailor'])
+        && (!hasStaffRole(['tailor']) || resource.data.assignedDesignerUid == request.auth.uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']))
         || (isFinanceOfficer()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amountPaid', 'paymentStatus', 'lastPaymentId', 'updatedAt'])
@@ -99,6 +102,7 @@ service cloud.firestore {
 
       match /events/{eventId} {
         allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'sales', 'tailor']))
+          && (!hasStaffRole(['tailor']) || get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid)
           && request.resource.data.keys().hasOnly(['fromStatus', 'toStatus', 'stageLabel', 'stageNote', 'changedByUid', 'changedByName', 'createdAt'])
           && (!('stageNote' in request.resource.data) || (request.resource.data.stageNote is string && request.resource.data.stageNote.size() <= 500))
           && request.resource.data.changedByUid == request.auth.uid
@@ -107,7 +111,8 @@ service cloud.firestore {
           && request.resource.data.stageLabel is string
           && request.resource.data.createdAt is timestamp;
         allow read: if signedIn() && (
-          isSuperAdmin() || isStaff() ||
+          isSuperAdmin() || hasStaffRole(['manager','sales','institute']) ||
+          (hasStaffRole(['tailor']) && get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid) ||
           get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid
         );
         allow update, delete: if false;
@@ -127,13 +132,15 @@ service cloud.firestore {
           && request.resource.data.size > 0 && request.resource.data.size <= 15728640
           && request.resource.data.driveUrl is string
           && request.resource.data.createdAt is timestamp;
-        allow read: if signedIn() && (isSuperAdmin() || isStaff()
+        allow read: if signedIn() && (isSuperAdmin() || hasStaffRole(['manager','sales'])
+          || (hasStaffRole(['tailor']) && get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid)
           || get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid);
         allow update, delete: if false;
       }
 
       match /progressUpdates/{updateId} {
         allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
+          && (!hasStaffRole(['tailor']) || get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid)
           && request.resource.data.keys().hasOnly(['orderId','orderNumber','customerUid','stage','stageLabel','caption','photoUrl','driveFileId','driveUrl','previewUrl','drivePreviewUrl','storagePath','fileName','contentType','size','mediaType','uploadedByUid','uploadedByName','createdAt'])
           && request.resource.data.orderId == orderId
           && request.resource.data.customerUid == get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid
@@ -151,7 +158,8 @@ service cloud.firestore {
           && ((request.resource.data.mediaType == 'image' && request.resource.data.size <= 20971520)
             || (request.resource.data.mediaType == 'video' && request.resource.data.size <= 104857600))
           && request.resource.data.createdAt is timestamp;
-        allow read: if signedIn() && (isSuperAdmin() || isStaff()
+        allow read: if signedIn() && (isSuperAdmin() || hasStaffRole(['manager','sales'])
+          || (hasStaffRole(['tailor']) && get(/databases/$(database)/documents/orders/$(orderId)).data.assignedDesignerUid == request.auth.uid)
           || get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid);
         allow update, delete: if false;
       }
