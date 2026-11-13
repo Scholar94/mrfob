@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
 import { auth, db } from "./firebase.js";
@@ -89,6 +89,9 @@ export default function Portal({ onClose }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -306,6 +309,31 @@ export default function Portal({ onClose }) {
       setMessage("Your customer data export has been prepared. Store the downloaded file securely because it contains personal and measurement information.");
     } catch (err) { setError(err.message || "Could not prepare your data export. Please try again."); }
     finally { setBusy(false); }
+  }
+
+  async function changeMyPassword(e) {
+    e.preventDefault();
+    if (!auth.currentUser || !user?.email) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      if (newPassword.length < 8) throw new Error("Your new password must contain at least 8 characters.");
+      if (newPassword !== confirmNewPassword) throw new Error("The new password and confirmation do not match.");
+      if (currentPassword === newPassword) throw new Error("Choose a new password that is different from your current password.");
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword("");
+      setMessage("Your password has been changed. Use the new password the next time you sign in.");
+    } catch (err) {
+      const friendly = err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"
+        ? "The current password is incorrect. Please check it and try again."
+        : err.code === "auth/weak-password"
+          ? "Firebase rejected that password as too weak. Choose a stronger password."
+          : err.code === "auth/requires-recent-login"
+            ? "For security, sign out and sign in again before changing your password."
+            : err.message || "Could not change your password. Please try again.";
+      setError(friendly);
+    } finally { setBusy(false); }
   }
 
   async function saveMyProfile(e) {
@@ -1437,6 +1465,16 @@ export default function Portal({ onClose }) {
       </section>}
       {claims.superAdmin && <section className="staff-management"><div className="staff-management-heading"><h3><Users/> Staff directory</h3><button type="button" onClick={loadStaff} disabled={staffLoading}>{staffLoading ? "Loading…" : "Refresh list"}</button></div>{staffMembers.length ? <div className="staff-list">{staffMembers.map(member=><article className="staff-member" key={member.uid}><div><strong>{member.email || "Staff account"}</strong><span>{member.role}</span></div><button type="button" onClick={()=>removeStaff(member.uid)} disabled={busy}>Remove access</button></article>)}</div> : <p className="staff-empty">No staff permissions are listed yet. Add your first staff member below.</p>}</section>}
       {claims.superAdmin && <form className="portal-form staff-form" onSubmit={addStaff}><h3><Users/> Manage staff access</h3><label>Staff email<input type="email" required value={staffEmail} onChange={e=>setStaffEmail(e.target.value)} placeholder="staff@example.com"/></label><label>Permission level<select value={staffRole} onChange={e=>setStaffRole(e.target.value)}><option value="manager">Manager</option><option value="sales">Sales</option><option value="tailor">Production / Tailor</option><option value="institute">Institute staff</option></select></label><button className="portal-submit" disabled={busy}>{busy ? "Please wait…" : "Save staff permissions"}</button></form>}
+      <section className="customer-management account-security">
+        <div className="customer-management-heading"><div><h3>Account security</h3><p>Change your sign-in password after confirming your current password</p></div></div>
+        <form className="portal-form" onSubmit={changeMyPassword}>
+          <label>Current password<input type="password" required autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)}/></label>
+          <label>New password<input type="password" required minLength={8} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="At least 8 characters"/></label>
+          <label>Confirm new password<input type="password" required minLength={8} autoComplete="new-password" value={confirmNewPassword} onChange={e=>setConfirmNewPassword(e.target.value)} placeholder="Enter the new password again"/></label>
+          <button className="portal-submit" disabled={busy || !currentPassword || !newPassword || !confirmNewPassword}>{busy ? "Updating password…" : "Change my password"}</button>
+          <p className="portal-hint">For your protection, the portal re-checks your current password with Firebase before saving the new one. If your account uses a non-password sign-in provider, use that provider's account-security settings instead.</p>
+        </form>
+      </section>
       <InstituteWorkspace />
       <div className="portal-notice">{claims.superAdmin ? "You have full platform administration access." : claims.staffRole ? "Your staff permissions are active. Tools shown here depend on your assigned role." : "Your customer services are ready. Manage your profile, orders, appointments, measurements, payments and training enquiries here."}</div>
       <button className="portal-submit secondary" onClick={()=>signOut(auth)}><LogOut size={16}/> Sign out</button>
