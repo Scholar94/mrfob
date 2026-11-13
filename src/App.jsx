@@ -6,6 +6,8 @@ import {
 import Portal from "./Portal.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db, firebaseReady } from "./firebase.js";
 
 const wa = "https://wa.me/2348055472913?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
 const collections = [
@@ -33,8 +35,24 @@ export default function App() {
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState("");
+  const [publicReviews, setPublicReviews] = useState([]);
   const dialogRef = useRef(null);
   const returnFocusRef = useRef(null);
+  useEffect(() => {
+    if (!firebaseReady || !db) return;
+    let active = true;
+    getDocs(query(collection(db, "reviews"), where("status", "==", "approved")))
+      .then(snapshot => {
+        if (!active) return;
+        const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+          .filter(item => Number.isInteger(item.rating) && item.rating >= 1 && item.rating <= 5 && typeof item.comment === "string")
+          .sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+          .slice(0, 6);
+        setPublicReviews(rows);
+      })
+      .catch(() => { if (active) setPublicReviews([]); });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
@@ -223,6 +241,14 @@ export default function App() {
         </div>
         <div className="order-steps-action"><p>Ready to discuss a bespoke or group order?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Discuss your order <ArrowUpRight size={17}/></a></div>
       </section>
+      {publicReviews.length > 0 && <section className="testimonials section-pad" id="customer-stories">
+        <div className="section-heading"><div><p className="eyebrow"><i/> CUSTOMER EXPERIENCES</p><h2>Words from our <em>customers.</em></h2></div><p>Reviews are shared only after a completed order and administrative moderation.</p></div>
+        <div className="testimonial-grid">{publicReviews.map(review=><article className="testimonial-card" key={review.id}>
+          <div className="testimonial-rating" aria-label={review.rating + " out of 5 stars"}>{"★".repeat(review.rating)}{"☆".repeat(5-review.rating)}</div>
+          <blockquote>{review.comment}</blockquote>
+          <p className="testimonial-author">{String(review.customerName || "Verified customer").trim().split(/\s+/)[0]} <span>· Verified order</span></p>
+        </article>)}</div>
+      </section>}
       <section className="faq section-pad" id="faq">
         <div className="section-heading"><div><p className="eyebrow"><i/> GOOD TO KNOW</p><h2>Frequently asked <em>questions.</em></h2></div><p>Helpful information before you place a request or visit the fashion house.</p></div>
         <div className="faq-list">
