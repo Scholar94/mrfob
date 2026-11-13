@@ -196,6 +196,15 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.resource.data.customerUid
           && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == request.resource.data.appointmentStatus
           && request.resource.data.appointmentStatus in ['confirmed','alternative_proposed','completed','cancelled']
+        ) || (
+          (isSuperAdmin() || isStaff())
+          && request.resource.data.type == 'support_update'
+          && request.resource.data.keys().hasOnly(['customerUid','supportTicketId','type','supportStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.supportTicketId is string
+          && getAfter(/databases/$(database)/documents/supportTickets/$(request.resource.data.supportTicketId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/supportTickets/$(request.resource.data.supportTicketId)).data.status == request.resource.data.supportStatus
+          && request.resource.data.supportStatus in ['open','in_progress','closed']
         ))
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.message is string && request.resource.data.message.size() <= 500
