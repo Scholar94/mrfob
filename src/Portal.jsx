@@ -932,7 +932,7 @@ export default function Portal({ onClose }) {
         type: "support_update",
         supportStatus: status,
         title: "Your support request status has changed",
-        message: "Your request "" + ticket.subject.slice(0, 180) + "" is now " + status.replaceAll("_", " ") + ".",
+        message: `Your request "${ticket.subject.slice(0, 180)}" is now ${status.replaceAll("_", " ")}.`,
         createdAt: serverTimestamp(),
         readAt: null
       });
