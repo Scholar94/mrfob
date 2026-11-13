@@ -111,6 +111,7 @@ export default function Portal({ onClose }) {
   const [quoteEdits, setQuoteEdits] = useState({});
   const [deliveryDateEdits, setDeliveryDateEdits] = useState({});
   const [myOrders, setMyOrders] = useState([]);
+  const [customerNotifications, setCustomerNotifications] = useState([]);
   const [customerOrderForm, setCustomerOrderForm] = useState({ category: "Men’s clothing", item: "", fabric: "", colour: "", quantity: "1", instructions: "", measurementMethod: "I need a measurement appointment", preferredDate: "", deliveryMethod: "Collection at the studio" });
   const [profileForm, setProfileForm] = useState({ displayName: "", phone: "", address: "" });
   const [profileLoading, setProfileLoading] = useState(false);
@@ -238,7 +239,30 @@ export default function Portal({ onClose }) {
         return { ...order, events: events.docs.map(event => ({ id: event.id, ...event.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) };
       }));
       setMyOrders(enriched.sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+      const noticeSnapshot = await getDocs(query(collection(db, "notifications"), where("customerUid", "==", user.uid)));
+      setCustomerNotifications(noticeSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
     } catch (err) { setError(err.message || "Could not load your orders."); }
+  }
+
+  async function markCustomerNotificationRead(notification) {
+    if (!user || !notification?.id || notification.readAt) return;
+    try {
+      await updateDoc(doc(db, "notifications", notification.id), { readAt: serverTimestamp() });
+      setCustomerNotifications(items => items.map(item => item.id === notification.id ? { ...item, readAt: { seconds: Math.floor(Date.now() / 1000) } } : item));
+    } catch (err) { setError(err.message || "Could not update notification."); }
+  }
+
+  async function markAllCustomerNotificationsRead() {
+    const unread = customerNotifications.filter(item => !item.readAt);
+    if (!unread.length || !user) return;
+    setBusy(true); setError("");
+    try {
+      const batch = writeBatch(db);
+      unread.forEach(item => batch.update(doc(db, "notifications", item.id), { readAt: serverTimestamp() }));
+      await batch.commit();
+      setCustomerNotifications(items => items.map(item => item.readAt ? item : { ...item, readAt: { seconds: Math.floor(Date.now() / 1000) } }));
+    } catch (err) { setError(err.message || "Could not mark notifications as read."); }
+    finally { setBusy(false); }
   }
 
   async function loadMyProfile() {
@@ -509,6 +533,19 @@ export default function Portal({ onClose }) {
           changedByUid: user.uid,
           changedByName: user.displayName || user.email || "Production team",
           createdAt: serverTimestamp()
+        });
+        const notificationRef = doc(collection(db, "notifications"));
+        batch.set(notificationRef, {
+          customerUid: current.customerUid,
+          orderId: id,
+          orderNumber: current.orderNumber || id,
+          type: "production_update",
+          title: "Your order has moved to " + productionStageLabel(changes.status),
+          message: stageNote || "The production team updated your order status.",
+          stage: changes.status,
+          stageLabel: productionStageLabel(changes.status),
+          createdAt: serverTimestamp(),
+          readAt: null
         });
       }
       await batch.commit();
@@ -1286,7 +1323,11 @@ export default function Portal({ onClose }) {
         <article className="dashboard-tile"><strong>{payments.length}</strong><span>Payment transactions</span><small>My Payments</small></article>
         <article className="dashboard-tile"><strong>{products.filter(item=>item.active!==false).length}</strong><span>Products available to browse</span><small>Product Catalogue</small></article>
       </div>}
-      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
+      {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-notifications">
+        <div className="customer-management-heading"><div><h3>Order notifications</h3><p>Updates from the production team</p></div><button type="button" onClick={markAllCustomerNotificationsRead} disabled={busy || !customerNotifications.some(item => !item.readAt)}>Mark all as read</button></div>
+        {customerNotifications.length ? <div className="customer-notification-list">{customerNotifications.slice(0, 20).map(item=><article className={`customer-notification ${item.readAt ? "is-read" : "is-unread"}`} key={item.id}><div><strong>{item.title || "Order update"}</strong><small>{item.orderNumber ? "Order " + item.orderNumber : "Account update"} · {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString() : "Recently"}</small><p>{item.message}</p></div>{!item.readAt && <button type="button" onClick={()=>markCustomerNotificationRead(item)}>Mark read</button>}</article>)}</div> : <p className="staff-empty">You have no order notifications yet. Production updates will appear here.</p>}
+      </section>
+      <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>My Profile</h3><p>Keep your contact information up to date</p></div><button type="button" onClick={loadMyProfile} disabled={profileLoading}>{profileLoading ? "Loading…" : "Refresh profile"}</button></div>
         <form className="portal-form" onSubmit={saveMyProfile}>
           <label>Full name<input required value={profileForm.displayName} onChange={e=>setProfileForm({...profileForm,displayName:e.target.value})}/></label>
