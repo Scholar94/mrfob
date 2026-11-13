@@ -142,3 +142,8 @@ The Fashion Institute supports objective multiple-choice assessments with server
 - **Institute Administrator / Instructor:** work within their respective course, student and learning workflows; Institute staff do not receive the clothing-order or Finance workspace.
 
 These are source-level permissions. The latest `firestore.rules` must be published to Firebase, and the boundaries must be tested with separate role accounts before production use.
+
+
+## Customer privacy requests
+
+The account portal includes a private privacy-request centre. Customers can submit requests to access, correct or delete personal information; they can see the request status and the company's recorded response. Only the Super Admin can review all requests or change their status. Submitting a deletion request does not automatically erase records: staff must review account records, legal/accounting retention needs and related Google Drive files before confirming completion. Customer data export is also available from My Profile. Publish the latest `firestore.rules` before using this feature.
