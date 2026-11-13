@@ -546,6 +546,28 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not issue certificate."); } finally { setBusy(false); }
   }
 
+  async function publishCertificateVerification(certificate) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const publicRecord = {
+        certificateRef: certificate.certificateRef,
+        studentName: certificate.studentName || "Student",
+        courseTitle: certificate.courseTitle || "Fashion training",
+        windowTitle: certificate.windowTitle || "",
+        status: certificate.status === "revoked" ? "revoked" : "issued",
+        issuedAt: certificate.issuedAt,
+        updatedAt: serverTimestamp(),
+        ...(certificate.status === "revoked" ? {
+          revokedAt: certificate.revokedAt || certificate.updatedAt || certificate.issuedAt,
+          revocationReason: certificate.revocationReason || "Revoked by the Institute. Contact the Institute for confirmation."
+        } : {})
+      };
+      await setDoc(doc(db, "publicCertificateVerifications", certificate.certificateRef), publicRecord, { merge: true });
+      setNotice("Public verification record refreshed for " + certificate.certificateRef + ".");
+    } catch(e) { setError(e.message || "Could not publish the verification record. Confirm the latest Firestore rules are published."); }
+    finally { setBusy(false); }
+  }
+
   async function revokeCertificate(certificate) {
     const reason = String(certificateRevocationDrafts[certificate.id] || "").trim();
     if (reason.length < 8) { setError("Enter a clear revocation reason of at least 8 characters."); return; }
@@ -721,7 +743,7 @@ export default function InstituteWorkspace() {
         {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
       <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
-      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><p className="certificate-public-reference">Public verification reference: <strong>{c.certificateRef}</strong></p>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
+      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><p className="certificate-public-reference">Public verification reference: <strong>{c.certificateRef}</strong></p><button type="button" className="certificate-sync-button" disabled={busy} onClick={()=>publishCertificateVerification(c)}>Publish / refresh public verification record</button>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
       <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
     </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p>{c.status==="issued"&&<button type="button" onClick={()=>printCertificate(c)}>Print certificate</button>}</article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
