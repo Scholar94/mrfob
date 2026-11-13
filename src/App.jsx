@@ -42,6 +42,9 @@ export default function App() {
   const companyEmail = companyProfile.email || "mrfopvi@gmail.com";
   const companyAddress = companyProfile.address || "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria";
   const companyHours = companyProfile.openingHours || "Monday – Saturday · 9:00 AM – 6:00 PM (WAT)";
+  const companyMission = companyProfile.mission || "To make customers feel brand new and happy always through excellent and professional services.";
+  const companyVision = companyProfile.vision || "To be recognized as a leading service delivery company providing maximum customer satisfaction.";
+  const companyScope = companyProfile.businessScope || "Clothing designing and industrial tailoring, alongside the MR FOP FASHIONS Fashion Institute and professional fashion training.";
   const companyWhatsappDigits = String(companyProfile.whatsapp || "+234 805 547 2913").replace(/\D/g, "");
   const companyWa = "https://wa.me/" + companyWhatsappDigits + "?text=" + encodeURIComponent("Hello MR FOP FASHIONS, I would like to make an enquiry.");
   const dialogRef = useRef(null);
@@ -173,11 +176,11 @@ export default function App() {
         </div>
       </section>
       <section className="about-company section-pad" id="about">
-        <div className="about-company-heading"><p className="eyebrow"><i/> OUR COMPANY · RC 1089546</p><h2>Built on service.<br/><em>Driven by excellence.</em></h2><p>Established in 2010, MR FOP FASHIONS COMPANY NIGERIA LIMITED brings clothing design, industrial tailoring and professional fashion training together under one company.</p></div>
+        <div className="about-company-heading"><p className="eyebrow"><i/> OUR COMPANY · RC 1089546</p><h2>Built on service.<br/><em>Driven by excellence.</em></h2><p>Established in 2010, {companyName} brings clothing design, industrial tailoring and professional fashion training together under one company.</p></div>
         <div className="about-company-details">
-          <article><span>OUR MISSION</span><p>To make customers feel brand new and happy always through excellent and professional services.</p></article>
-          <article><span>OUR VISION</span><p>To be recognized as a leading service delivery company providing maximum customer satisfaction.</p></article>
-          <article><span>WHAT WE DO</span><p>Clothing designing and industrial tailoring, alongside the MR FOP FASHIONS Fashion Institute and professional fashion training.</p></article>
+          <article><span>OUR MISSION</span><p>{companyMission}</p></article>
+          <article><span>OUR VISION</span><p>{companyVision}</p></article>
+          <article><span>WHAT WE DO</span><p>{companyScope}</p></article>
         </div>
       </section>
       <section className="collections section-pad" id="collections">
