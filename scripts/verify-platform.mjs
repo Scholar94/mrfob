@@ -54,7 +54,7 @@ assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQMan
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 assert.ok(portal.includes("RefundManagement"), "Refund management workflow is not mounted");
 assert.ok(rules.includes("match /refunds/{refundId}") && rules.includes("refund_status_updated"), "Refund rules and audit event are missing");
-assert.ok(s.includes("refundId == request.resource.data.paymentId") && read("src/RefundManagement.jsx").includes('setDoc(doc(db, "refunds", selectedPayment.id)'), "Refund requests must be unique per verified payment.");
+assert.ok(rules.includes("refundId == request.resource.data.paymentId") && read("src/RefundManagement.jsx").includes('setDoc(doc(db, "refunds", selectedPayment.id)'), "Refund requests must be unique per verified payment.");
 assert.ok(portal.includes("galleryImages") && portal.includes("availableColors") && portal.includes("fabricOptions") && portal.includes("customizationOptions"), "Product gallery and customisation fields are missing");
 assert.ok(rules.includes("galleryImages") && rules.includes("availableColors") && rules.includes("fabricOptions") && rules.includes("customizationOptions"), "Product gallery fields are not protected by Firestore rules");
 assert.ok(app.includes("StyleRecommendations") && app.includes("createWhatsAppLink={whatsappLink}"), "Public style recommendation tool is not mounted");
