@@ -430,6 +430,21 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin();
     }
 
+    match /customerFavourites/{customerUid}/items/{productId} {
+      allow read: if signedIn() && request.auth.uid == customerUid;
+      allow create: if signedIn()
+        && request.auth.uid == customerUid
+        && request.resource.data.keys().hasOnly(['customerUid', 'productId', 'productName', 'createdAt'])
+        && request.resource.data.customerUid == customerUid
+        && request.resource.data.productId == productId
+        && request.resource.data.productName is string
+        && request.resource.data.productName.size() <= 160
+        && exists(/databases/$(database)/documents/products/$(productId))
+        && get(/databases/$(database)/documents/products/$(productId)).data.active == true;
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid == customerUid;
+    }
+
     match /products/{productId} {
       allow read: if signedIn();
       allow create: if isSuperAdmin()
