@@ -542,8 +542,7 @@ export default function Portal({ onClose }) {
         notes: designerMeasurementForm.notes.trim(), entrySource: "designer",
         createdByUid: user.uid, createdByName: user.displayName || user.email || "Authorized designer",
         verificationStatus: "pending", verificationNote: "",
-        verifiedByUid: user.uid, verifiedByName: user.displayName || user.email || "Authorized designer",
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(), verifiedAt: serverTimestamp()
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
       batch.set(noticeRef, {
         customerUid: customer.customerUid, measurementId: measurementRef.id,
