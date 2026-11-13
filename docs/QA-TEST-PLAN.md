@@ -46,6 +46,10 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 | T21 | Student and instructor learning | Student opens lessons, marks progress, submits assignment/objective assessment; Instructor marks attendance and grades work for assigned courses only. | Student sees only enrolled course data; Instructor sees only assigned course records; answer keys remain private; grading and attendance are auditable. | Not run |
 | T22 | Audit and PWA | Trigger each instrumented action, inspect Super Admin audit viewer, install PWA and test offline shell. | Audit entries are append-only and visible only to Super Admin; installation and offline fallback work on supported devices. | Not run |
 
+### Additional source-level feature check
+
+- Change every style recommender preference and confirm that the three suggestions and WhatsApp brief reflect the selected occasion, category, garment, colour, personal style, budget and optional reference notes. Confirm that suggestions are not presented as live stock or confirmed prices. This browser test remains Not run until performed.
+
 ## Completion criteria
 
 - All cases pass using the separate role accounts.
