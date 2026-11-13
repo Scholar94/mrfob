@@ -193,7 +193,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleForm, setSaleForm] = useState({ customerName: "", paymentMethod: "Cash", amountPaid: "" });
   const [editingProductId, setEditingProductId] = useState("");
-  const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
+  const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
+  const [productGallerySelection, setProductGallerySelection] = useState({});
   const [stockAdjustments, setStockAdjustments] = useState({});
 
   useEffect(() => {
@@ -1670,15 +1671,23 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       const stock = Number(productForm.stock);
       if (!name || !sku) throw new Error("Enter both a product name and SKU.");
       const costPrice = Number(productForm.costPrice || 0);
+      const parseOptions = value => value.split(",").map(item => item.trim()).filter(Boolean);
+      const galleryImages = parseOptions(productForm.galleryImages);
+      const availableColors = parseOptions(productForm.availableColors);
+      const fabricOptions = parseOptions(productForm.fabricOptions);
+      const customizationOptions = parseOptions(productForm.customizationOptions);
       if (!Number.isFinite(price) || price < 0) throw new Error("Enter a valid selling price.");
       if (!Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter a valid product cost price.");
       if (!Number.isInteger(stock) || stock < 0) throw new Error("Opening stock must be a whole number of zero or more.");
+      if (galleryImages.length > 8 || availableColors.length > 12 || fabricOptions.length > 12 || customizationOptions.length > 12) throw new Error("Use no more than 8 gallery images and 12 options in each other list.");
+      if ([productForm.imageUrl.trim(), ...galleryImages].some(url => url && !/^https:\/\//i.test(url))) throw new Error("Product and gallery images must use HTTPS URLs.");
       await addDoc(collection(db, "products"), {
         name, sku, category: productForm.category, description: productForm.description.trim(),
-        price, costPrice, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(), active: true,
+        price, costPrice, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(),
+        galleryImages, availableColors, fabricOptions, customizationOptions, active: true,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid
       });
-      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
+      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
       setMessage("Product added to inventory successfully.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not add product."); }
@@ -1687,7 +1696,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
 
   function startProductEdit(product) {
     setEditingProductId(product.id);
-    setProductForm({ name: product.name || "", sku: product.sku || "", category: product.category || "Other", description: product.description || "", price: String(product.price ?? ""), costPrice: String(product.costPrice ?? ""), stock: String(product.stock ?? 0), imageUrl: product.imageUrl || "" });
+    setProductForm({ name: product.name || "", sku: product.sku || "", category: product.category || "Other", description: product.description || "", price: String(product.price ?? ""), costPrice: String(product.costPrice ?? ""), stock: String(product.stock ?? 0), imageUrl: product.imageUrl || "", galleryImages: (product.galleryImages || []).join(", "), availableColors: (product.availableColors || []).join(", "), fabricOptions: (product.fabricOptions || []).join(", "), customizationOptions: (product.customizationOptions || []).join(", ") });
     setError(""); setMessage("Editing " + (product.name || "product") + ". Update the details in the form above.");
   }
 
@@ -1702,9 +1711,16 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       const costPrice = Number(productForm.costPrice || 0);
       if (!name || !sku) throw new Error("Enter both a product name and SKU.");
       if (!Number.isFinite(price) || price < 0 || !Number.isFinite(costPrice) || costPrice < 0) throw new Error("Enter valid non-negative selling and cost prices.");
-      await updateDoc(doc(db, "products", editingProductId), { name, sku, category: productForm.category, description: productForm.description.trim(), price, costPrice, imageUrl: productForm.imageUrl.trim(), updatedAt: serverTimestamp() });
+      const parseOptions = value => value.split(",").map(item => item.trim()).filter(Boolean);
+      const galleryImages = parseOptions(productForm.galleryImages);
+      const availableColors = parseOptions(productForm.availableColors);
+      const fabricOptions = parseOptions(productForm.fabricOptions);
+      const customizationOptions = parseOptions(productForm.customizationOptions);
+      if (galleryImages.length > 8 || availableColors.length > 12 || fabricOptions.length > 12 || customizationOptions.length > 12) throw new Error("Use no more than 8 gallery images and 12 options in each other list.");
+      if ([productForm.imageUrl.trim(), ...galleryImages].some(url => url && !/^https:\/\//i.test(url))) throw new Error("Product and gallery images must use HTTPS URLs.");
+      await updateDoc(doc(db, "products", editingProductId), { name, sku, category: productForm.category, description: productForm.description.trim(), price, costPrice, imageUrl: productForm.imageUrl.trim(), galleryImages, availableColors, fabricOptions, customizationOptions, updatedAt: serverTimestamp() });
       setEditingProductId("");
-      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "" });
+      setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
       setMessage("Product details updated successfully. Stock quantity was not changed.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not update product."); }
@@ -2290,7 +2306,11 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           <label>Product cost price (₦)<input type="number" min="0" step="0.01" required value={productForm.costPrice} onChange={e=>setProductForm({...productForm,costPrice:e.target.value})} placeholder="What the business paid to make or buy it"/></label>
           {!editingProductId && <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>}{editingProductId && <p className="staff-empty">Current stock: {products.find(item=>item.id===editingProductId)?.stock ?? 0}. Use Stock in / Stock out to change inventory quantities.</p>}
           <label>Product image URL (optional)<input type="url" value={productForm.imageUrl} onChange={e=>setProductForm({...productForm,imageUrl:e.target.value})} placeholder="https://…"/></label>
-          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingProductId ? "Save product changes" : "Add product"}</button>{editingProductId && <button type="button" className="portal-submit secondary" disabled={busy} onClick={()=>{setEditingProductId("");setProductForm({name:"",sku:"",category:"Custom clothing",description:"",price:"",costPrice:"",stock:"0",imageUrl:""});setError("");setMessage("Product editing cancelled.");}}>Cancel editing</button>}
+          <label>Additional gallery image URLs (comma-separated, up to 8)<textarea rows="2" value={productForm.galleryImages} onChange={e=>setProductForm({...productForm,galleryImages:e.target.value})} placeholder="https://image-view-2…, https://image-view-3…"/></label>
+          <label>Available colours (comma-separated)<input value={productForm.availableColors} onChange={e=>setProductForm({...productForm,availableColors:e.target.value})} placeholder="Navy, black, wine"/></label>
+          <label>Fabric options (comma-separated)<input value={productForm.fabricOptions} onChange={e=>setProductForm({...productForm,fabricOptions:e.target.value})} placeholder="Wool, cotton, linen"/></label>
+          <label>Customisation options (comma-separated)<input value={productForm.customizationOptions} onChange={e=>setProductForm({...productForm,customizationOptions:e.target.value})} placeholder="Monogram, lapel style, sleeve finish"/></label>
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingProductId ? "Save product changes" : "Add product"}</button>{editingProductId && <button type="button" className="portal-submit secondary" disabled={busy} onClick={()=>{setEditingProductId("");setProductForm({name:"",sku:"",category:"Custom clothing",description:"",price:"",costPrice:"",stock:"0",imageUrl:"",galleryImages:"",availableColors:"",fabricOptions:"",customizationOptions:""});setError("");setMessage("Product editing cancelled.");}}>Cancel editing</button>}
         </form>
         {productsLoading ? <p className="staff-empty">Loading inventory…</p> : products.length ? <div className="inventory-list">{products.map(product=><article className="inventory-card" key={product.id}>
           {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
@@ -2301,8 +2321,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       {!claims.superAdmin && !claims.staffRole && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Product Catalogue</h3><p>Browse products and current availability</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh catalogue"}</button></div>
         {productsLoading ? <p className="staff-empty">Loading products…</p> : products.filter(product=>product.active !== false).length ? <div className="inventory-list">{products.filter(product=>product.active !== false).map(product=><article className="inventory-card customer-product-card" key={product.id}>
-          {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
-          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p><b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button></div>
+          {(() => { const images = [...new Set([product.imageUrl, ...(product.galleryImages || [])].filter(Boolean))].slice(0, 9); const selectedImage = productGallerySelection[product.id] || images[0]; return <div className="customer-product-gallery">{selectedImage && <img className="customer-product-main-image" src={selectedImage} alt={product.name + " design view"} loading="lazy"/>}{images.length > 1 && <div className="customer-product-thumbnails" aria-label={product.name + " image views"}>{images.map((url,index)=><button type="button" key={url} className={selectedImage === url ? "active" : ""} onClick={()=>setProductGallerySelection(current=>({...current,[product.id]:url}))} aria-label={"Show image view " + (index+1)} aria-pressed={selectedImage === url}><img src={url} alt="" loading="lazy"/></button>)}</div>}</div>; })()}
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p>{product.availableColors?.length > 0 && <p><strong>Colours:</strong> {product.availableColors.join(", ")}</p>}{product.fabricOptions?.length > 0 && <p><strong>Fabric options:</strong> {product.fabricOptions.join(", ")}</p>}{product.customizationOptions?.length > 0 && <p><strong>Customisation:</strong> {product.customizationOptions.join(", ")}</p>}<b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button></div>
         </article>)}</div> : <p className="staff-empty">Our product catalogue is being updated. Please check again soon.</p>}
       </section>}
       {(claims.superAdmin || claims.staffRole === "manager") && <section className="customer-management"><div className="customer-management-heading"><div><h3>Customer review moderation</h3><p>Only reviews linked to delivered orders can be submitted; publication requires approval.</p></div><button type="button" onClick={loadReviewModeration}>Refresh reviews</button></div>{moderationReviews.length ? <div className="appointment-list">{moderationReviews.map(review=><article className="appointment-card" key={review.id}><strong>{review.customerName || "Customer"} · {review.rating}/5</strong><p>Order: {review.orderId}</p><p>{review.comment}</p><div className="row-actions"><button type="button" disabled={busy} onClick={()=>moderateReview(review,"approved")}>Approve for publication</button><button type="button" disabled={busy} onClick={()=>moderateReview(review,"rejected")}>Reject</button></div></article>)}</div> : <p className="staff-empty">No pending reviews are loaded. Use Refresh reviews to check the queue.</p>}</section>}
