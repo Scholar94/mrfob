@@ -138,7 +138,6 @@ try {
   await assertFails(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
   const withdrawnApplication = await getDoc(doc(superAdmin, "instituteApplications", "application-a"));
   const withdrawnWindow = await getDoc(doc(superAdmin, "trainingWindows", "window-a"));
-  assertSucceeds(Promise.resolve(withdrawnApplication));
   if (withdrawnApplication.data().status !== "withdrawn" || withdrawnWindow.data().enrolledCount !== 0) {
     throw new Error("Institute withdrawal did not update application status and intake capacity.");
   }
