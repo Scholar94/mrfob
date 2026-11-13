@@ -1946,7 +1946,7 @@ export default function Portal({ onClose }) {
         {claims.superAdmin && <article className="dashboard-tile"><strong>{pendingPaymentCount}</strong><span>Transfer declarations pending review</span><small>Finance verification</small></article>}
         {claims.superAdmin && <article className="dashboard-tile"><strong>{pendingTrainingCount}</strong><span>Training enquiries awaiting review</span><small>Fashion Institute</small></article>}
         <article className="dashboard-tile"><strong>{openSupportCount}</strong><span>Support requests not closed</span><small>Customer care</small></article>
-      </div>
+      </div>}
       {!claims.superAdmin && !claims.staffRole && <> 
       <section className="customer-management customer-notifications">
         <div className="customer-management-heading"><div><h3>Account &amp; order notifications</h3><p>Updates about production, quotations, payments, appointments, support requests and Fashion Institute enquiries</p></div><button type="button" onClick={markAllCustomerNotificationsRead} disabled={busy || !customerNotifications.some(item => !item.readAt)}>Mark all as read</button></div>
