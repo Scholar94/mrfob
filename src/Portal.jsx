@@ -2245,7 +2245,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         <div className="finance-expense-heading"><h4>Expense history</h4><button type="button" onClick={loadExpenses}>Refresh expenses</button></div><div className="finance-expense-filters"><input placeholder="Search expenses" value={expenseSearch} onChange={e=>setExpenseSearch(e.target.value)}/><select value={expenseCategoryFilter} onChange={e=>setExpenseCategoryFilter(e.target.value)}><option>All</option>{[...new Set(expenses.map(x=>x.category||"Other"))].map(x=><option key={x}>{x}</option>)}</select></div>
         {expensesLoading?<p>Loading expenses…</p>:visibleExpenses.length?<div className="finance-expense-list">{visibleExpenses.map(item=><article className="finance-expense-card" key={item.id}><div><strong>{item.title}</strong><span>{item.category} · {item.expenseDate} · {item.method}</span>{item.note&&<small>{item.note}</small>}</div><b>₦{Number(item.amount||0).toLocaleString("en-NG")}</b>{claims.superAdmin && <div className="finance-record-actions"><button type="button" onClick={()=>editExpense(item)}>Edit</button><button type="button" onClick={()=>removeExpense(item)}>Delete</button></div>}</article>)}</div>:<p>No matching expenses.</p>}
       </section>}
-      {claims.superAdmin && <FabricCatalogue admin user={user} />}
+      {claims.superAdmin && <FabricCatalogue admin user={user} claims={claims} />}
       {claims.superAdmin && <AuditLogViewer />}
       {(claims.superAdmin || claims.staffRole === "manager") && <WebsiteMediaManager user={user} />}
       {claims.superAdmin && <section className="inventory-management">
