@@ -1779,7 +1779,7 @@ export default function Portal({ onClose }) {
   const filteredCustomers = customers.filter(item => [item.displayName, item.email, item.phone].some(value => (value || "").toLowerCase().includes(customerSearch.trim().toLowerCase())));
   if (!configured) return <div className="portal-backdrop"><section ref={portalDialogRef} className="portal-card" role="dialog" aria-modal="true" aria-label="MR FOP Fashions account portal" tabIndex="-1"><button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button><div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div><h2>Account services are being configured.</h2><p>Firebase authentication has not been connected yet. The public website remains available. The administrator must complete the Firebase setup before customers can register or sign in.</p><p className="portal-hint">No passwords or personal information should be submitted until this setup is complete.</p></section></div>;
 
-  return <div className="portal-backdrop"><section className="portal-card">
+  return <div className="portal-backdrop"><section ref={portalDialogRef} className="portal-card" role="dialog" aria-modal="true" aria-label="MR FOP Fashions account portal" tabIndex="-1">
     <button className="portal-close" onClick={onClose}><ArrowLeft/> Back to website</button>
     <div className="portal-brand">MR FOP <span>ACCOUNT PORTAL</span></div>
     {loading ? <p>Checking your account…</p> : user ? <>
