@@ -1125,15 +1125,17 @@ export default function InstituteWorkspace() {
         const attended=courseAttendance.filter(a=>a.status==="present"||a.status==="late").length;
         return <article className="appointment-card" key={en.id}>
           <strong>{en.studentName || en.studentEmail || en.studentUid}</strong>
-          <span>{en.courseTitle} · {en.windowTitle || "Enrolment"} · {en.studentId || en.studentUid}</span>
+          <span>{en.courseTitle} · {en.windowTitle || "Enrolment"} · {en.studentId || en.studentUid} · {en.enrollmentStatus === "withdrawn" ? "Withdrawn" : "Active"}</span>
+          {en.enrollmentStatus === "withdrawn" && <p><strong>Withdrawal reason:</strong> {en.withdrawalReason || "Not recorded"}</p>}
           <p><strong>{lessonPercent}%</strong> lesson completion · {Math.min(done,courseLessons.length)}/{courseLessons.length} lessons</p>
           <div className="portal-progress-track" role="progressbar" aria-label={(en.studentName||"Student")+" lesson completion"} aria-valuemin="0" aria-valuemax="100" aria-valuenow={lessonPercent}><span style={{width:lessonPercent+"%"}}/></div>
           <p>Assignments: {assignmentSubs.length}/{courseAssignments.length} submitted · Assessments: {assessmentSubs.length}/{courseAssessments.length} submitted · {graded.length} graded</p>
           {graded.length>0&&<p>Recorded assessment scores: {graded.map(g=>Number(g.score||0)+"/"+Number(g.maxScore||0)).join(", ")}</p>}
           <p>Attendance: {attended}/{courseAttendance.length} marked sessions attended{courseAttendance.length?" ("+Math.round(attended/courseAttendance.length*100)+"%)":" (not yet recorded)"}</p>
-          {claims.superAdmin && <div className="finance-form-actions">
-            <button type="button" disabled={!!mediaAccessAction || en.paymentStatus !== "paid"} onClick={() => manageCourseMediaAccess(en, "grant")}>{mediaAccessAction===en.id+":grant" ? "Granting access…" : "Retry / grant Drive lesson access"}</button>
-            <button type="button" disabled={!!mediaAccessAction || !en.studentEmail} onClick={() => manageCourseMediaAccess(en, "revoke")}>{mediaAccessAction===en.id+":revoke" ? "Revoking access…" : "Revoke direct Drive lesson access"}</button>
+          {isAdmin && <div className="finance-form-actions">
+            <button type="button" disabled={!!mediaAccessAction || en.paymentStatus !== "paid" || en.enrollmentStatus === "withdrawn"} onClick={() => manageCourseMediaAccess(en, "grant")}>{mediaAccessAction===en.id+":grant" ? "Granting access…" : "Retry / grant Drive lesson access"}</button>
+            <button type="button" disabled={!!mediaAccessAction || !en.studentEmail} onClick={() => manageCourseMediaAccess(en, "revoke")}>{mediaAccessAction===en.id+":revoke" ? "Revoking access…" : "Revoke / retry direct Drive access removal"}</button>
+            {en.enrollmentStatus !== "withdrawn" && <button type="button" disabled={busy || !!mediaAccessAction} onClick={() => withdrawEnrollment(en)}>Withdraw learner and disable course access</button>}
           </div>}
         </article>;
       })}
