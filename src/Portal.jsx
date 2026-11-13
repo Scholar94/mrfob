@@ -1163,6 +1163,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           });
         }
       });
+      await recordAuditEvent({ user, claims, action: "appointment_status_updated", entityType: "appointment", entityId: id, summary: "Appointment status changed to " + status + "." });
       setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
       setMessage(status === "confirmed" ? "Appointment confirmed and its date/time slot has been reserved." : "Appointment status updated.");
     } catch (err) { setError(err.message || "Could not update appointment."); }
@@ -1363,6 +1364,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     setBusy(true); setError(""); setMessage("");
     try {
       await setDoc(doc(db, "publicSettings", "siteProfile"), { ...next, updatedAt: serverTimestamp(), updatedBy: user.uid });
+      await recordAuditEvent({ user, claims, action: "company_profile_updated", entityType: "companyProfile", entityId: "siteProfile", summary: "Updated the public company profile and contact information." });
       setMessage("Public company profile settings have been saved.");
     } catch (err) { setError(err.message || "Could not save company profile settings."); }
     finally { setBusy(false); }
@@ -1524,6 +1526,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         });
         setMessage("Transfer declaration rejected. The customer can see the review note.");
       }
+      await recordAuditEvent({ user, claims, action: "payment_declaration_reviewed", entityType: "paymentDeclaration", entityId: item.id, summary: "Payment declaration " + decision + " for order " + (item.orderNumber || item.orderId) + "." });
       await Promise.all([loadPaymentDeclarations(), loadPayments(), loadOrders()]);
     } catch (err) { setError(err.message || "Could not review this payment declaration."); }
     finally { setBusy(false); }
