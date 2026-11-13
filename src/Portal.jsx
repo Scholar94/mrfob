@@ -2010,6 +2010,12 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         <article className="dashboard-tile"><strong>{payments.length}</strong><span>Payment transactions</span><small>My Payments</small></article>
         <article className="dashboard-tile"><strong>{products.filter(item=>item.active!==false).length}</strong><span>Products available to browse</span><small>Product Catalogue</small></article>
       </div>}
+      {claims.staffRole === "finance" && <div className="dashboard-grid staff-dashboard-summary" aria-label="Finance officer overview">
+        <article className="dashboard-tile"><strong>{pendingPaymentCount}</strong><span>Transfer declarations awaiting review</span><small>Payment verification</small></article>
+        <article className="dashboard-tile"><strong>{payments.length}</strong><span>Payment ledger entries</span><small>Payment history</small></article>
+        <article className="dashboard-tile"><strong>₦{financeRevenue.toLocaleString("en-NG")}</strong><span>POS sales revenue in selected period</span><small>Financial report</small></article>
+        <article className="dashboard-tile"><strong>₦{financeExpenseTotal.toLocaleString("en-NG")}</strong><span>Recorded expenses in selected period</span><small>Expense history</small></article>
+      </div>}
       {(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole)) && <div className="dashboard-grid staff-dashboard-summary" aria-label="Fashion operations overview">
         {claims.superAdmin && <article className="dashboard-tile"><strong>{customers.length}</strong><span>Registered customers</span><small>Customer directory</small></article>}
         <article className="dashboard-tile"><strong>{orders.length}</strong><span>Total accessible orders</span><small>Order management</small></article>
