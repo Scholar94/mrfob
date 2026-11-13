@@ -57,7 +57,7 @@
 
 ## Work log
 
-- **2026-11-13 — Customer data portability export:** added a customer-only JSON export generated from the signed-in user's own Firestore records: profile, orders and production events, appointments, measurements, Fashion Institute enquiries, payments, payment declarations and support requests. Firestore queries are scoped to the authenticated UID; timestamps are converted to ISO strings; the download warns that measurements and financial details are sensitive. The export explicitly states its scope and exclusions and is not represented as a complete company backup or account-deletion tool. Build, deployment and live ownership-permission verification pending.
+- **2026-11-13 — Customer data portability export:** added a customer-only JSON export generated from the signed-in user's own Firestore records: profile, orders and production events, appointments, measurements, Fashion Institute enquiries, payments, payment declarations and support requests. The export now also includes the customer's own in-app notification history, using the same customer UID ownership filter. Firestore queries are scoped to the authenticated UID; timestamps are converted to ISO strings; the download warns that measurements and financial details are sensitive. The export explicitly states its scope and exclusions and is not represented as a complete company backup or account-deletion tool. Build, deployment and live ownership-permission verification pending.
 
 
 
@@ -307,3 +307,6 @@
 
 
 - **2026-11-13 — Customer notification history access:** the customer notification centre now progressively reveals older notices in batches of 20 instead of permanently hiding every notice after the first 20. The existing read/unread state and mark-one/mark-all actions remain unchanged. This is client-side progressive display over the notifications already loaded for the signed-in customer; it does not add database pagination, retention controls or external delivery channels. No Firestore rules changed. Build, deployment and live display checks remain pending.
+
+
+- **2026-11-13 — Customer data export notification coverage:** extended the existing customer-only JSON export to include in-app notifications addressed to the signed-in customer. The query is filtered by `customerUid` and therefore does not export other customers' notices. The scope note now names notifications explicitly. This remains a self-service portability export, not a company-wide backup or account-deletion process. No Firestore rules changed. Build, deployment and live ownership-permission checks remain pending.
