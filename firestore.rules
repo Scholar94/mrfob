@@ -1088,14 +1088,35 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /publicFAQs/{faqId} {
+      function validFAQ(data) {
+        return data.keys().hasOnly(['question','answer','order','active','createdAt','createdBy','updatedAt'])
+          && data.question is string && data.question.size() >= 8 && data.question.size() <= 180
+          && data.answer is string && data.answer.size() >= 15 && data.answer.size() <= 1800
+          && data.order is int && data.order >= 0 && data.order <= 999
+          && data.active is bool
+          && data.createdAt is timestamp && data.createdBy is string
+          && data.updatedAt is timestamp;
+      }
+      allow read: if resource.data.active == true || isSuperAdmin() || hasStaffRole(['manager']);
+      allow create: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && validFAQ(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if (isSuperAdmin() || hasStaffRole(['manager']))
+        && validFAQ(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if false;
+    }
+
     match /auditLogs/{auditId} {
       allow create: if signedIn()
         && (isSuperAdmin() || isStaff() || isFinanceOfficer() || roleOf(request.auth.uid) == 'instructor')
         && request.resource.data.keys().hasOnly(['actorUid','actorRole','action','entityType','entityId','summary','createdAt'])
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.actorRole == roleOf(request.auth.uid)
-        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated']
-        && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile','paymentInstructions','designerAvailability','instituteApplication','instituteEnrollment','order']
+        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated','faq_created','faq_updated','faq_archived']
+        && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile','paymentInstructions','designerAvailability','instituteApplication','instituteEnrollment','order','faq']
         && request.resource.data.entityId is string
         && request.resource.data.entityId.size() <= 150
         && request.resource.data.summary is string
