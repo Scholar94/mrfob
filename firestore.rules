@@ -634,6 +634,30 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteCompletionApprovals/{approvalId} {
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && approvalId == request.resource.data.studentUid + '_' + request.resource.data.courseId
+        && request.resource.data.studentUid is string
+        && request.resource.data.courseId is string
+        && request.resource.data.certificateRef is string
+        && request.resource.data.status == 'approved'
+        && request.resource.data.approvedBy == request.auth.uid
+        && request.resource.data.approvedAt is timestamp
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.checks is list
+        && request.resource.data.checks.size() == 4
+        && request.resource.data.checks[0].complete == true
+        && request.resource.data.checks[1].complete == true
+        && request.resource.data.checks[2].complete == true
+        && request.resource.data.checks[3].complete == true
+        && request.resource.data.keys().hasOnly(['studentUid','courseId','certificateRef','status','checks','approvedBy','approvedAt','createdAt'])
+        && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
+        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid';
+      allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']);
+      allow update: if false;
+      allow delete: if isSuperAdmin();
+    }
+
     match /instituteCertificates/{certificateId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.studentUid is string
@@ -645,7 +669,11 @@ service cloud.firestore {
         && request.resource.data.issuedAt is timestamp
         && request.resource.data.keys().hasOnly(['certificateRef','studentUid','studentId','studentName','courseId','courseTitle','windowId','windowTitle','status','issuedAt','issuedBy','createdAt'])
         && exists(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
-        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid';
+        && get(/databases/$(database)/documents/instituteEnrollments/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.paymentStatus == 'paid'
+        && existsAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId))
+        && getAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.status == 'approved'
+        && getAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.certificateRef == request.resource.data.certificateRef
+        && getAfter(/databases/$(database)/documents/instituteCompletionApprovals/$(request.resource.data.studentUid + '_' + request.resource.data.courseId)).data.approvedBy == request.auth.uid;
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','revocationReason','revokedBy','revokedAt','updatedAt'])
