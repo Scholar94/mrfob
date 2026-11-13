@@ -373,12 +373,44 @@ export default function InstituteWorkspace() {
     setBusy(true); setError(""); setNotice("");
     try {
       if (item.status !== "admitted") throw new Error("Only admitted applicants can have training payment verified.");
-      const enrollmentId = item.customerUid + "_" + item.courseId;
-      const enrollmentRef = doc(db, "instituteEnrollments", enrollmentId);
-      const existingEnrollment = await getDoc(enrollmentRef);
-      const enrollmentData = { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", studentName:item.fullName||"", studentEmail:item.email||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:existingEnrollment.exists() ? existingEnrollment.data().createdAt : serverTimestamp() };
-      await setDoc(enrollmentRef, enrollmentData);
-      await updateDoc(doc(db, "instituteApplications", item.id), { paymentStatus:"paid", paymentVerifiedBy:user.uid, paymentVerifiedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+      if (!item.id || !item.customerUid || !item.courseId) throw new Error("The application is missing its student or course reference.");
+      const applicationRef = doc(db, "instituteApplications", item.id);
+      const enrollmentRef = doc(db, "instituteEnrollments", item.customerUid + "_" + item.courseId);
+      await runTransaction(db, async transaction => {
+        const [applicationSnap, enrollmentSnap] = await Promise.all([
+          transaction.get(applicationRef),
+          transaction.get(enrollmentRef)
+        ]);
+        if (!applicationSnap.exists()) throw new Error("The admission application no longer exists.");
+        const application = applicationSnap.data();
+        if (application.status !== "admitted") throw new Error("Only admitted applicants can have training payment verified.");
+        if (application.customerUid !== item.customerUid || application.courseId !== item.courseId) throw new Error("The application identity or course changed. Refresh and try again.");
+        const enrollmentData = {
+          studentUid: application.customerUid,
+          applicationId: item.id,
+          applicationRef: application.applicationRef || "",
+          studentId: application.studentId || "",
+          studentName: application.fullName || "",
+          studentEmail: application.email || "",
+          courseId: application.courseId,
+          courseTitle: application.courseTitle || "",
+          windowId: application.windowId || "",
+          windowTitle: application.windowTitle || "",
+          paymentStatus: "paid",
+          verifiedBy: user.uid,
+          verifiedAt: serverTimestamp(),
+          createdAt: enrollmentSnap.exists() && enrollmentSnap.data().createdAt
+            ? enrollmentSnap.data().createdAt
+            : serverTimestamp()
+        };
+        transaction.set(enrollmentRef, enrollmentData);
+        transaction.update(applicationRef, {
+          paymentStatus: "paid",
+          paymentVerifiedBy: user.uid,
+          paymentVerifiedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
       setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action."); await load();
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
   }
