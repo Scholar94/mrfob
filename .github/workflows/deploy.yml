@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Install Firestore rules test tools
-        run: npm install --no-save @firebase/rules-unit-testing firebase-tools
+        run: npm install --no-save @firebase/rules-unit-testing@4.0.1 firebase-tools
       - name: Build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
