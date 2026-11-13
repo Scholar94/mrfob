@@ -37,6 +37,8 @@ jobs:
           VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ vars.VITE_GOOGLE_DRIVE_FOLDER_ID }}
           VITE_ASSESSMENT_GRADING_URL: ${{ vars.VITE_ASSESSMENT_GRADING_URL }}
         run: npm run build
+      - name: Verify platform source guardrails
+        run: npm run verify:platform
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
