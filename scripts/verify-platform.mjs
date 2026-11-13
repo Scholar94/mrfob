@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PrivacyRequestCenter.jsx", "firestore.rules", "public/404.html",
+  "src/PrivacyRequestCenter.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md"
 ];
@@ -43,6 +43,8 @@ assert.ok(read("public/robots.txt").includes("sitemap.xml"), "Robots file does n
 assert.ok(traceability.includes("24-section master-prompt traceability register"), "24-section traceability register is missing");
 assert.ok(drive.includes("uploadFileToGoogleDrive"), "Google Drive upload integration is missing");
 assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"), "Firestore catch-all deny rule is missing");
+assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
+assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 
 const sourceFiles = fs.readdirSync("src").filter(file => /\.(jsx?|mjs)$/.test(file));
 for (const file of sourceFiles) {
