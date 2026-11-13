@@ -746,17 +746,19 @@ export default function Portal({ onClose }) {
           transaction.delete(oldSlotRef);
         }
         transaction.update(appointmentRef, { status, updatedAt: serverTimestamp() });
-        const notificationRef = doc(collection(db, "notifications"));
-        transaction.set(notificationRef, {
-          customerUid: item.customerUid,
-          appointmentId: id,
-          type: "appointment_update",
-          appointmentStatus: status,
-          title: status === "confirmed" ? "Your appointment is confirmed" : status === "completed" ? "Your appointment has been completed" : "Your appointment status has been updated",
-          message: status === "confirmed" ? "Your appointment date and time are confirmed. View My Appointments for the details." : status === "completed" ? "Your appointment has been marked as completed." : "The team updated your appointment status to " + status.replaceAll("_", " ") + ".",
-          createdAt: serverTimestamp(),
-          readAt: null
-        });
+        if (["confirmed", "alternative_proposed", "completed", "cancelled"].includes(status)) {
+          const notificationRef = doc(collection(db, "notifications"));
+          transaction.set(notificationRef, {
+            customerUid: item.customerUid,
+            appointmentId: id,
+            type: "appointment_update",
+            appointmentStatus: status,
+            title: status === "confirmed" ? "Your appointment is confirmed" : status === "completed" ? "Your appointment has been completed" : status === "alternative_proposed" ? "An alternative appointment has been proposed" : "Your appointment has been cancelled",
+            message: status === "confirmed" ? "Your appointment date and time are confirmed. View My Appointments for the details." : status === "completed" ? "Your appointment has been marked as completed." : status === "cancelled" ? "The team cancelled this appointment. Please contact us if you need another time." : "Please review the proposed appointment details in My Appointments.",
+            createdAt: serverTimestamp(),
+            readAt: null
+          });
+        }
       });
       setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
       setMessage(status === "confirmed" ? "Appointment confirmed and its date/time slot has been reserved." : "Appointment status updated.");
