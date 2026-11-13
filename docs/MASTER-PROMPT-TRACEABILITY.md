@@ -322,3 +322,6 @@
 
 
 - **2026-11-13 — Keyboard-accessible public dialogs:** privacy, terms and brand-music dialogs now move keyboard focus into the opened dialog, keep Tab/Shift+Tab navigation inside it, close on Escape, and restore focus to the control that opened the dialog. The handler is installed only while a dialog is open and is removed on close/unmount. This improves keyboard operation but does not constitute a full WCAG or screen-reader audit, and the customer portal's separate dialogs still require review. No Firestore rules changed. Build, keyboard and assistive-technology checks remain pending.
+
+
+- **2026-11-13 — POS receipt keyboard accessibility:** the sales receipt overlay now moves focus to its first action when opened, traps Tab and Shift+Tab within the receipt, closes on Escape and restores focus to the control that opened it. The key listener exists only while a receipt is open and is cleaned up when it closes. This is limited to the POS receipt dialog; it does not complete accessibility work for all portal panels or dialogs. No Firestore rules changed. Build, keyboard and assistive-technology checks remain pending.
