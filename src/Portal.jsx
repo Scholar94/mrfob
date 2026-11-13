@@ -594,9 +594,30 @@ export default function Portal({ onClose }) {
     setBusy(true); setError(""); setMessage("");
     try {
       const current = orders.find(item => item.id === id);
+      if (Object.prototype.hasOwnProperty.call(changes, "dueDate") && changes.dueDate) {
+        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(changes.dueDate) || Number.isNaN(Date.parse(changes.dueDate + "T00:00:00"))) {
+          throw new Error("Enter a valid expected delivery date.");
+        }
+      }
       const batch = writeBatch(db);
       batch.update(doc(db, "orders", id), { ...changes, updatedAt: serverTimestamp() });
       let stageNote = "";
+      if (Object.prototype.hasOwnProperty.call(changes, "dueDate") && current?.dueDate !== changes.dueDate) {
+        const hasDate = !!changes.dueDate;
+        const dateLabel = hasDate ? new Date(changes.dueDate + "T00:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" }) : "";
+        const notificationRef = doc(collection(db, "notifications"));
+        batch.set(notificationRef, {
+          customerUid: current.customerUid,
+          orderId: id,
+          orderNumber: current.orderNumber || id,
+          type: "delivery_date_update",
+          title: hasDate ? "Expected delivery date updated" : "Expected delivery date removed",
+          message: hasDate ? "The current expected delivery date for your order is " + dateLabel + ". Please note that this is an estimate and may change if the team contacts you." : "The expected delivery date for your order has been withdrawn. Please contact the team for an updated schedule.",
+          dueDate: changes.dueDate || "",
+          createdAt: serverTimestamp(),
+          readAt: null
+        });
+      }
       if (Object.prototype.hasOwnProperty.call(changes, "status") && current?.status !== changes.status) {
         stageNote = (window.prompt("Optional customer-visible production update for this stage") || "").trim().slice(0, 500);
         const eventRef = doc(collection(db, "orders", id, "events"));
@@ -1563,7 +1584,7 @@ export default function Portal({ onClose }) {
         {ordersLoading ? <p className="staff-empty">Loading orders…</p> : orders.length ? <div className="order-list">{orders.map(order=><article className="order-card" key={order.id}>
           <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
-          <div className="order-meta"><span>Delivery: {order.dueDate || "Not set"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>{order.amount !== undefined && <div className="order-financial-summary"><span>Paid: <b>₦{orderPaidTotal(order).toLocaleString("en-NG")}</b></span><span>Balance: <b>₦{Math.max(0,Number(order.amount||0)-orderPaidTotal(order)).toLocaleString("en-NG")}</b></span><button type="button" onClick={()=>printOrderInvoice(order)}>Print order invoice</button></div>}
+          <div className="order-meta"><span>Expected delivery: {order.dueDate ? new Date(order.dueDate + "T00:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "Not yet confirmed"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>{order.amount !== undefined && <div className="order-financial-summary"><span>Paid: <b>₦{orderPaidTotal(order).toLocaleString("en-NG")}</b></span><span>Balance: <b>₦{Math.max(0,Number(order.amount||0)-orderPaidTotal(order)).toLocaleString("en-NG")}</b></span><button type="button" onClick={()=>printOrderInvoice(order)}>Print order invoice</button></div>}
           {claims.superAdmin && (order.paymentStatus === "unquoted" || order.amount === undefined || order.quotationStatus === "declined") && <div className="order-quotation-editor"><strong>Prepare customer quotation</strong><div className="quotation-line-items"><strong>Quotation breakdown</strong>{QUOTE_LINE_ITEMS.map((label,index)=><label key={label}>{label} (₦)<input type="number" min="0" step="0.01" value={(quoteEdits[order.id]?.items || quotationItemsFor(order).map(line=>String(line.amount||"")))[index]} onChange={e=>updateQuotationLine(order,index,e.target.value)}/></label>)}<p>Calculated total: <b>₦{(quoteEdits[order.id]?.items || quotationItemsFor(order).map(line=>String(line.amount||""))).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></p></div><label>Quotation notes<textarea value={quoteEdits[order.id]?.note ?? order.quotationNote ?? ""} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],note:e.target.value}}))} placeholder="Fabric, fittings, deposit terms and scope"/></label><button type="button" disabled={busy} onClick={()=>sendOrderQuotation(order)}>Send quotation</button></div>}
           {order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span>{event.stageNote && <p>{event.stageNote}</p>}<small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"} · {event.changedByName || "Team"}</small></div>)}</div>}
           {canUpdateProduction ? <div className="order-controls">{claims.superAdmin && <><label>Expected delivery date<input type="date" value={deliveryDateEdits[order.id] ?? order.dueDate ?? ""} disabled={busy} onChange={e=>setDeliveryDateEdits(current=>({...current,[order.id]:e.target.value}))}/></label><button type="button" disabled={busy || (deliveryDateEdits[order.id] ?? order.dueDate ?? "") === (order.dueDate ?? "")} onClick={()=>updateOrder(order.id,{dueDate:deliveryDateEdits[order.id] || ""})}>Save delivery date</button></>}<label>Production stage<select value={order.status || "received"} disabled={busy} onChange={e=>updateOrder(order.id,{status:e.target.value})}>{PRODUCTION_STAGES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>{claims.superAdmin && <label>Payment status<select value={order.paymentStatus || "unpaid"} disabled={busy} onChange={e=>updateOrder(order.id,{paymentStatus:e.target.value})}><option value="unpaid">Unpaid</option><option value="awaiting_customer_approval">Awaiting quotation approval</option><option value="deposit_paid">Deposit paid</option><option value="part_paid">Part paid</option><option value="paid">Paid</option><option value="refunded">Refunded</option></select></label>}</div> : <div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span></div>}
