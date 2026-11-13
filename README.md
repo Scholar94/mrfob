@@ -167,3 +167,8 @@ Customer bank-transfer declarations require a JPG, PNG, WebP or PDF payment rece
 ## Customer referral programme
 
 Customers receive a shareable referral code and can submit a referral with the prospective customer's name and contact details. Customers see only their own referral submissions; the Super Admin can review all referrals and update status/notes. Referral status changes do not automatically award loyalty points. The Super Admin must verify the referred customer's eligibility and separately record any approved points in Customer loyalty and VIP benefits. Customers should only submit contact details they are authorised to share. Publish the latest Firestore rules before enabling the feature.
+
+
+## Corporate and bulk-order enquiries
+
+Customers can submit private enquiries for corporate uniforms, school uniforms, church/ministry outfits, wedding parties, events and other institutional orders. The form captures organisation, contact, quantity, preferred (unconfirmed) completion date, location and requirements. Customers can see their own request and the response; Super Admin and Fashion Manager can review all requests and update status/notes. This is a request-for-quotation workflow, not an automatic quote or a guaranteed production commitment.
