@@ -450,3 +450,14 @@ button:disabled{cursor:not-allowed}
 .institute-account-button:hover{background:#ffffff12}
 .institute-account-button:focus-visible{outline:3px solid #d6b36d;outline-offset:4px}
 @media(max-width:560px){.institute-actions{align-items:stretch;flex-direction:column}.institute-actions .button{width:100%}}
+
+
+/* Fashion Institute assessment grading form */
+.institute-grade-form{display:grid;grid-template-columns:minmax(120px,.55fr) minmax(180px,1.45fr);gap:12px;align-items:end;margin-top:14px;padding:14px;background:#faf7f1;border:1px solid #e7ded2;border-radius:10px}
+.institute-grade-form label{display:grid;gap:6px;font-size:12px;font-weight:600;color:#49383d}
+.institute-grade-form input,.institute-grade-form textarea{width:100%;min-width:0;padding:10px;border:1px solid #d9cfc4;border-radius:7px;background:#fff;color:#32151f;font:13px inherit}
+.institute-grade-form button{grid-column:1/-1;justify-self:start;padding:10px 15px;border:0;border-radius:7px;background:#32151f;color:#fff;font-weight:600;cursor:pointer}
+.institute-grade-form button:disabled{opacity:.55}
+.institute-assessment-result{margin-top:10px;padding:12px 14px;background:#f7f3ec;border-left:3px solid #a77d43}
+.institute-assessment-result p{margin:4px 0;white-space:pre-wrap}
+@media(max-width:620px){.institute-grade-form{grid-template-columns:1fr}.institute-grade-form button{grid-column:auto;justify-self:stretch}}
