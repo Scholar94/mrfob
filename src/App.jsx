@@ -6,6 +6,7 @@ import {
 import Portal from "./Portal.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
+import FabricCatalogue from "./FabricCatalogue.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 
@@ -200,6 +201,7 @@ export default function App() {
         <p className="category-disclaimer">This is a service and style category guide, not a live inventory or a confirmation that every design is currently available.</p>
       </section>
       <PublicWebsiteMedia />
+      <FabricCatalogue />
       <section className="quote-band"><div className="quote-mark">“</div><p>Our mission is simple: to make every customer feel <em>brand new and happy</em> through excellence and professional service.</p><span>THE MR FOP PROMISE</span></section>
       <section className="services section-pad" id="services">
         <div className="section-heading"><div><p className="eyebrow"><i/> OUR EXPERTISE</p><h2>Craft. Create. <em>Become.</em></h2></div><p>One fashion house. Three ways to bring your vision to life.</p></div>
