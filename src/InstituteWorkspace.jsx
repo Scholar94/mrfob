@@ -20,7 +20,7 @@ export default function InstituteWorkspace() {
   const [submissions, setSubmissions] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [assessmentSubmissions, setAssessmentSubmissions] = useState([]);
-  const [assessmentForm, setAssessmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", questions: "" });
+  const [assessmentForm, setAssessmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", assessmentType: "written", questions: "" });
   const [assessmentDrafts, setAssessmentDrafts] = useState({});
   const [assessmentGradeDrafts, setAssessmentGradeDrafts] = useState({});
   const [allEnrollments, setAllEnrollments] = useState([]);
@@ -431,14 +431,45 @@ export default function InstituteWorkspace() {
   async function createAssessment(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
-      const questions = assessmentForm.questions.split(/\r?\n/).map(q => q.trim()).filter(Boolean);
-      if (!assessmentForm.courseId || !assessmentForm.title.trim() || !questions.length) throw new Error("Choose a course, enter an assessment title and add at least one question (one per line).");
-      if (questions.length > 30) throw new Error("An assessment can contain up to 30 questions.");
+      if (!assessmentForm.courseId || !assessmentForm.title.trim()) throw new Error("Choose a course and enter an assessment title.");
+      let questions = [];
+      let correctOptions = [];
+      if (assessmentForm.assessmentType === "objective") {
+        const rows = assessmentForm.questions.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        if (!rows.length) throw new Error("Add at least one objective question.");
+        if (rows.length > 30) throw new Error("An assessment can contain up to 30 questions.");
+        rows.forEach((line, index) => {
+          const parts = line.split("|").map(part => part.trim());
+          if (parts.length !== 6) throw new Error("Objective question " + (index + 1) + " must contain a question, four options and the correct letter, separated by |.");
+          const [text, ...tail] = parts;
+          const correct = tail.pop().toUpperCase();
+          const options = tail;
+          if (!text || options.some(option => !option) || new Set(options.map(option => option.toLowerCase())).size !== 4 || !["A","B","C","D"].includes(correct)) {
+            throw new Error("Check objective question " + (index + 1) + ": provide four different options and a correct letter A, B, C or D.");
+          }
+          questions.push({ text, options });
+          correctOptions.push(correct);
+        });
+      } else {
+        questions = assessmentForm.questions.split(/\r?\n/).map(q => q.trim()).filter(Boolean);
+        if (!questions.length) throw new Error("Add at least one written question (one per line).");
+        if (questions.length > 30) throw new Error("An assessment can contain up to 30 questions.");
+      }
       const course = courses.find(c => c.id === assessmentForm.courseId);
+      if (!course) throw new Error("Select a valid course.");
       const dueAt = assessmentForm.dueDate ? Timestamp.fromDate(new Date(assessmentForm.dueDate + "T23:59:59")) : null;
       if (dueAt && dueAt.toDate() < new Date()) throw new Error("The assessment due date cannot be in the past.");
-      await addDoc(collection(db, "instituteAssessments"), { courseId:course.id, courseTitle:course.title, title:assessmentForm.title.trim(), instructions:assessmentForm.instructions.trim(), dueDate:assessmentForm.dueDate || "", dueAt, questions, published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
-      setAssessmentForm({ courseId:"", title:"", instructions:"", dueDate:"", questions:"" }); setNotice("Assessment published. Responses will be manually graded by authorized teaching staff."); await load();
+      const assessmentRef = doc(collection(db, "instituteAssessments"));
+      const batch = writeBatch(db);
+      const assessmentData = { courseId:course.id, courseTitle:course.title, title:assessmentForm.title.trim(), instructions:assessmentForm.instructions.trim(), dueDate:assessmentForm.dueDate || "", dueAt, questions, assessmentType:assessmentForm.assessmentType, published:true, createdBy:user.uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp() };
+      batch.set(assessmentRef, assessmentData);
+      if (assessmentForm.assessmentType === "objective") {
+        batch.set(doc(db, "instituteAssessmentAnswerKeys", assessmentRef.id), { assessmentId:assessmentRef.id, courseId:course.id, correctOptions, pointsPerQuestion:10, createdBy:user.uid, createdAt:serverTimestamp() });
+      }
+      await batch.commit();
+      setAssessmentForm({ courseId:"", title:"", instructions:"", dueDate:"", assessmentType:"written", questions:"" });
+      setNotice(assessmentForm.assessmentType === "objective" ? "Objective assessment published. Correct answers are stored separately and will be marked by the secure grading service." : "Written assessment published. Responses will be manually graded by authorized teaching staff.");
+      await load();
     } catch(e) { setError(e.message || "Could not publish assessment."); } finally { setBusy(false); }
   }
 
@@ -450,8 +481,24 @@ export default function InstituteWorkspace() {
       if (answers.some(a => !a)) throw new Error("Answer every question before submitting.");
       if (assessmentSubmissions.some(s => s.assessmentId === item.id && s.studentUid === user.uid)) throw new Error("You have already submitted this assessment.");
       const submissionId = user.uid + "_" + item.id;
-      await setDoc(doc(db, "instituteAssessmentSubmissions", submissionId), { assessmentId:item.id, courseId:item.courseId, assessmentTitle:item.title, studentUid:user.uid, studentName:user.displayName || user.email || "Student", answers, status:"submitted", submittedAt:serverTimestamp(), createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
-      setNotice("Assessment submitted successfully."); await load();
+      if (item.assessmentType === "objective") {
+        const endpoint = import.meta.env.VITE_ASSESSMENT_GRADING_URL;
+        if (!endpoint) throw new Error("The secure assessment grading service has not been configured yet. Please contact the Institute.");
+        const idToken = await user.getIdToken();
+        await fetch(endpoint, { method:"POST", mode:"no-cors", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify({ action:"submitObjectiveAssessment", idToken, assessmentId:item.id, answers }) });
+        let saved = false;
+        for (let attempt=0; attempt<10; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const result = await getDoc(doc(db, "instituteAssessmentSubmissions", submissionId));
+          if (result.exists()) { saved = true; break; }
+        }
+        if (!saved) throw new Error("Your submission request was sent, but the grading result has not appeared yet. Refresh your account shortly; if it remains missing, contact the Institute.");
+        setNotice("Objective assessment submitted and automatically marked. Your score is now available.");
+      } else {
+        await setDoc(doc(db, "instituteAssessmentSubmissions", submissionId), { assessmentId:item.id, courseId:item.courseId, assessmentTitle:item.title, studentUid:user.uid, studentName:user.displayName || user.email || "Student", answers, status:"submitted", submittedAt:serverTimestamp(), createdAt:serverTimestamp(), updatedAt:serverTimestamp() });
+        setNotice("Written assessment submitted successfully. It will be graded by authorized teaching staff.");
+      }
+      await load();
     } catch(e) { setError(e.message || "Could not submit assessment."); } finally { setBusy(false); }
   }
 
@@ -869,13 +916,15 @@ export default function InstituteWorkspace() {
       <h4>Publish a student assessment</h4>
       <label>Course<select required value={assessmentForm.courseId} onChange={e=>setAssessmentForm({...assessmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? activeCourses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : activeCourses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
       <label>Assessment title<input required value={assessmentForm.title} onChange={e=>setAssessmentForm({...assessmentForm,title:e.target.value})}/></label>
+      <label>Assessment type<select value={assessmentForm.assessmentType} onChange={e=>setAssessmentForm({...assessmentForm,assessmentType:e.target.value,questions:""})}><option value="written">Written / descriptive (manual grading)</option><option value="objective">Objective / multiple choice (automatic grading)</option></select></label>
       <label>Instructions<textarea rows="3" value={assessmentForm.instructions} onChange={e=>setAssessmentForm({...assessmentForm,instructions:e.target.value})}/></label>
       <label>Due date (optional)<input type="date" value={assessmentForm.dueDate} onChange={e=>setAssessmentForm({...assessmentForm,dueDate:e.target.value})}/></label>
-      <label>Questions (one question per line)<textarea required rows="7" value={assessmentForm.questions} onChange={e=>setAssessmentForm({...assessmentForm,questions:e.target.value})} placeholder="Explain the basic tools used in garment construction.&#10;Describe the steps in taking body measurements."/></label>
+      <label>{assessmentForm.assessmentType === "objective" ? "Objective questions (one per line)" : "Written questions (one per line)"}<textarea required rows="7" value={assessmentForm.questions} onChange={e=>setAssessmentForm({...assessmentForm,questions:e.target.value})} placeholder={assessmentForm.assessmentType === "objective" ? "What is a basic hand-sewing tool? | Needle | Ruler | Chalk | Tape | A&#10;Which tool measures body dimensions? | Scissors | Tape measure | Thimble | Iron | B" : "Explain the basic tools used in garment construction.&#10;Describe the steps in taking body measurements."}/></label>
+      {assessmentForm.assessmentType === "objective" && <p className="staff-help">Format each line exactly as: Question | Option A | Option B | Option C | Option D | Correct letter (A-D). Correct answers are stored separately and never included in the student-facing assessment.</p>}
       <button className="portal-submit" disabled={busy||!courses.length}>Publish assessment</button>
     </form>}
-    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My assessments</h4>{assessments.map(a=>{const prior=assessmentSubmissions.find(s=>s.assessmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle}{a.dueDate?" · Due "+a.dueDate:""}</span>{a.instructions&&<p>{a.instructions}</p>}{prior?<div><p>Submission: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}{prior.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}</div>:<div>{a.questions.map((q,i)=><label key={i}>Q{i+1}. {q}<textarea rows="3" value={assessmentDrafts[a.id+"_"+i]||""} onChange={e=>setAssessmentDrafts(v=>({...v,[a.id+"_"+i]:e.target.value}))}/></label>)}<button type="button" disabled={busy} onClick={()=>submitAssessment(a)}>Submit assessment</button></div>}</article>})}{!assessments.length&&<p className="staff-empty">No assessments are available for your paid courses.</p>}</section>}
-    {(isAdmin || isInstructor) && <section className="institute-window-list"><h4>Assessment submissions & grading</h4>{assessmentSubmissions.length?assessmentSubmissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assessmentTitle}</strong><span>{sub.studentName} · {sub.status}</span>{sub.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}{sub.status==="graded"?<div className="institute-assessment-result"><p><strong>Score:</strong> {sub.score}/{sub.maxScore}</p>{sub.feedback&&<p><strong>Feedback:</strong> {sub.feedback}</p>}</div>:<form className="institute-grade-form" onSubmit={e=>{e.preventDefault();gradeAssessment(sub);}}><label>Score (maximum {sub.answers.length*10})<input type="number" min="0" max={sub.answers.length*10} step="0.5" required value={assessmentGradeDrafts[sub.id]?.score ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),score:e.target.value}}))}/></label><label>Instructor feedback (optional)<textarea rows="2" maxLength="1200" value={assessmentGradeDrafts[sub.id]?.feedback ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),feedback:e.target.value}}))}/></label><button type="submit" disabled={busy}>Save grade and feedback</button></form>}</article>):<p className="staff-empty">No assessment submissions yet.</p>}</section>}
+    {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My assessments</h4>{assessments.map(a=>{const prior=assessmentSubmissions.find(s=>s.assessmentId===a.id);return <article className="appointment-card" key={a.id}><strong>{a.title}</strong><span>{a.courseTitle}{a.dueDate?" · Due "+a.dueDate:""}</span>{a.instructions&&<p>{a.instructions}</p>}{prior?<div><p>Submission: {prior.status}</p>{prior.status==="graded"&&<p>Score: {prior.score}/{prior.maxScore} · {prior.feedback}</p>}{prior.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}</div>:<div>{a.questions.map((q,i)=><div className="institute-assessment-question" key={i}><strong>Q{i+1}. {typeof q === "string" ? q : q.text}</strong>{typeof q === "string" ? <textarea rows="3" aria-label={"Answer question "+(i+1)} value={assessmentDrafts[a.id+"_"+i]||""} onChange={e=>setAssessmentDrafts(v=>({...v,[a.id+"_"+i]:e.target.value}))}/> : <div className="institute-objective-options">{q.options.map((option,optionIndex)=>{const letter=["A","B","C","D"][optionIndex];return <label key={letter}><input type="radio" name={a.id+"_question_"+i} value={letter} checked={(assessmentDrafts[a.id+"_"+i]||"")===letter} onChange={e=>setAssessmentDrafts(v=>({...v,[a.id+"_"+i]:e.target.value}))}/><span><b>{letter}.</b> {option}</span></label>;})}</div>}</div>)}<button type="button" disabled={busy} onClick={()=>submitAssessment(a)}>Submit assessment</button></div>}</article>})}{!assessments.length&&<p className="staff-empty">No assessments are available for your paid courses.</p>}</section>}
+    {(isAdmin || isInstructor) && <section className="institute-window-list"><h4>Assessment submissions & grading</h4>{assessmentSubmissions.length?assessmentSubmissions.map(sub=><article className="appointment-card" key={sub.id}><strong>{sub.assessmentTitle}</strong><span>{sub.studentName} · {sub.status}</span>{sub.answers?.map((answer,i)=><p key={i}>Q{i+1}: {answer}</p>)}{sub.status==="graded"?<div className="institute-assessment-result"><p><strong>Score:</strong> {sub.score}/{sub.maxScore}</p>{sub.gradingMode==="automatic"&&<p><strong>Grading:</strong> Automatically marked objective assessment</p>}{sub.feedback&&<p><strong>Feedback:</strong> {sub.feedback}</p>}</div>:<form className="institute-grade-form" onSubmit={e=>{e.preventDefault();gradeAssessment(sub);}}><label>Score (maximum {sub.answers.length*10})<input type="number" min="0" max={sub.answers.length*10} step="0.5" required value={assessmentGradeDrafts[sub.id]?.score ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),score:e.target.value}}))}/></label><label>Instructor feedback (optional)<textarea rows="2" maxLength="1200" value={assessmentGradeDrafts[sub.id]?.feedback ?? ""} onChange={e=>setAssessmentGradeDrafts(current=>({...current,[sub.id]:{...(current[sub.id]||{}),feedback:e.target.value}}))}/></label><button type="submit" disabled={busy}>Save grade and feedback</button></form>}</article>):<p className="staff-empty">No assessment submissions yet.</p>}</section>}
     {(isAdmin || isInstructor) && <form className="portal-form" onSubmit={createAssignment}>
       <h4>Publish a course assignment</h4>
       <label>Course<select required value={assignmentForm.courseId} onChange={e=>setAssignmentForm({...assignmentForm,courseId:e.target.value})}><option value="">Choose course</option>{(isInstructor ? activeCourses.filter(c=>instructorAssignments.some(a=>a.courseId===c.id&&a.active)) : activeCourses).map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
