@@ -2,6 +2,7 @@ const DRIVE_API = "https://www.googleapis.com/drive/v3";
 let tokenClient;
 let accessToken = "";
 let tokenExpiresAt = 0;
+let accessTokenScope = "";
 
 function loadGoogleIdentity() {
   return new Promise((resolve, reject) => {
@@ -23,15 +24,15 @@ function loadGoogleIdentity() {
   });
 }
 
-async function getDriveToken() {
+async function getDriveToken(scope = "https://www.googleapis.com/auth/drive") {
   const clientId = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID;
   if (!clientId) throw new Error("Google Drive is not configured. Add VITE_GOOGLE_DRIVE_CLIENT_ID.");
-  if (accessToken && Date.now() < tokenExpiresAt - 60000) return accessToken;
+  if (accessToken && accessTokenScope === scope && Date.now() < tokenExpiresAt - 60000) return accessToken;
   await loadGoogleIdentity();
   return new Promise((resolve, reject) => {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
-      scope: "https://www.googleapis.com/auth/drive",
+      scope,
       callback: response => {
         if (response.error || !response.access_token) {
           reject(new Error(response.error_description || response.error || "Google Drive authorization was not completed."));
