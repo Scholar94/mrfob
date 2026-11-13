@@ -514,6 +514,8 @@ export default function Portal({ onClose }) {
       const measurementSnapshot = await getDocs(collection(db, "measurements"));
       setAllMeasurements(measurementSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       if (claims.superAdmin || claims.staffRole === "manager") {
+        const userSnapshot = await getDocs(collection(db, "users"));
+        setCustomers(userSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (a.displayName || "").localeCompare(b.displayName || "")));
         const trainingSnapshot = await getDocs(collection(db, "trainingEnquiries"));
         setAllTrainingEnquiries(trainingSnapshot.docs.map(item => ({ id: item.id, ...item.data() })).sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
       } else setAllTrainingEnquiries([]);
@@ -523,7 +525,7 @@ export default function Portal({ onClose }) {
   async function saveDesignerMeasurement(e) {
     e.preventDefault();
     if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) return;
-    const customer = allMeasurements.find(item => item.customerUid === designerMeasurementForm.customerUid);
+    const customer = customers.find(item => item.uid === designerMeasurementForm.customerUid) || allMeasurements.find(item => item.customerUid === designerMeasurementForm.customerUid);
     if (!customer) { setError("Select a customer with an existing measurement profile."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
@@ -540,7 +542,7 @@ export default function Portal({ onClose }) {
       const noticeRef = doc(collection(db, "notifications"));
       const batch = writeBatch(db);
       batch.set(measurementRef, {
-        customerUid: customer.customerUid, customerName: customer.customerName || "Customer",
+        customerUid: customer.uid || customer.customerUid, customerName: customer.displayName || customer.customerName || "Customer",
         profileName, garmentType: designerMeasurementForm.garmentType, ...values,
         notes: designerMeasurementForm.notes.trim(), entrySource: "designer",
         createdByUid: user.uid, createdByName: user.displayName || user.email || "Authorized designer",
@@ -548,7 +550,7 @@ export default function Portal({ onClose }) {
         createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
       batch.set(noticeRef, {
-        customerUid: customer.customerUid, measurementId: measurementRef.id,
+        customerUid: customer.uid || customer.customerUid, measurementId: measurementRef.id,
         type: "measurement_review", verificationStatus: "pending",
         title: "A designer recorded measurements for you",
         message: "A new " + designerMeasurementForm.garmentType + " measurement profile was recorded by the MR FOP team. Please review it in your account and contact the team if any detail needs correction.",
@@ -1850,7 +1852,7 @@ export default function Portal({ onClose }) {
       {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Designer-entered measurements</h3><p>Record an in-studio fitting for a customer with an existing measurement profile. Values are stored in centimetres.</p></div></div>
         <form className="portal-form inventory-form" onSubmit={saveDesignerMeasurement}>
-          <label>Customer<select required value={designerMeasurementForm.customerUid} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,customerUid:e.target.value})}><option value="">Select a measurement customer</option>{[...new Map(allMeasurements.map(item=>[item.customerUid,item])).values()].map(item=><option key={item.customerUid} value={item.customerUid}>{item.customerName || "Customer"} · {item.customerUid.slice(0,8)}</option>)}</select></label>
+          <label>Customer<select required value={designerMeasurementForm.customerUid} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,customerUid:e.target.value})}><option value="">Select a measurement customer</option>{[...new Map([...customers.map(item=>({customerUid:item.uid,customerName:item.displayName || item.email || "Customer"})),...allMeasurements.map(item=>({customerUid:item.customerUid,customerName:item.customerName || "Customer"}))].map(item=>[item.customerUid,item])).values()].map(item=><option key={item.customerUid} value={item.customerUid}>{item.customerName} · {item.customerUid.slice(0,8)}</option>)}</select></label>
           <label>Profile name<input maxLength={60} value={designerMeasurementForm.profileName} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,profileName:e.target.value})} placeholder="e.g. In-studio suit fitting"/></label>
           <label>Garment profile<select value={designerMeasurementForm.garmentType} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
           <label>Input unit<select value={designerMeasurementForm.unit} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
@@ -1858,7 +1860,7 @@ export default function Portal({ onClose }) {
           <MeasurementGuide garmentType={designerMeasurementForm.garmentType}/>
           <label>Fitting notes<textarea maxLength={1000} value={designerMeasurementForm.notes} onChange={e=>setDesignerMeasurementForm({...designerMeasurementForm,notes:e.target.value})} placeholder="Record fitting observations or customer-approved adjustments"/></label>
           <p className="portal-hint">The customer receives an in-app notification. This entry is marked as pending review; it does not authorize cutting or production until the measurements are confirmed.</p>
-          <button className="portal-submit" disabled={busy || !allMeasurements.some(item=>item.customerUid===designerMeasurementForm.customerUid)}>{busy ? "Saving measurements…" : "Save designer-entered measurements"}</button>
+          <button className="portal-submit" disabled={busy || !(customers.some(item=>item.uid===designerMeasurementForm.customerUid) || allMeasurements.some(item=>item.customerUid===designerMeasurementForm.customerUid))}>{busy ? "Saving measurements…" : "Save designer-entered measurements"}</button>
         </form>
       </section>}
       {(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole)) && <section className="customer-management">
