@@ -855,3 +855,21 @@ button:disabled{cursor:not-allowed}
 .customer-product-thumbnails button.active { border: 2px solid #a7834c; }
 .customer-product-thumbnails img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
 .customer-product-card .inventory-product-info p { line-height: 1.5; }
+
+
+/* Customer refund request and Finance refund record */
+.refund-management { margin-top: 22px; }
+.refund-request-form { margin: 16px 0 22px; }
+.refund-record-list { display: grid; gap: 12px; margin-top: 16px; }
+.refund-record-card { padding: 16px; border: 1px solid #e6ddd3; border-radius: 13px; background: #fff; }
+.refund-record-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.refund-status { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: #f2eee9; color: #4c3c36; font-size: 12px; text-transform: capitalize; }
+.refund-paid { background: #e8f4eb; color: #245a34; }
+.refund-rejected { background: #f9eeee; color: #843939; }
+.refund-record-card p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.refund-record-card small { display: block; margin-top: 7px; color: #786d68; }
+.refund-review-note { padding: 10px; background: #faf7f1; border-left: 3px solid #b99a64; }
+.refund-admin-controls { display: grid; gap: 10px; margin-top: 14px; }
+.refund-admin-controls label { display: grid; gap: 6px; font-size: 13px; }
+.refund-admin-controls input, .refund-admin-controls select, .refund-admin-controls textarea { width: 100%; padding: 10px; border: 1px solid #d9d0c7; border-radius: 8px; font: inherit; }
+.refund-admin-controls button { justify-self: start; padding: 10px 14px; border: 0; border-radius: 8px; background: #32151f; color: #fff; }
