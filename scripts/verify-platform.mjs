@@ -47,6 +47,8 @@ assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
+assert.ok(portal.includes("galleryImages") && portal.includes("availableColors") && portal.includes("fabricOptions") && portal.includes("customizationOptions"), "Product gallery and customisation fields are missing");
+assert.ok(rules.includes("galleryImages") && rules.includes("availableColors") && rules.includes("fabricOptions") && rules.includes("customizationOptions"), "Product gallery fields are not protected by Firestore rules");
 assert.ok(app.includes("StyleRecommendations") && app.includes("createWhatsAppLink={whatsappLink}"), "Public style recommendation tool is not mounted");
 assert.ok(app.includes("FabricCatalogue") && app.includes("<FabricCatalogue />"), "Public fabric gallery is not mounted");
 assert.ok(portal.includes("FabricCatalogue admin"), "Super Admin fabric management is not mounted");
