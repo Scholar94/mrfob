@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction } from "firebase/firestore";
+import { addDoc, collection, getDocs, getDoc, query, serverTimestamp, Timestamp, updateDoc, doc, where, setDoc, runTransaction, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -523,13 +523,23 @@ export default function InstituteWorkspace() {
       const certificateId = enrollment.studentUid + "_" + enrollment.courseId;
       if (allCertificates.some(item => item.id === certificateId)) throw new Error("A certificate has already been issued for this student and course.");
       const certificateRef = "MFO-CERT-" + Date.now().toString(36).toUpperCase();
-      await setDoc(doc(db, "instituteCertificates", certificateId), {
+      const issuedAt = serverTimestamp();
+      const certificateData = {
         certificateRef, studentUid: enrollment.studentUid, studentId: enrollment.studentId || "",
         studentName: enrollment.studentName || enrollment.studentEmail || "Student",
         courseId: enrollment.courseId, courseTitle: enrollment.courseTitle || "Fashion training",
         windowId: enrollment.windowId || "", windowTitle: enrollment.windowTitle || "",
-        status: "issued", issuedAt: serverTimestamp(), issuedBy: user.uid, createdAt: serverTimestamp()
-      });
+        status: "issued", issuedAt, issuedBy: user.uid, createdAt: issuedAt
+      };
+      const publicCertificateData = {
+        certificateRef, studentName: certificateData.studentName, courseTitle: certificateData.courseTitle,
+        windowTitle: certificateData.windowTitle, status: "issued", issuedAt,
+        updatedAt: issuedAt
+      };
+      const batch = writeBatch(db);
+      batch.set(doc(db, "instituteCertificates", certificateId), certificateData);
+      batch.set(doc(db, "publicCertificateVerifications", certificateRef), publicCertificateData);
+      await batch.commit();
       setCertificateEnrollmentId("");
       setNotice("Certificate issued: " + certificateRef + ". Confirm course completion before issuing.");
       await load();
@@ -542,10 +552,19 @@ export default function InstituteWorkspace() {
     if (certificate.status !== "issued") { setError("Only an issued certificate can be revoked."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
-      await updateDoc(doc(db, "instituteCertificates", certificate.id), {
+      const revokedAt = serverTimestamp();
+      const batch = writeBatch(db);
+      batch.update(doc(db, "instituteCertificates", certificate.id), {
         status: "revoked", revocationReason: reason, revokedBy: user.uid,
-        revokedAt: serverTimestamp(), updatedAt: serverTimestamp()
+        revokedAt, updatedAt: revokedAt
       });
+      batch.set(doc(db, "publicCertificateVerifications", certificate.certificateRef), {
+        certificateRef: certificate.certificateRef, studentName: certificate.studentName || "Student",
+        courseTitle: certificate.courseTitle || "Fashion training", windowTitle: certificate.windowTitle || "",
+        status: "revoked", issuedAt: certificate.issuedAt || null, revokedAt,
+        revocationReason: reason, updatedAt: revokedAt
+      }, { merge: true });
+      await batch.commit();
       setCertificateRevocationDrafts(current => { const next = { ...current }; delete next[certificate.id]; return next; });
       setNotice("Certificate " + certificate.certificateRef + " has been marked revoked. Its record has been retained.");
       await load();
@@ -702,7 +721,7 @@ export default function InstituteWorkspace() {
         {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
       <button type="button" disabled={busy||!certificateEnrollmentId} onClick={issueCertificate}>Issue course completion certificate</button>
-      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
+      {allCertificates.length?allCertificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.studentName} · {c.courseTitle}</span><p>Status: {c.status} · {c.windowTitle}</p><p className="certificate-public-reference">Public verification reference: <strong>{c.certificateRef}</strong></p>{c.status==="issued"?<><button type="button" disabled={busy} onClick={()=>printCertificate(c)}>Print certificate</button><div className="certificate-revoke-form"><label>Reason for revocation<input value={certificateRevocationDrafts[c.id]||""} maxLength="500" placeholder="Explain why this certificate must be withdrawn" onChange={e=>setCertificateRevocationDrafts(current=>({...current,[c.id]:e.target.value}))}/></label><button type="button" disabled={busy} onClick={()=>revokeCertificate(c)}>Revoke certificate</button></div></>:<p className="certificate-revoked-note"><strong>Revoked.</strong> {c.revocationReason || "No reason recorded."}</p>}</article>):<p className="staff-empty">No certificates have been issued yet.</p>}
       <small>Issue a certificate only after independently confirming that the student has completed the required training and assessments.</small>
     </section>}
     {!isAdmin && !isInstructor && <section className="institute-window-list"><h4>My certificates</h4>{certificates.length?certificates.map(c=><article className="appointment-card" key={c.id}><strong>{c.certificateRef}</strong><span>{c.courseTitle} · {c.windowTitle}</span><p>Status: {c.status} · Issued {c.issuedAt?.toDate ? c.issuedAt.toDate().toLocaleDateString() : "date pending"}</p>{c.status==="issued"&&<button type="button" onClick={()=>printCertificate(c)}>Print certificate</button>}</article>):<p className="staff-empty">Certificates will appear here after the Institute confirms course completion and issues them.</p>}</section>}
