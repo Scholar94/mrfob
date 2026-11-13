@@ -625,3 +625,26 @@ button:disabled{cursor:not-allowed}
 
 /* Google Drive production media */
 .production-photo-grid iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#111}.production-photo-grid img{max-width:100%;height:auto;object-fit:cover}
+
+
+/* Public website media gallery and admin publishing workspace */
+.site-media-section { background: #f7f4ef; }
+.site-media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 22px; }
+.site-media-card { margin: 0; overflow: hidden; background: #fff; border: 1px solid rgba(38,32,26,.1); }
+.site-media-card img, .site-media-card iframe { display: block; width: 100%; aspect-ratio: 4 / 3; border: 0; object-fit: cover; background: #171717; }
+.site-media-card > div { padding: 17px 18px 20px; }
+.site-media-card h3 { margin: 0 0 7px; }
+.site-media-card p { margin: 0 0 10px; color: #6d665e; line-height: 1.6; }
+.site-media-card small { color: #9a7948; text-transform: uppercase; letter-spacing: .09em; font-size: .7rem; }
+.website-media-manager { margin: 28px 0; padding: 24px; border: 1px solid rgba(38,32,26,.14); background: #fff; }
+.website-media-manager .portal-form { max-width: 760px; margin: 18px 0 28px; }
+.website-media-manager .portal-form label { display: grid; gap: 7px; margin: 12px 0; }
+.website-media-manager .portal-form input, .website-media-manager .portal-form textarea, .website-media-manager .portal-form select { width: 100%; }
+.website-media-admin-list { display: grid; gap: 10px; }
+.website-media-admin-list > article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border: 1px solid rgba(38,32,26,.12); }
+.website-media-admin-list p { margin: 5px 0; color: #756d64; }
+.website-media-admin-list small { color: #8c8379; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .website-media-manager { padding: 16px; }
+  .website-media-admin-list > article { align-items: flex-start; flex-direction: column; }
+}
