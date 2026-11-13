@@ -59,6 +59,13 @@ The initial role document must be created by the project owner in Firebase Conso
 - Tailor access to order records, event history, reference designs and production media is restricted to orders assigned to that Tailor.
 - Review and test the rules in Firebase Emulator before production data is added. Deploy updated rules with `firebase deploy --only firestore:rules` before relying on the new permission boundaries.
 
+## Customer saved designs and verified reviews
+
+- Signed-in customers can save or remove catalogue products in their own `customerFavourites/{uid}/items/{productId}` subcollection. Firestore rules prevent one customer from reading or changing another customer's saved designs.
+- A customer can submit one 1–5-star review with a 10–1,000-character comment only for an order whose production status is `delivered`. The review document ID is the order ID, preventing duplicate reviews for that order.
+- New reviews remain private in `pending` moderation status. Super Admin and Fashion Manager can approve or reject them in the account portal. Only approved reviews are publicly readable and shown on the homepage; the public view displays the first name, rating and comment.
+- Publish the current `firestore.rules` before enabling these features. Test customer ownership, delivered-order eligibility, duplicate prevention, manager moderation and anonymous public access in the Firebase Emulator and with separate live accounts.
+
 ## Approved branding assets
 The three supplied and approved logo images are committed under `public/` and wired into the live application:
 1. `mr-fop-website-logo.webp` — public website header and footer.
