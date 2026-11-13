@@ -93,3 +93,13 @@ No billing account has been connected or paid service enabled by this code. Fire
 6. Redeploy the GitHub Pages site. On first upload, staff authorize Google Drive access. Files are uploaded directly to the shared folder.
 
 All uploaders must sign in with a Google account that has Editor access to the shared folder. Customer viewing of private media requires sharing the individual file with the customer's Google account. Google Drive storage quotas and file-size limits apply; no paid Google Cloud billing is required for this Drive API integration.
+
+
+## Public website media publishing
+- Only Super Admin and Manager (the existing Admin-equivalent staff role) can upload, publish, unpublish or remove public website media.
+- The media manager is available inside the account portal. It uploads images and videos directly to the configured Google Drive folder.
+- New website media is saved as a private draft. Publishing grants Google Drive `anyone: reader` access to that individual file and exposes its metadata in the public `siteMedia` collection. Unpublishing revokes that public Drive permission.
+- Public visitors can view published media without creating an account or supplying an email address.
+- Customer-specific garment production photos and videos remain in the order's private progress updates. They are not made public by the website media publisher.
+- Firestore rules permit anonymous reads only for documents marked both `published: true` and `visibility: 'public'`; media publishing mutations are limited to Super Admin and Manager.
+- Website media supports JPG, PNG, WebP, MP4, WebM and MOV. Image limit: 20 MB. Video limit: 100 MB.
