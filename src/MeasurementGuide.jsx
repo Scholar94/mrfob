@@ -35,6 +35,21 @@ const guides = {
     title: "Blouse",
     focus: ["Bust", "Waist", "Shoulder", "Sleeve", "Armhole", "Blouse length"],
     steps: ["Bust: measure around the fullest bust point, keeping the tape level.", "Waist: measure around the natural waistline.", "Shoulder: measure between shoulder points across the back.", "Sleeve: measure from shoulder point to the desired sleeve end.", "Armhole: measure around the shoulder joint/armhole path without pulling tight.", "Blouse length: measure from the agreed shoulder or neckline point to the desired hem."]
+  },
+  "Agbada": {
+    title: "Agbada and inner top",
+    focus: ["Neck", "Shoulder", "Chest", "Sleeve", "Inner top length"],
+    steps: ["Neck: measure around the base of the neck without tightening.", "Shoulder: measure point to point across the back.", "Chest and abdomen: measure around each level with the tape horizontal.", "Sleeve: measure from shoulder point to the agreed sleeve end.", "Inner top length: confirm the intended length with the designer before measuring from the shoulder reference point."]
+  },
+  "Senator wear": {
+    title: "Senator top and trousers",
+    focus: ["Top chest and length", "Sleeve", "Trouser waist", "Hip", "Inseam and outseam"],
+    steps: ["Take the top measurements at the chest, waist and abdomen with the arms relaxed.", "Measure shoulder width and sleeve length from agreed shoulder and cuff points.", "Measure trouser waist where the waistband will sit, then full hip and thigh.", "Measure inseam from crotch to hem and outseam from waistband to hem.", "Confirm rise, crotch depth and ankle opening with the designer."]
+  },
+  "Bridal / Special occasion": {
+    title: "Bridal and special occasion",
+    focus: ["Bust", "Underbust", "Waist", "Hip", "Bust separation", "Garment length"],
+    steps: ["Measure bust and underbust separately without compressing the body.", "Measure natural and upper waist at the agreed garment reference levels.", "Measure full hip and shoulder width with the tape level.", "Measure shoulder-to-bust point, bust separation, front waist length and back waist length carefully.", "Agree the neckline, footwear, hem and garment starting point with the designer before recording final length."]
   }
 };
 
