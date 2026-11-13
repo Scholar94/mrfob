@@ -128,6 +128,29 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /supportTickets/{ticketId} {
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['customerUid','customerName','customerEmail','category','subject','message','status','staffReply','createdAt','updatedAt'])
+        && request.resource.data.category in ['Order enquiry','Appointment','Quotation or payment','Measurements or fitting','Fashion Institute','Complaint or other']
+        && request.resource.data.subject is string && request.resource.data.subject.size() >= 4 && request.resource.data.subject.size() <= 120
+        && request.resource.data.message is string && request.resource.data.message.size() >= 10 && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'open'
+        && request.resource.data.staffReply == ''
+        && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow update: if (isSuperAdmin() || isStaff())
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.subject == resource.data.subject
+        && request.resource.data.message == resource.data.message
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['staffReply','repliedBy','repliedAt','status','statusUpdatedBy','updatedAt'])
+        && request.resource.data.status in ['open','in_progress','closed']
+        && request.resource.data.updatedAt is timestamp
+        && (!('staffReply' in request.resource.data) || (request.resource.data.staffReply is string && request.resource.data.staffReply.size() <= 2000))
+        && (!('repliedBy' in request.resource.data) || request.resource.data.repliedBy == request.auth.uid);
+      allow delete: if isSuperAdmin();
+    }
+
     match /publicSettings/{settingId} {
       allow read: if signedIn() && settingId == 'paymentInstructions';
       allow create, update: if isSuperAdmin() && settingId == 'paymentInstructions'
