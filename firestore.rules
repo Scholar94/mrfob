@@ -180,6 +180,15 @@ service cloud.firestore {
           )
         ) || (
           isSuperAdmin()
+          && request.resource.data.type == 'training_update'
+          && request.resource.data.keys().hasOnly(['customerUid','trainingEnquiryId','type','trainingStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.trainingEnquiryId is string
+          && getAfter(/databases/$(database)/documents/trainingEnquiries/$(request.resource.data.trainingEnquiryId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/trainingEnquiries/$(request.resource.data.trainingEnquiryId)).data.status == request.resource.data.trainingStatus
+          && request.resource.data.trainingStatus in ['pending','contacted','accepted','declined','completed']
+        ) || (
+          isSuperAdmin()
           && request.resource.data.type == 'appointment_update'
           && request.resource.data.keys().hasOnly(['customerUid','appointmentId','type','appointmentStatus','title','message','createdAt','readAt'])
           && request.resource.data.customerUid is string
