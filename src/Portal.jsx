@@ -17,6 +17,7 @@ import ReferralProgramme from "./ReferralProgramme.jsx";
 import CorporateOrderRequests from "./CorporateOrderRequests.jsx";
 import AuditLogViewer from "./AuditLogViewer.jsx";
 import FAQManager from "./FAQManager.jsx";
+import RefundManagement from "./RefundManagement.jsx";
 import { recordAuditEvent } from "./auditLog.js";
 
 const PRODUCTION_STAGES = [
@@ -2381,6 +2382,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         </form>
       </section>
       {(!claims.staffRole || claims.superAdmin) && <PrivacyRequestCenter user={user} claims={claims} />}
+      {(!claims.staffRole || claims.superAdmin || claims.staffRole === "finance") && <RefundManagement user={user} claims={claims} />}
       {(!claims.staffRole || claims.superAdmin) && <CustomerBenefits user={user} claims={claims} customers={customers} />}
       {(!claims.staffRole || claims.superAdmin) && <ReferralProgramme user={user} claims={claims} />}
       {(claims.superAdmin || claims.staffRole === "manager" || !claims.staffRole) && <CorporateOrderRequests user={user} claims={claims} />}
