@@ -50,6 +50,7 @@ export default function WebsiteMediaManager({ user }) {
   useEffect(() => { refresh().catch(err => setError(err.message)); }, []);
   async function upload(event) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!file) { setError("Choose an image or video first."); return; }
     const video = file.type.startsWith("video/");
     if (!TYPES.includes(file.type)) { setError("Use JPG, PNG, WebP, MP4, WebM or MOV."); return; }
@@ -63,7 +64,7 @@ export default function WebsiteMediaManager({ user }) {
         driveUrl: uploaded.webViewLink, previewUrl: uploaded.previewUrl, drivePreviewUrl: uploaded.drivePreviewUrl,
         visibility: "public", published: false, uploadedByUid: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
-      setTitle(""); setDescription(""); setFile(null); event.currentTarget.reset();
+      setTitle(""); setDescription(""); setFile(null); formElement.reset();
       setNotice("Upload saved as a draft. Publish it when you are ready for public viewing.");
       await refresh();
     } catch (err) { setError(err.message || "The media could not be uploaded."); }
