@@ -206,6 +206,13 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
           && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.dueDate == request.resource.data.dueDate
         ) || (
+          isSuperAdmin()
+          && request.resource.data.type == 'appointment_assignment'
+          && request.resource.data.keys().hasOnly(['customerUid','appointmentId','type','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.appointmentId is string
+          && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.resource.data.customerUid
+        ) || (
           (isSuperAdmin() || hasStaffRole(['manager','tailor']))
           && request.resource.data.type == 'measurement_review'
           && request.resource.data.keys().hasOnly(['customerUid','measurementId','type','verificationStatus','title','message','createdAt','readAt'])
