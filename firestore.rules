@@ -111,8 +111,12 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
       allow update: if (
         isSuperAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proposedDate', 'proposedTime', 'adminMessage', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proposedDate', 'proposedTime', 'adminMessage', 'assignedDesignerUid', 'assignedDesignerName', 'orderId', 'orderNumber', 'updatedAt'])
         && request.resource.data.status in ['pending', 'confirmed', 'alternative_proposed', 'completed', 'cancelled']
+        && (!('assignedDesignerUid' in request.resource.data) || request.resource.data.assignedDesignerUid == ''
+          || (request.resource.data.assignedDesignerUid is string && roleOf(request.resource.data.assignedDesignerUid) == 'tailor'))
+        && (!('orderId' in request.resource.data) || request.resource.data.orderId == ''
+          || (request.resource.data.orderId is string && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == resource.data.customerUid))
         && (request.resource.data.status != 'alternative_proposed'
           || (request.resource.data.proposedDate is string
             && request.resource.data.proposedTime is string))
