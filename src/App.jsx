@@ -18,9 +18,11 @@ const collections = [
 ];
 
 const collectionCategories = [
-  { title: "Men's collection", intro: "Tailored options across formal, traditional and everyday dressing.", items: ["3-piece suits", "2-piece suits", "Waistcoats", "Designer shirts", "Premium trousers", "Senator wears", "Agbada", "Native attire", "Traditional caps", "Corporate clothing", "Casual wear"] },
-  { title: "Women's collection", intro: "A considered range for professional dressing, celebrations and everyday style.", items: ["Corporate suits", "Gowns", "Evening dresses", "Bridal dresses", "Wedding reception dresses", "Skirt and blouse", "Native outfits", "Corporate dresses", "Casual dresses", "Special occasion outfits"] },
-  { title: "Bridal & special occasions", intro: "Discuss coordinated looks and occasion-specific garments with the fashion team.", items: ["Bridal dresses", "Wedding reception dresses", "Wedding party clothing", "Special occasion outfits", "Customized clothing"] }
+  { slug: "men", title: "Men's collection", intro: "Tailored options across formal, traditional and everyday dressing.", items: ["3-piece suits", "2-piece suits", "Waistcoats", "Designer shirts", "Premium trousers", "Senator wears", "Agbada", "Native attire", "Traditional caps", "Corporate clothing", "Casual wear"] },
+  { slug: "women", title: "Women's collection", intro: "A considered range for professional dressing, celebrations and everyday style.", items: ["Corporate suits", "Gowns", "Evening dresses", "Bridal dresses", "Wedding reception dresses", "Skirt and blouse", "Native outfits", "Corporate dresses", "Casual dresses", "Special occasion outfits"] },
+  { slug: "bridal", title: "Bridal & special occasions", intro: "Discuss coordinated looks and occasion-specific garments with the fashion team.", items: ["Bridal dresses", "Wedding reception dresses", "Wedding party clothing", "Special occasion outfits", "Customized clothing"] },
+  { slug: "traditional", title: "Traditional Nigerian fashion", intro: "Traditional silhouettes and cultural outfits made with considered finishing and fit.", items: ["Agbada", "Senator wears", "Native attire", "Traditional caps", "Traditional wedding outfits", "Coordinated family attire"] },
+  { slug: "corporate", title: "Corporate and institutional wear", intro: "Professional clothing and coordinated production for teams, schools and organisations.", items: ["Corporate uniforms", "School uniforms", "Corporate suits", "Industrial tailoring", "Church and ministry outfits", "Bulk institutional garments"] }
 ];
 const services = [
   { icon: Scissors, title: "Bespoke Clothing Design", copy: "Made-to-measure pieces shaped around your style, occasion and personality." },
@@ -59,10 +61,10 @@ export default function App() {
       "/": ["home", "MR FOP FASHIONS | Premium Bespoke Fashion"],
       "/about": ["about", "About MR FOP FASHIONS"],
       "/collections": ["collections", "Fashion Collections | MR FOP FASHIONS"],
-      "/collections/men": ["collections", "Men's Fashion | MR FOP FASHIONS"],
-      "/collections/women": ["collections", "Women's Fashion | MR FOP FASHIONS"],
-      "/collections/bridal": ["collections", "Bridal Fashion | MR FOP FASHIONS"],
-      "/collections/traditional": ["collections", "Traditional Fashion | MR FOP FASHIONS"],
+      "/collections/men": ["collection-men", "Men's Fashion | MR FOP FASHIONS"],
+      "/collections/women": ["collection-women", "Women's Fashion | MR FOP FASHIONS"],
+      "/collections/bridal": ["collection-bridal", "Bridal Fashion | MR FOP FASHIONS"],
+      "/collections/traditional": ["collection-traditional", "Traditional Fashion | MR FOP FASHIONS"],
       "/collections/corporate": ["industrial", "Corporate and Industrial Tailoring | MR FOP FASHIONS"],
       "/fabric-gallery": ["fabric-gallery", "Fabric Gallery | MR FOP FASHIONS"],
       "/fashion-institute": ["institute", "Fashion Institute | MR FOP FASHIONS"],
@@ -240,7 +242,7 @@ export default function App() {
 
       <section className="collection-categories section-pad" id="collection-categories">
         <div className="section-heading"><div><p className="eyebrow"><i/> EXPLORE THE DETAILS</p><h2>Collections with <em>character.</em></h2></div><p>Choose a category to start a conversation with our team. Specific styles, fabrics, availability, pricing and timelines are confirmed during consultation.</p></div>
-        <div className="category-grid">{collectionCategories.map(group => <article className="category-panel" key={group.title}>
+        <div className="category-grid">{collectionCategories.map(group => <article className="category-panel" id={"collection-" + group.slug} key={group.title}>
           <div className="category-panel-heading"><span>MR FOP · COLLECTIONS</span><h3>{group.title}</h3><p>{group.intro}</p></div>
           <ul>{group.items.map(item => <li key={item}><a href={whatsappLink("Hello MR FOP FASHIONS, I would like to enquire about " + item + ". Please guide me on the available options.")} target="_blank" rel="noreferrer">{item}<ArrowUpRight size={14}/></a></li>)}</ul>
         </article>)}</div>
