@@ -678,14 +678,70 @@ export default function Portal({ onClose }) {
     finally { setBusy(false); }
   }
 
+  function appointmentSlotId(date, time) {
+    return String(date || "").replace(/[^0-9-]/g, "") + "_" + String(time || "").replace(/[^0-9]/g, "");
+  }
+
+  async function reserveAppointmentSlot(transaction, item, date, time) {
+    const slotRef = doc(db, "appointmentSlots", appointmentSlotId(date, time));
+    const slotSnapshot = await transaction.get(slotRef);
+    if (slotSnapshot.exists() && slotSnapshot.data().appointmentId !== item.id) {
+      throw new Error("That appointment time has already been reserved. Please choose another date or time.");
+    }
+    transaction.set(slotRef, { appointmentId: item.id, customerUid: item.customerUid, appointmentDate: date, appointmentTime: time, updatedAt: serverTimestamp() });
+  }
+
   async function updateAppointment(id, status) {
     if (!claims.superAdmin || !id) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "appointments", id), { status, updatedAt: serverTimestamp() });
+      await runTransaction(db, async transaction => {
+        const appointmentRef = doc(db, "appointments", id);
+        const snapshot = await transaction.get(appointmentRef);
+        if (!snapshot.exists()) throw new Error("This appointment no longer exists.");
+        const item = { id, ...snapshot.data() };
+        const oldSlotRef = item.status === "confirmed" && item.appointmentDate && item.appointmentTime
+          ? doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime)) : null;
+        const oldSlot = oldSlotRef ? await transaction.get(oldSlotRef) : null;
+        if (status === "confirmed") {
+          await reserveAppointmentSlot(transaction, item, item.appointmentDate, item.appointmentTime);
+        } else if (oldSlot?.exists() && oldSlot.data().appointmentId === id) {
+          transaction.delete(oldSlotRef);
+        }
+        transaction.update(appointmentRef, { status, updatedAt: serverTimestamp() });
+      });
       setAppointments(items => items.map(item => item.id === id ? { ...item, status } : item));
-      setMessage("Appointment status updated.");
+      setMessage(status === "confirmed" ? "Appointment confirmed and its date/time slot has been reserved." : "Appointment status updated.");
     } catch (err) { setError(err.message || "Could not update appointment."); }
+    finally { setBusy(false); }
+  }
+
+  async function reconcileConfirmedAppointmentSlots() {
+    if (!claims.superAdmin) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const snapshot = await getDocs(collection(db, "appointments"));
+      const confirmed = snapshot.docs.map(item => ({ id: item.id, ...item.data() })).filter(item => item.status === "confirmed" && item.appointmentDate && item.appointmentTime);
+      let reserved = 0;
+      const conflicts = [];
+      for (const item of confirmed) {
+        try {
+          await runTransaction(db, async transaction => {
+            const appointmentRef = doc(db, "appointments", item.id);
+            const slotRef = doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime));
+            const [current, slot] = await Promise.all([transaction.get(appointmentRef), transaction.get(slotRef)]);
+            if (!current.exists() || current.data().status !== "confirmed") return;
+            if (slot.exists() && slot.data().appointmentId !== item.id) throw new Error("Slot already belongs to another confirmed appointment.");
+            transaction.set(slotRef, { appointmentId: item.id, customerUid: item.customerUid, appointmentDate: item.appointmentDate, appointmentTime: item.appointmentTime, updatedAt: serverTimestamp() });
+            reserved++;
+          });
+        } catch (err) {
+          conflicts.push(item.appointmentDate + " " + item.appointmentTime + " (" + (item.customerName || item.id) + ")");
+        }
+      }
+      await loadAppointments();
+      setMessage("Slot reconciliation complete: " + reserved + " confirmed booking(s) protected; " + conflicts.length + " conflict(s) need manual review." + (conflicts.length ? " " + conflicts.slice(0, 5).join("; ") : ""));
+    } catch (err) { setError(err.message || "Could not reconcile confirmed appointment slots."); }
     finally { setBusy(false); }
   }
 
@@ -716,7 +772,15 @@ export default function Portal({ onClose }) {
     }
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "appointments", item.id), { appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
+      await runTransaction(db, async transaction => {
+        const appointmentRef = doc(db, "appointments", item.id);
+        const currentSnapshot = await transaction.get(appointmentRef);
+        if (!currentSnapshot.exists()) throw new Error("This appointment no longer exists.");
+        const current = { id: item.id, ...currentSnapshot.data() };
+        if (current.customerUid !== user.uid || current.status !== "alternative_proposed") throw new Error("This appointment proposal is no longer available.");
+        await reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime);
+        transaction.update(appointmentRef, { appointmentDate: current.proposedDate, appointmentTime: current.proposedTime, status: "confirmed", updatedAt: serverTimestamp() });
+      });
       setAppointments(items => items.map(row => row.id === item.id ? { ...row, appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed" } : row));
       setMessage("You accepted the proposed appointment time.");
     } catch (err) { setError(err.message || "Could not accept the proposed appointment."); }
@@ -1313,7 +1377,7 @@ export default function Portal({ onClose }) {
       {!claims.superAdmin && !claims.staffRole && <section className="order-management"><div className="customer-management-heading"><div><h3>My Orders</h3><p>Track your orders and payment status</p></div></div>{myOrders.length ? myOrders.map(order=><article className="order-card" key={order.id}><div className="order-card-top"><strong>{order.orderNumber || order.id}</strong><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div><p>{order.item || "Order"}{order.description ? " — " + order.description : ""}</p><div className="order-meta"><span>Status: {productionStageLabel(order.status)}</span><span>Payment: {String(order.paymentStatus || "unpaid").replaceAll("_"," ")}</span><span>Delivery: {order.dueDate || "Not set"}</span></div>{order.amount !== undefined && <div className="order-financial-summary"><span>Paid: <b>₦{orderPaidTotal(order).toLocaleString("en-NG")}</b></span><span>Outstanding: <b>₦{Math.max(0,Number(order.amount||0)-orderPaidTotal(order)).toLocaleString("en-NG")}</b></span>{order.quotationStatus === "accepted" && <button type="button" onClick={()=>printOrderInvoice(order)}>Print order invoice</button>}</div>}
           <div className="order-progress" aria-label={`Production stage ${productionStageProgress(order.status).current} of ${productionStageProgress(order.status).total}`}><div className="order-progress-heading"><strong>Production progress</strong><span>Stage {productionStageProgress(order.status).current} of {productionStageProgress(order.status).total}</span></div><div className="order-progress-track"><span style={{width:`${productionStageProgress(order.status).percent}%`}}/></div><small>{productionStageProgress(order.status).percent}% of the listed production stages reached. The team will update this as work progresses.</small></div>{order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span>{event.stageNote && <p>{event.stageNote}</p>}<small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"}</small></div>)}</div>}{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{Array.isArray(order.quotationItems) && <div className="customer-quotation-breakdown"><strong>Quotation breakdown</strong>{order.quotationItems.filter(line=>Number(line.amount)>0).map((line,index)=><div key={line.label||index}><span>{line.label}</span><b>₦{Number(line.amount).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div>)}<div className="quotation-total"><span>Total</span><b>₦{Number(order.amount||0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div></div>}{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
-        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><button type="button" onClick={loadAppointments} disabled={appointmentsLoading}>{appointmentsLoading ? "Loading…" : "Refresh"}</button></div>
+        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><div className="appointment-admin-actions"><button type="button" onClick={loadAppointments} disabled={appointmentsLoading || busy}>{appointmentsLoading ? "Loading…" : "Refresh"}</button>{claims.superAdmin && <button type="button" onClick={reconcileConfirmedAppointmentSlots} disabled={appointmentsLoading || busy}>Reconcile confirmed slots</button>}</div></div>
         {!claims.staffRole && !claims.superAdmin && <form id="customer-appointments" className="portal-form appointment-form" onSubmit={bookAppointment}>
           <h4>Request an appointment</h4>
           <label>Appointment type<select value={appointmentForm.service} onChange={e=>setAppointmentForm({...appointmentForm,service:e.target.value})}><option>Measurement</option><option>Fitting</option><option>Consultation</option><option>Collection</option></select></label>
