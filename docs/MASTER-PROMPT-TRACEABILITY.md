@@ -331,3 +331,6 @@
 
 
 - **2026-11-13 — Account portal keyboard accessibility:** both the configured account portal and the Firebase-setup notice now expose modal dialog semantics, receive initial keyboard focus, keep Tab/Shift+Tab navigation within the portal, close on Escape, and restore focus to the invoking control when the portal unmounts. Escape handling yields to the nested POS receipt dialog while it is open. This is a targeted keyboard interaction improvement, not a complete screen-reader or WCAG audit. No Firestore rules changed. Build, nested-dialog and keyboard checks remain pending.
+
+
+- **2026-11-13 — Nested dialog focus and authentication feedback refinement:** corrected the account-portal keyboard handler so opening the nested POS receipt does not cause the parent portal effect to rerun and steal initial focus. The parent now detects the active receipt dialog at key-event time and yields Escape handling while that nested dialog exists. Login, registration and password-reset feedback now expose errors as alerts and successful/informational messages as status announcements. No Firestore rules changed. Build, nested-dialog keyboard and screen-reader checks remain pending.
