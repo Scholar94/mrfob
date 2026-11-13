@@ -383,3 +383,22 @@ button:disabled{cursor:not-allowed}
 .about-company-details article span{font-size:9px;font-weight:700;letter-spacing:2px;color:#98764b}
 .about-company-details article p{font:19px/1.6 'Playfair Display';color:#49383d;margin:9px 0 0}
 @media(max-width:760px){.about-company{grid-template-columns:1fr;gap:30px}.about-company-details article p{font-size:17px}}
+
+
+/* Detailed public collection taxonomy — enquiry links, not a live stock catalogue */
+.collection-categories{background:#f7f3ec}
+.category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:38px}
+.category-panel{background:#fff;border:1px solid #e5dbce;padding:25px 24px;min-width:0}
+.category-panel-heading{padding-bottom:18px;border-bottom:1px solid #e9e0d5}
+.category-panel-heading>span{font-size:9px;font-weight:800;letter-spacing:1.6px;color:#9b7948}
+.category-panel-heading h3{font:500 25px/1.2 'Playfair Display';color:#32151f;margin:13px 0 9px}
+.category-panel-heading p{font-size:12px;line-height:1.7;color:#746b68;margin:0}
+.category-panel ul{list-style:none;margin:0;padding:8px 0 0}
+.category-panel li{border-bottom:1px solid #f0ebe4}
+.category-panel li:last-child{border-bottom:0}
+.category-panel li a{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;color:#49383d;text-decoration:none;font-size:12px;transition:color .18s ease}
+.category-panel li a svg{flex:0 0 auto;color:#a77d43}
+.category-panel li a:hover{color:#8c293f}
+.category-disclaimer{margin:20px 0 0;color:#81756c;font-size:10px;line-height:1.7}
+@media(max-width:900px){.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.category-grid{grid-template-columns:1fr}.category-panel{padding:22px}.category-panel-heading h3{font-size:23px}}
