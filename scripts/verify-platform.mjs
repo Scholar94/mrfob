@@ -20,6 +20,7 @@ const drive = read("src/googleDrive.js");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
+const sitemap = read("public/sitemap.xml");
 const pkg = JSON.parse(read("package.json"));
 
 for (const route of [
@@ -39,6 +40,10 @@ assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll g
 assert.ok(fallback.includes("__route="), "GitHub Pages 404 fallback does not preserve the requested route");
 assert.ok(manifest.start_url === "/mrfob/" && manifest.scope === "/mrfob/", "PWA manifest base path is incorrect");
 assert.ok(read("index.html").includes("application/ld+json"), "Structured business metadata is missing");
+for (const route of ["/about", "/collections", "/collections/men", "/collections/women", "/collections/bridal", "/collections/traditional", "/collections/corporate", "/fabric-gallery", "/fashion-institute", "/courses", "/admissions", "/contact", "/faq"]) {
+  assert.ok(sitemap.includes("https://scholar94.github.io/mrfob" + route), `Public route is missing from sitemap: ${route}`);
+}
+assert.ok(!sitemap.includes("/customer/") && !sitemap.includes("/admin/") && !sitemap.includes("/student/"), "Private account routes must not be indexed in sitemap");
 assert.ok(read("public/robots.txt").includes("sitemap.xml"), "Robots file does not reference the sitemap");
 assert.ok(traceability.includes("24-section master-prompt traceability register"), "24-section traceability register is missing");
 assert.ok(read("docs/QA-TEST-PLAN.md").includes("T22"), "Final acceptance test plan is missing.");
