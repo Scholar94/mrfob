@@ -343,3 +343,6 @@
 
 
 - **2026-11-13 — Public company profile and mission/vision:** added a dedicated responsive About section to the homepage, linked from primary navigation. It presents the official company registration number, 2010 establishment year, the supplied mission and vision statements, and the two business categories (clothing design/industrial tailoring and professional fashion training). The section uses the supplied company facts rather than invented testimonials or project claims. Full 20-section homepage, actual company media, featured project gallery, testimonials, newsletter (if a free implementation is viable) and official theme-song controls remain outstanding. No Firestore rules were changed.
+
+
+- **2026-11-13 — Public collection taxonomy:** added a detailed, responsive category guide for the supplied men's, women's, bridal and special-occasion clothing categories. Each category links to a WhatsApp enquiry with the selected garment prefilled, while the page explicitly distinguishes the guide from live stock and does not promise availability, pricing or completion dates. This fills a category-discovery gap on the public homepage but does not create individual SEO category routes, product records, genuine project galleries or customer-supplied portfolio media. No Firestore rules changed. Build, mobile layout and live enquiry-link checks remain pending.
