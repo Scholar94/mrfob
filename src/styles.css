@@ -503,3 +503,36 @@ button:disabled{cursor:not-allowed}
 .portal-progress-track{height:9px;width:100%;margin:8px 0 12px;overflow:hidden;border-radius:999px;background:rgba(128,128,128,.2)}
 .portal-progress-track span{display:block;height:100%;border-radius:inherit;background:var(--accent,#9b7b43);transition:width .25s ease}
 @media(prefers-reduced-motion:reduce){.portal-progress-track span{transition:none}}
+
+
+/* Support-centre queue search and status filters */
+.support-ticket-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--border, #ded8d4);
+  border-radius: 12px;
+  background: var(--surface-soft, rgba(120, 90, 80, 0.045));
+}
+.support-ticket-filters label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.support-ticket-filters input,
+.support-ticket-filters select {
+  width: 100%;
+  min-width: 0;
+}
+.support-ticket-filters small {
+  grid-column: 1 / -1;
+  color: var(--muted, #716a66);
+}
+@media (max-width: 560px) {
+  .support-ticket-filters { grid-template-columns: 1fr; }
+  .support-ticket-filters small { grid-column: auto; }
+}
