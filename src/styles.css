@@ -412,3 +412,19 @@ button:disabled{cursor:not-allowed}
 .industrial-note{max-width:850px;margin:20px 0 0;color:#756b64;font-size:11px;line-height:1.75}
 @media(max-width:900px){.industrial-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.industrial-grid{grid-template-columns:1fr}.industrial-grid article{padding:23px}}
+
+
+/* Institutional project enquiry form — prepares a WhatsApp message without storing submissions */
+.industrial-enquiry{display:grid;grid-template-columns:minmax(220px,.75fr) minmax(0,1.5fr);gap:32px;margin-top:42px;padding:clamp(22px,4vw,38px);background:#2b171f;color:#fff}
+.industrial-enquiry-intro h3{font:500 clamp(27px,3vw,36px)/1.2 'Playfair Display';margin:15px 0;color:#fff}
+.industrial-enquiry-intro h3 em{color:#d6b36d}
+.industrial-enquiry-intro>p:last-child{font-size:12px;line-height:1.8;color:#d9cacc}
+.industrial-enquiry-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.industrial-enquiry-form label{display:grid;gap:7px;color:#f1e8df;font-size:10px;font-weight:700;letter-spacing:.3px}
+.industrial-enquiry-form input,.industrial-enquiry-form select,.industrial-enquiry-form textarea{width:100%;min-width:0;padding:12px;border:1px solid #75616a;border-radius:2px;background:#fffdf9;color:#32151f;font:12px 'DM Sans',sans-serif}
+.industrial-enquiry-form input:focus,.industrial-enquiry-form select:focus,.industrial-enquiry-form textarea:focus{outline:3px solid #d6b36d;outline-offset:2px}
+.industrial-enquiry-form textarea{resize:vertical}
+.industrial-enquiry-wide,.industrial-enquiry-submit{grid-column:1/-1}
+.industrial-enquiry-submit{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-top:4px}
+.industrial-enquiry-submit p{max-width:370px;color:#d9cacc;font-size:10px;line-height:1.7;margin:0}
+@media(max-width:760px){.industrial-enquiry{grid-template-columns:1fr;gap:20px}.industrial-enquiry-form{grid-template-columns:1fr}.industrial-enquiry-wide,.industrial-enquiry-submit{grid-column:auto}.industrial-enquiry-submit{align-items:flex-start;flex-direction:column}}
