@@ -69,6 +69,7 @@ for (const slug of ["men", "women", "bridal", "traditional", "corporate"]) {
   assert.ok(app.includes(`"/collections/${slug}": ["collection-${slug}"`), `Collection route does not target its category panel: ${slug}`);
 }
 assert.ok(app.includes('id={"collection-" + group.slug}'), "Collection category panels are missing their deep-link IDs");
+assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions": ["admissions"') && app.includes('id="courses"') && app.includes('id="admissions"'), "Course and admissions routes do not target their own sections");
 
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
