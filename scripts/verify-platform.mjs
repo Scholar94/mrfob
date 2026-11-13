@@ -65,6 +65,11 @@ for (const route of [
 assert.ok(app.includes('path.startsWith("/customer/")'), "Customer route entry is missing");
 assert.ok(app.includes('path.startsWith("/student/")'), "Student route entry is missing");
 assert.ok(app.includes('path.startsWith("/admin/")'), "Admin route entry is missing");
+for (const slug of ["men", "women", "bridal", "traditional", "corporate"]) {
+  assert.ok(app.includes(`"/collections/${slug}": ["collection-${slug}"`), `Collection route does not target its category panel: ${slug}`);
+}
+assert.ok(app.includes('id={"collection-" + group.slug}'), "Collection category panels are missing their deep-link IDs");
+
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
 assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll guard is missing");
