@@ -4,6 +4,7 @@ import {
   ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play, UserRound
 } from "lucide-react";
 import Portal from "./Portal.jsx";
+import PortalErrorBoundary from "./PortalErrorBoundary.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
@@ -420,6 +421,6 @@ export default function App() {
       </>}
     </section></div>}
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>Play the official MR FOP FASHIONS theme song using the player below. Playback starts only when you press play.</p><PublicWebsiteMusic/></section></div>}
-    {portalOpen && <Portal onClose={closePortal} initialMode={initialPortalMode} initialSection={initialPortalSection}/>}
+    {portalOpen && <PortalErrorBoundary onClose={closePortal}><Portal onClose={closePortal} initialMode={initialPortalMode} initialSection={initialPortalSection}/></PortalErrorBoundary>}
   </div>;
 }
