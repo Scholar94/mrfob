@@ -119,6 +119,7 @@ export default function Portal({ onClose }) {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderForm, setOrderForm] = useState({ customerUid: "", item: "", description: "", amount: "", dueDate: "" });
   const [quoteEdits, setQuoteEdits] = useState({});
+  const [orderDesignerEdits, setOrderDesignerEdits] = useState({});
   const [deliveryDateEdits, setDeliveryDateEdits] = useState({});
   const [myOrders, setMyOrders] = useState([]);
   const [customerNotifications, setCustomerNotifications] = useState([]);
@@ -362,7 +363,10 @@ export default function Portal({ onClose }) {
     if (!claims.superAdmin && !claims.staffRole) return;
     setOrdersLoading(true); setError("");
     try {
-      const snapshot = await getDocs(collection(db, "orders"));
+      const orderQuery = claims.staffRole === "tailor"
+        ? query(collection(db, "orders"), where("assignedDesignerUid", "==", user.uid))
+        : collection(db, "orders");
+      const snapshot = await getDocs(orderQuery);
       const rows = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       const enriched = await Promise.all(rows.map(async order => {
         const [events, progressUpdates, referenceSnapshot] = await Promise.all([
@@ -753,6 +757,28 @@ export default function Portal({ onClose }) {
       await loadMyOrders();
     } catch (err) { setError(err.message || "Could not submit your order request."); }
     finally { setBusy(false); }
+  }
+
+  async function assignOrderDesigner(order) {
+    if (!claims.superAdmin || !order?.id) return;
+    const designerUid = String(orderDesignerEdits[order.id] ?? order.assignedDesignerUid ?? "").trim();
+    const designer = staffMembers.find(member => member.uid === designerUid && member.role === "tailor");
+    if (designerUid && !designer) { setError("Choose an active Fashion Designer / Tailor from the staff directory."); return; }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await updateDoc(doc(db, "orders", order.id), {
+        assignedDesignerUid: designerUid,
+        assignedDesignerName: designer ? (designer.displayName || designer.name || designer.email || designer.uid) : "",
+        updatedAt: serverTimestamp()
+      });
+      setOrderDesignerEdits(current => ({ ...current, [order.id]: designerUid }));
+      setMessage(designer ? "Order assigned to " + (designer.email || designer.uid) + "." : "Order designer assignment cleared.");
+      await loadOrders();
+    } catch (err) {
+      setError(err.message || "Could not assign this order to the designer.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function updateOrder(id, changes) {
@@ -1886,6 +1912,8 @@ export default function Portal({ onClose }) {
         {ordersLoading ? <p className="staff-empty">Loading orders…</p> : orders.length ? <div className="order-list">{orders.map(order=><article className="order-card" key={order.id}>
           <div className="order-card-top"><div><strong>{order.orderNumber || order.id}</strong><span>{order.customerName || order.customerEmail || "Customer"}</span></div><b>{order.paymentStatus === "unquoted" || order.amount === undefined ? "Awaiting quotation" : "₦" + Number(order.amount || 0).toLocaleString("en-NG")}</b></div>
           <p>{order.item || "Order item"}{order.description ? " — " + order.description : ""}</p>
+          {claims.superAdmin && <div className="appointment-assignment-form"><label>Assigned fashion designer<select value={orderDesignerEdits[order.id] ?? order.assignedDesignerUid ?? ""} disabled={busy} onChange={e=>setOrderDesignerEdits(current=>({...current,[order.id]:e.target.value}))}><option value="">Unassigned</option>{staffMembers.filter(member=>member.role==="tailor").map(member=><option key={member.uid} value={member.uid}>{member.displayName || member.name || member.email || member.uid}</option>)}</select></label><button type="button" disabled={busy || (orderDesignerEdits[order.id] ?? order.assignedDesignerUid ?? "") === (order.assignedDesignerUid || "")} onClick={()=>assignOrderDesigner(order)}>Save designer assignment</button></div>}
+          {order.assignedDesignerName && <p><strong>Assigned designer:</strong> {order.assignedDesignerName}</p>}
           <div className="order-meta"><span>Expected delivery: {order.dueDate ? new Date(order.dueDate + "T00:00:00").toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "Not yet confirmed"}</span><span>Payment: {order.paymentStatus || "unpaid"}</span></div>{order.amount !== undefined && <div className="order-financial-summary"><span>Paid: <b>₦{orderPaidTotal(order).toLocaleString("en-NG")}</b></span><span>Balance: <b>₦{Math.max(0,Number(order.amount||0)-orderPaidTotal(order)).toLocaleString("en-NG")}</b></span><button type="button" onClick={()=>printOrderInvoice(order)}>Print order invoice</button></div>}
           {claims.superAdmin && (order.paymentStatus === "unquoted" || order.amount === undefined || order.quotationStatus === "declined") && <div className="order-quotation-editor"><strong>Prepare customer quotation</strong><div className="quotation-line-items"><strong>Quotation breakdown</strong>{QUOTE_LINE_ITEMS.map((label,index)=><label key={label}>{label} (₦)<input type="number" min="0" step="0.01" value={(quoteEdits[order.id]?.items || quotationItemsFor(order).map(line=>String(line.amount||"")))[index]} onChange={e=>updateQuotationLine(order,index,e.target.value)}/></label>)}<p>Calculated total: <b>₦{(quoteEdits[order.id]?.items || quotationItemsFor(order).map(line=>String(line.amount||""))).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></p></div><label>Quotation notes<textarea value={quoteEdits[order.id]?.note ?? order.quotationNote ?? ""} onChange={e=>setQuoteEdits(current=>({...current,[order.id]:{...current[order.id],note:e.target.value}}))} placeholder="Fabric, fittings, deposit terms and scope"/></label><button type="button" disabled={busy} onClick={()=>sendOrderQuotation(order)}>Send quotation</button></div>}
           {order.referenceDesigns?.length > 0 && <div className="production-history"><strong>Customer reference designs</strong>{order.referenceDesigns.map(file=><p key={file.id}><a href={file.driveUrl} target="_blank" rel="noreferrer">{file.fileName}</a> · {(file.size/1024/1024).toFixed(1)} MB</p>)}</div>}{order.progressUpdates?.length > 0 && <div className="production-photo-gallery"><strong>Production updates</strong><div className="production-photo-grid">{order.progressUpdates.map(photo=><figure key={photo.id}><a href={photo.photoUrl} target="_blank" rel="noreferrer">{photo.mediaType === "video" || String(photo.contentType || "").startsWith("video/") ? <iframe src={photo.drivePreviewUrl || photo.previewUrl} title={photo.caption || "Production progress video"} allow="autoplay; encrypted-media" allowFullScreen loading="lazy"/> : <img src={photo.previewUrl || photo.photoUrl} alt={photo.caption || photo.stageLabel || "Production progress"} loading="lazy"/>}</a><figcaption><b>{photo.stageLabel || productionStageLabel(photo.stage)}</b>{photo.caption && <p>{photo.caption}</p>}<small>{photo.createdAt?.toDate ? photo.createdAt.toDate().toLocaleString("en-NG") : "Recently added"} · {photo.uploadedByName || "Production team"}</small></figcaption></figure>)}</div></div>}{order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span>{event.stageNote && <p>{event.stageNote}</p>}<small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"} · {event.changedByName || "Team"}</small></div>)}</div>}
