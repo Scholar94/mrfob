@@ -769,7 +769,8 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.keys().hasOnly(['courseId','courseTitle','title','instructions','dueDate','dueAt','questions','assessmentType','published','createdBy','createdAt','updatedAt']);
-      allow update: if isSuperAdmin() || hasStaffRole(['institute','manager']);
+      // Published assessment content is immutable; create a new assessment to correct it.
+      allow update: if false;
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId)
         || (resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
@@ -786,6 +787,8 @@ service cloud.firestore {
         && existsAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId))
         && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.courseId == request.resource.data.courseId
         && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.assessmentType == 'objective'
+        && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.createdBy == request.resource.data.createdBy
+        && getAfter(/databases/$(database)/documents/instituteAssessments/$(assessmentId)).data.questions.size() == request.resource.data.correctOptions.size()
         && request.resource.data.pointsPerQuestion == 10
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
