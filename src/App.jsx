@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight, Menu, X, Scissors, Sparkles, GraduationCap, Ruler,
   ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play, UserRound
 } from "lucide-react";
-import Portal from "./Portal.jsx";
+
 import PortalErrorBoundary from "./PortalErrorBoundary.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
@@ -11,6 +11,8 @@ import FabricCatalogue from "./FabricCatalogue.jsx";
 import StyleRecommendations from "./StyleRecommendations.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
+
+const Portal = lazy(() => import("./Portal.jsx"));
 
 const collections = [
   { name: "Bespoke Menswear", tag: "Precision in every stitch", type: "MEN", image: "https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&w=1000&q=85" },
@@ -421,6 +423,6 @@ export default function App() {
       </>}
     </section></div>}
     {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>Play the official MR FOP FASHIONS theme song using the player below. Playback starts only when you press play.</p><PublicWebsiteMusic/></section></div>}
-    {portalOpen && <PortalErrorBoundary onClose={closePortal}><Portal onClose={closePortal} initialMode={initialPortalMode} initialSection={initialPortalSection}/></PortalErrorBoundary>}
+    {portalOpen && <PortalErrorBoundary onClose={closePortal}><Suspense fallback={<div className="portal-loading" role="status">Loading your secure account workspace…</div>}><Portal onClose={closePortal} initialMode={initialPortalMode} initialSection={initialPortalSection}/></Suspense></PortalErrorBoundary>}
   </div>;
 }
