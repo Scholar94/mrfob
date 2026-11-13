@@ -188,7 +188,7 @@ export default function InstituteWorkspace() {
       eligible: blockers.length === 0,
       blockers,
       checks: [
-        { label: "Published lessons", complete: courseLessons.length > 0 && incompleteLessons.length === 0, detail: `${completedLessonIds.size} of ${courseLessons.length} completed` },
+        { label: "Published lessons", complete: courseLessons.length > 0 && incompleteLessons.length === 0, detail: `${courseLessons.length - incompleteLessons.length} of ${courseLessons.length} completed` },
         { label: "Assignments", complete: incompleteAssignments.length === 0, detail: `${courseAssignments.length - incompleteAssignments.length} of ${courseAssignments.length} graded` },
         { label: "Assessments", complete: incompleteAssessments.length === 0, detail: `${courseAssessments.length - incompleteAssessments.length} of ${courseAssessments.length} graded` },
         { label: "Completed-session attendance", complete: missingAttendance.length === 0, detail: `${completedSessions.length - missingAttendance.length} of ${completedSessions.length} confirmed` }
