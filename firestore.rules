@@ -344,7 +344,20 @@ service cloud.firestore {
     }
 
     match /publicSettings/{settingId} {
-      allow read: if signedIn() && settingId == 'paymentInstructions';
+      allow read: if settingId == 'siteProfile' || (signedIn() && settingId == 'paymentInstructions');
+      allow create, update: if isSuperAdmin() && settingId == 'siteProfile'
+        && request.resource.data.keys().hasOnly(['companyName','phone','whatsapp','email','address','openingHours','mission','vision','businessScope','updatedAt','updatedBy'])
+        && request.resource.data.companyName is string && request.resource.data.companyName.size() <= 120
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 40
+        && request.resource.data.whatsapp is string && request.resource.data.whatsapp.size() <= 40
+        && request.resource.data.email is string && request.resource.data.email.size() <= 120
+        && request.resource.data.address is string && request.resource.data.address.size() <= 300
+        && request.resource.data.openingHours is string && request.resource.data.openingHours.size() <= 300
+        && request.resource.data.mission is string && request.resource.data.mission.size() <= 600
+        && request.resource.data.vision is string && request.resource.data.vision.size() <= 600
+        && request.resource.data.businessScope is string && request.resource.data.businessScope.size() <= 1000
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedBy == request.auth.uid;
       allow create, update: if isSuperAdmin() && settingId == 'paymentInstructions'
         && request.resource.data.keys().hasOnly(['bankName','accountName','accountNumber','instructions','updatedAt','updatedBy'])
         && request.resource.data.bankName is string && request.resource.data.bankName.size() <= 80
@@ -354,8 +367,10 @@ service cloud.firestore {
         && request.resource.data.instructions is string && request.resource.data.instructions.size() <= 600
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.updatedBy == request.auth.uid;
-      allow delete: if isSuperAdmin() && settingId == 'paymentInstructions';
+      allow delete: if isSuperAdmin() && settingId in ['paymentInstructions','siteProfile'];
     }
+
+
 
     match /paymentDeclarations/{declarationId} {
       allow create: if signedIn()
