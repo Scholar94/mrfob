@@ -1022,7 +1022,7 @@ export default function Portal({ onClose }) {
     setBusy(true); setError(""); setMessage("");
     try {
       await updateDoc(doc(db, "roles", member.uid), { availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end, availabilityUpdatedAt: serverTimestamp() });
-      setStaffMembers(rows => rows.map(row => row.uid === member.uid ? { ...row, availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end } : row));
+      setStaffMembers(rows => rows.map(row => row.uid === member.uid ? { ...row, availabilityDays: days, availabilityStart: draft.start, availabilityEnd: draft.end, availabilityUpdatedAt: new Date() } : row));
       setMessage("Designer working days and hours saved.");
     } catch (err) { setError(err.message || "Could not save designer availability."); }
     finally { setBusy(false); }
@@ -1034,7 +1034,7 @@ export default function Portal({ onClose }) {
     if (!roleSnapshot.exists() || roleSnapshot.data().role !== "tailor") throw new Error("The assigned designer is no longer an active Tailor. Reassign the appointment.");
     const availability = roleSnapshot.data();
     if (!Array.isArray(availability.availabilityDays) || !availability.availabilityDays.length || !availability.availabilityStart || !availability.availabilityEnd) throw new Error("The assigned designer has no working schedule. Configure their availability in Staff Directory first.");
-    const weekday = new Date(date + "T12:00:00").getDay();
+    const weekday = new Date(date + "T12:00:00Z").getUTCDay();
     if (!availability.availabilityDays.includes(weekday) || time < availability.availabilityStart || time >= availability.availabilityEnd) throw new Error("The selected appointment time falls outside the assigned designer's working days or hours. Propose another time or reassign the designer.");
   }
 
