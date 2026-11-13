@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/PortalErrorBoundary.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md"
 ];
