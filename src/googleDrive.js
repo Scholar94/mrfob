@@ -73,16 +73,17 @@ async function ensureDriveFolder(name, parentId) {
 }
 
 export async function uploadFileToGoogleDrive(file, metadata = {}) {
+  const customerOwned = metadata.storageOwner === "customer";
   const configuredFolder = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID;
-  if (!configuredFolder) throw new Error("Set VITE_GOOGLE_DRIVE_FOLDER_ID to the shared MR FOP FASHIONS Google Drive folder.");
-  const pathParts = String(metadata.folder || "Uploads").split("/").filter(Boolean);
-  let parentId = configuredFolder;
+  if (!configuredFolder && !customerOwned) throw new Error("Set VITE_GOOGLE_DRIVE_FOLDER_ID to the shared MR FOP FASHIONS Google Drive folder.");
+  const pathParts = customerOwned ? [] : String(metadata.folder || "Uploads").split("/").filter(Boolean);
+  let parentId = customerOwned ? null : configuredFolder;
   for (const part of pathParts) parentId = await ensureDriveFolder(part, parentId);
   const safeName = String(file.name || "upload").replace(/[\\/\\?%*:|"<>]/g, "_").slice(-180);
   const fileMetadata = {
     name: safeName,
     mimeType: file.type || "application/octet-stream",
-    parents: [parentId],
+    ...(parentId ? { parents: [parentId] } : {}),
     description: JSON.stringify({ app: "MR FOP FASHIONS", orderId: metadata.orderId || "", uploadedBy: metadata.uploadedBy || "" })
   };
   const token = await getDriveToken();
@@ -112,11 +113,11 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
   }
   const uploaded = await uploadResponse.json();
-  if (metadata.customerEmail && metadata.visibility !== "public") {
+  const shareEmail = metadata.shareWithEmail || metadata.customerEmail;\n  if (shareEmail && metadata.visibility !== "public") {
     await driveRequest("/files/" + uploaded.id + "/permissions?sendNotificationEmail=false", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "user", role: "reader", emailAddress: metadata.customerEmail })
+      body: JSON.stringify({ type: "user", role: "reader", emailAddress: shareEmail })
     });
   }
   return {

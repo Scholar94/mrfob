@@ -113,6 +113,25 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      match /referenceDesigns/{referenceId} {
+        allow create: if signedIn()
+          && request.auth.uid == get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid
+          && request.resource.data.keys().hasOnly(['orderId','customerUid','fileId','fileName','contentType','size','driveUrl','createdAt'])
+          && request.resource.data.orderId == orderId
+          && request.resource.data.customerUid == request.auth.uid
+          && request.resource.data.fileId is string
+          && request.resource.data.fileName is string
+          && request.resource.data.fileName.size() > 0
+          && request.resource.data.contentType in ['image/jpeg','image/png','image/webp','application/pdf']
+          && request.resource.data.size is int
+          && request.resource.data.size > 0 && request.resource.data.size <= 15728640
+          && request.resource.data.driveUrl is string
+          && request.resource.data.createdAt is timestamp;
+        allow read: if signedIn() && (isSuperAdmin() || isStaff()
+          || get(/databases/$(database)/documents/orders/$(orderId)).data.customerUid == request.auth.uid);
+        allow update, delete: if false;
+      }
+
       match /progressUpdates/{updateId} {
         allow create: if (isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
           && request.resource.data.keys().hasOnly(['orderId','orderNumber','customerUid','stage','stageLabel','caption','photoUrl','driveFileId','driveUrl','previewUrl','drivePreviewUrl','storagePath','fileName','contentType','size','mediaType','uploadedByUid','uploadedByName','createdAt'])
