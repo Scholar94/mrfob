@@ -813,7 +813,7 @@ export default function Portal({ onClose }) {
         type: "appointment_update",
         appointmentStatus: "alternative_proposed",
         title: "An alternative appointment time has been proposed",
-        message: patch.adminMessage || "Please review and accept or discuss the proposed appointment time in My Appointments.",
+        message: (patch.adminMessage || "Please review and accept or discuss the proposed appointment time in My Appointments.").slice(0, 500),
         createdAt: serverTimestamp(),
         readAt: null
       });
