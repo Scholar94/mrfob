@@ -63,7 +63,7 @@ service cloud.firestore {
           && request.resource.data.amount >= 0
         )
       );
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'sales', 'institute']) || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
       allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
         && request.resource.data.customerUid == resource.data.customerUid
@@ -108,7 +108,7 @@ service cloud.firestore {
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'service', 'appointmentDate', 'appointmentTime', 'purpose', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.status == 'pending';
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'sales', 'institute']) || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
       allow update: if (
         isSuperAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'proposedDate', 'proposedTime', 'adminMessage', 'assignedDesignerUid', 'assignedDesignerName', 'orderId', 'orderNumber', 'updatedAt'])
