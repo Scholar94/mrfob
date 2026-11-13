@@ -371,3 +371,15 @@ button:disabled{cursor:not-allowed}
 .contact-detail[href]{width:fit-content;text-decoration:underline;text-decoration-color:#9d8157;text-underline-offset:4px}
 .contact-detail[href]:focus-visible,.install-button:focus-visible{outline:3px solid #d6b36d;outline-offset:4px}
 @media(max-width:650px){.install-feedback{right:12px;bottom:58px;max-width:calc(100vw - 24px)}}
+
+
+/* Company profile: mission, vision and business scope */
+.about-company{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:8%;align-items:center;background:#f7f3ec}
+.about-company-heading h2{font:500 clamp(38px,5vw,58px)/1.12 'Playfair Display';letter-spacing:-1.5px;margin:18px 0 20px;color:#32151f}
+.about-company-heading h2 em{color:#9d7543;font-weight:500}
+.about-company-heading>p:last-child{max-width:490px;font-size:13px;line-height:1.95;color:#746b68}
+.about-company-details{display:grid;gap:0;border-top:1px solid #ded5c8}
+.about-company-details article{padding:20px 0;border-bottom:1px solid #ded5c8}
+.about-company-details article span{font-size:9px;font-weight:700;letter-spacing:2px;color:#98764b}
+.about-company-details article p{font:19px/1.6 'Playfair Display';color:#49383d;margin:9px 0 0}
+@media(max-width:760px){.about-company{grid-template-columns:1fr;gap:30px}.about-company-details article p{font-size:17px}}
