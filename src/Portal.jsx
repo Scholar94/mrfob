@@ -84,6 +84,7 @@ const QUOTE_LINE_ITEMS = ["Garment / agreed scope", "Fabric", "Labour", "Design"
 export default function Portal({ onClose }) {
   const { user, claims, loading, configured } = useAuth();
   const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
+  const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
   const [mode, setMode] = useState("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -477,7 +478,7 @@ export default function Portal({ onClose }) {
     if (!user) return;
     setSupportLoading(true);
     try {
-      const source = claims.superAdmin || claims.staffRole
+      const source = canManageSupport
         ? collection(db, "supportTickets")
         : query(collection(db, "supportTickets"), where("customerUid", "==", user.uid));
       const snapshot = await getDocs(source);
@@ -489,7 +490,7 @@ export default function Portal({ onClose }) {
 
   async function submitSupportTicket(e) {
     e.preventDefault();
-    if (!user || claims.superAdmin || claims.staffRole) return;
+    if (!user || canManageSupport) return;
     const subject = supportForm.subject.trim();
     const body = supportForm.message.trim();
     if (subject.length < 4 || body.length < 10) { setError("Enter a clear subject and a message of at least 10 characters."); return; }
@@ -509,7 +510,7 @@ export default function Portal({ onClose }) {
   }
 
   async function replyToSupportTicket(ticket) {
-    if (!(claims.superAdmin || claims.staffRole) || !ticket?.id) return;
+    if (!canManageSupport || !ticket?.id) return;
     const reply = (window.prompt("Write a reply visible to this customer:", ticket.staffReply || "") || "").trim();
     if (!reply) return;
     if (reply.length > 2000) { setError("The reply must be 2,000 characters or fewer."); return; }
@@ -526,7 +527,7 @@ export default function Portal({ onClose }) {
   }
 
   async function updateSupportStatus(ticket, status) {
-    if (!(claims.superAdmin || claims.staffRole) || !ticket?.id || !["open","in_progress","closed"].includes(status)) return;
+    if (!canManageSupport || !ticket?.id || !["open","in_progress","closed"].includes(status)) return;
     setBusy(true); setError(""); setMessage("");
     try {
       await updateDoc(doc(db, "supportTickets", ticket.id), { status, updatedAt: serverTimestamp(), statusUpdatedBy: user.uid });
@@ -1227,8 +1228,8 @@ export default function Portal({ onClose }) {
         </article>)}</div> : <p className="staff-empty">No appointments yet.</p>}
       </section>
       <section className="customer-management customer-self-service support-centre">
-        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Customer Support Centre" : "Help & Support"}</h3><p>{claims.superAdmin || claims.staffRole ? "Review customer enquiries and reply from the account portal." : "Send a private enquiry to the MR FOP team and check its response here."}</p></div><button type="button" onClick={loadSupportTickets} disabled={supportLoading}>{supportLoading ? "Loading…" : "Refresh requests"}</button></div>
-        {!claims.superAdmin && !claims.staffRole && <form className="portal-form" onSubmit={submitSupportTicket}>
+        <div className="customer-management-heading"><div><h3>{canManageSupport ? "Customer Support Centre" : "Help & Support"}</h3><p>{canManageSupport ? "Review customer enquiries and reply from the account portal." : "Send a private enquiry to the MR FOP team and check its response here."}</p></div><button type="button" onClick={loadSupportTickets} disabled={supportLoading}>{supportLoading ? "Loading…" : "Refresh requests"}</button></div>
+        {!canManageSupport && <form className="portal-form" onSubmit={submitSupportTicket}>
           <label>Enquiry category<select value={supportForm.category} onChange={e=>setSupportForm({...supportForm,category:e.target.value})}><option>Order enquiry</option><option>Appointment</option><option>Quotation or payment</option><option>Measurements or fitting</option><option>Fashion Institute</option><option>Complaint or other</option></select></label>
           <label>Subject<input required minLength="4" maxLength="120" value={supportForm.subject} onChange={e=>setSupportForm({...supportForm,subject:e.target.value})} placeholder="Briefly describe what you need help with"/></label>
           <label>Message<textarea required minLength="10" maxLength="2000" rows="4" value={supportForm.message} onChange={e=>setSupportForm({...supportForm,message:e.target.value})} placeholder="Explain your enquiry. Do not include passwords, bank PINs or card details."/></label>
@@ -1238,9 +1239,9 @@ export default function Portal({ onClose }) {
           <div className="support-ticket-heading"><div><strong>{ticket.subject}</strong><span>{ticket.customerName || ticket.customerEmail || "Customer"} · {ticket.category}</span></div><span className={"support-ticket-status status-"+(ticket.status||"open")}>{String(ticket.status||"open").replaceAll("_"," ")}</span></div>
           <p>{ticket.message}</p>
           {ticket.staffReply && <div className="support-ticket-reply"><strong>MR FOP team response</strong><p>{ticket.staffReply}</p></div>}
-          {(claims.superAdmin || claims.staffRole) && <div className="support-ticket-actions"><label>Status<select value={ticket.status||"open"} disabled={busy} onChange={e=>updateSupportStatus(ticket,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label><button type="button" disabled={busy} onClick={()=>replyToSupportTicket(ticket)}>{ticket.staffReply ? "Update reply" : "Reply to customer"}</button></div>}
+          {canManageSupport && <div className="support-ticket-actions"><label>Status<select value={ticket.status||"open"} disabled={busy} onChange={e=>updateSupportStatus(ticket,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label><button type="button" disabled={busy} onClick={()=>replyToSupportTicket(ticket)}>{ticket.staffReply ? "Update reply" : "Reply to customer"}</button></div>}
           <small>Reference: {ticket.id}</small>
-        </article>)}</div> : <p className="staff-empty">{claims.superAdmin || claims.staffRole ? "No customer support requests have been received." : "You have not sent a support request yet."}</p>}
+        </article>)}</div> : <p className="staff-empty">{canManageSupport ? "No customer support requests have been received." : "You have not sent a support request yet."}</p>}
       </section>
       {(claims.superAdmin || claims.staffRole) && <section className="payment-management">
         <div className="customer-management-heading"><div><h3>Payment Management</h3><p>Record and review payments linked to customer orders</p></div><button type="button" onClick={loadPayments}>Refresh payments</button></div>
