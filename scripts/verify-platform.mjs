@@ -23,6 +23,37 @@ const manifest = JSON.parse(read("public/manifest.webmanifest"));
 const sitemap = read("public/sitemap.xml");
 const pkg = JSON.parse(read("package.json"));
 
+const ruleStructure = (() => {
+  const stack = [];
+  let quote = null, escaped = false;
+  const pairs = { "(": ")", "{": "}", "[": "]" };
+  for (let i = 0; i < rules.length; i++) {
+    const ch = rules[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === "\\\\") escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') { quote = ch; continue; }
+    if (ch in pairs) stack.push({ ch, index: i });
+    else if (Object.values(pairs).includes(ch)) {
+      const previous = stack.pop();
+      assert.ok(previous, `Unexpected closing delimiter ${ch} in firestore.rules at ${i}`);
+      assert.equal(pairs[previous.ch], ch, `Mismatched delimiter in firestore.rules at ${i}`);
+    }
+  }
+  assert.equal(quote, null, "Unclosed string literal in firestore.rules");
+  assert.equal(stack.length, 0, "Unclosed bracket or block in firestore.rules");
+  return true;
+})();
+for (const collectionName of ["referralClaims", "fabrics", "privacyRequests", "refunds", "auditLogs", "products"]) {
+  assert.equal(rules.split(`match /${collectionName}/`).length - 1, 1, `Firestore collection rule must appear exactly once: ${collectionName}`);
+}
+assert.equal(rules.split("match /{document=**}").length - 1, 1, "Firestore catch-all deny rule must appear exactly once");
+assert.ok(ruleStructure, "Firestore rule structure check failed");
+
+
 for (const route of [
   "/about", "/collections", "/collections/men", "/collections/women",
   "/collections/bridal", "/collections/traditional", "/collections/corporate",
