@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendEmailVerification, sendPasswordResetEmail, reload, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
-import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound } from "lucide-react";
+import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound, Menu, X, ChevronRight } from "lucide-react";
 import { auth, db } from "./firebase.js";
 import { uploadFileToGoogleDrive } from "./googleDrive.js";
 import { useAuth } from "./AuthProvider.jsx";
@@ -151,6 +151,9 @@ export default function Portal({ onClose }) {
   });
   const canUpdateProduction = !!(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole));
   const canManageSupport = !!(claims.superAdmin || ["manager", "sales", "tailor", "institute"].includes(claims.staffRole));
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [accountNavItems, setAccountNavItems] = useState([]);
+  const [activeAccountSection, setActiveAccountSection] = useState("");
   const [mode, setMode] = useState("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1704,6 +1707,22 @@ export default function Portal({ onClose }) {
 
   React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (claims.staffRole) loadOrders(); else if (user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user) { loadAppointments(); loadSupportTickets(); loadPayments(); loadPaymentDeclarations(); loadPaymentInstructions(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
+  useEffect(() => {
+    if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
+    const root = portalDialogRef.current;
+    if (!root) return;
+    const sections = Array.from(root.querySelectorAll("section")).filter(section =>
+      section.querySelector("h2, h3, h4") && section.getClientRects().length
+    );
+    const items = sections.map((section, index) => {
+      if (!section.id) section.id = "mrfop-account-section-" + index;
+      const heading = section.querySelector("h2, h3, h4");
+      const label = (heading?.innerText || heading?.textContent || "Account section").replace(/\\s+/g, " ").trim();
+      return { id: section.id, label: label.slice(0, 58) };
+    });
+    setAccountNavItems(items.filter((item, index) => items.findIndex(other => other.id === item.id) === index));
+  }, [user?.uid, claims.role, claims.staffRole, claims.superAdmin, orders.length, myOrders.length, appointments.length, products.length, customers.length, payments.length, trainingEnquiries.length, supportTickets.length]);
+
   const financeNow=new Date();
   const financeBounds=(()=>{let a=new Date(financeNow.getFullYear(),financeNow.getMonth(),1),b=new Date(financeNow.getFullYear(),financeNow.getMonth()+1,0,23,59,59,999);if(financePeriod==="today"){a=new Date();a.setHours(0,0,0,0);b=new Date();b.setHours(23,59,59,999);}else if(financePeriod==="yesterday"){a=new Date();a.setDate(a.getDate()-1);a.setHours(0,0,0,0);b=new Date(a);b.setHours(23,59,59,999);}else if(financePeriod==="week"){a=new Date();a.setDate(a.getDate()-(a.getDay()+6)%7);a.setHours(0,0,0,0);b=new Date(a);b.setDate(b.getDate()+6);b.setHours(23,59,59,999);}else if(financePeriod==="lastMonth"){a=new Date(financeNow.getFullYear(),financeNow.getMonth()-1,1);b=new Date(financeNow.getFullYear(),financeNow.getMonth(),0,23,59,59,999);}else if(financePeriod==="year"){a=new Date(financeNow.getFullYear(),0,1);b=new Date(financeNow.getFullYear(),11,31,23,59,59,999);}else if(financePeriod==="custom"){a=new Date(financeStart+"T00:00:00");b=new Date(financeEnd+"T23:59:59.999");if(!financeStart||!financeEnd||Number.isNaN(a.getTime())||Number.isNaN(b.getTime())||a>b){a=new Date(8640000000000000);b=new Date(0);}}else if(financePeriod==="all"){a=new Date(0);b=new Date(8640000000000000);}return {start:a,end:b};})();
   const financeSales=sales.filter(x=>{const d=x.createdAt?.toDate?x.createdAt.toDate():null;return d&&d>=financeBounds.start&&d<=financeBounds.end;});
@@ -1728,6 +1747,20 @@ export default function Portal({ onClose }) {
       {error && <p className="portal-error" role="alert">{error}</p>}{message && <p className="portal-success" role="status">{message}</p>}
       <div className="portal-role"><ShieldCheck/><span>{claims.superAdmin ? "Super Administrator" : claims.staffRole ? "Staff · " + claims.staffRole : "Customer account"}</span></div>
       <h3 className="dashboard-title">{claims.superAdmin ? "Administration overview" : claims.staffRole ? "Staff workspace" : "My customer dashboard"}</h3>
+      <div className="account-navigation">
+        <button type="button" className="account-menu-toggle" aria-expanded={accountMenuOpen} aria-controls="account-section-menu" onClick={() => setAccountMenuOpen(open => !open)}>
+          {accountMenuOpen ? <X size={19}/> : <Menu size={19}/>}
+          <span>{accountMenuOpen ? "Close account menu" : "Browse account sections"}</span>
+          <small>{accountNavItems.length} sections</small>
+        </button>
+        {accountMenuOpen && <nav id="account-section-menu" className="account-section-menu" aria-label="Account sections">
+          {accountNavItems.map(item => <button type="button" key={item.id} className={activeAccountSection === item.id ? "active" : ""} onClick={() => {
+            setActiveAccountSection(item.id);
+            setAccountMenuOpen(false);
+            document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}><span>{item.label}</span><ChevronRight size={15}/></button>)}
+        </nav>}
+      </div>
       {!claims.staffRole && !claims.superAdmin && <div className="dashboard-grid customer-dashboard-summary">
         <article className="dashboard-tile"><strong>{myOrders.length}</strong><span>Orders on your account</span><small>My Orders</small></article>
         <article className="dashboard-tile"><strong>{appointments.length}</strong><span>Appointment requests</span><small>My Appointments</small></article>
