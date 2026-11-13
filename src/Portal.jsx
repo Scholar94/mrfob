@@ -6,6 +6,7 @@ import { auth, db } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
+import MeasurementGuide from "./MeasurementGuide.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -1597,19 +1598,7 @@ export default function Portal({ onClose }) {
           <label>Measurement unit<select value={measurementForm.unit} onChange={e=>setMeasurementForm({...measurementForm,unit:e.target.value})}><option value="cm">Centimetres (cm)</option><option value="in">Inches (in)</option></select></label>
           <div className="measurement-grid">{(MEASUREMENT_PROFILES[measurementForm.garmentType] || MEASUREMENT_PROFILES["General body profile"]).map(([key,label])=><label key={key}>{label} ({measurementForm.unit})<input type="number" min="0.1" step="0.1" value={measurementForm[key] || ""} onChange={e=>setMeasurementForm({...measurementForm,[key]:e.target.value})} placeholder={measurementForm.unit}/></label>)}</div>
           {getMeasurementWarnings(measurementForm).length > 0 && <aside className="measurement-warning" role="status"><strong>Please double-check these entries</strong><ul>{getMeasurementWarnings(measurementForm).map((warning,index)=><li key={index}>{warning}</li>)}</ul><small>These are broad data-entry checks, not body-size standards. You may continue, but a designer should verify every measurement.</small></aside>}
-          <aside className="measurement-guide" aria-label="How to take body measurements">
-            <div className="measurement-guide-art">
-              <svg viewBox="0 0 220 250" role="img" aria-labelledby="measureGuideTitle measureGuideDesc">
-                <title id="measureGuideTitle">Basic body measurement guide</title><desc id="measureGuideDesc">Front-facing outline showing chest, waist and hip tape positions.</desc>
-                <circle cx="110" cy="25" r="17" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path d="M92 47 Q73 51 65 76 L48 125 M128 47 Q147 51 155 76 L172 125 M65 76 Q70 112 78 145 L82 224 M155 76 Q150 112 142 145 L138 224 M92 47 L86 82 Q110 93 134 82 L128 47 M86 82 Q80 105 82 128 Q110 138 138 128 Q140 105 134 82 M82 128 Q110 140 138 128 M82 145 Q110 157 142 145" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M73 83 Q110 99 147 83 M78 116 Q110 130 142 116 M76 145 Q110 160 144 145" fill="none" stroke="#a77d43" strokeWidth="4" strokeLinecap="round"/>
-                <path d="M148 83 L180 73 M143 116 L180 111 M144 145 L180 151" stroke="#a77d43" strokeWidth="1.5"/>
-                <g fill="currentColor" fontSize="9" fontWeight="600"><text x="182" y="75">Chest</text><text x="182" y="113">Waist</text><text x="182" y="154">Hip</text></g>
-              </svg>
-            </div>
-            <div><strong>Measurement guide</strong><p>Stand naturally and use a flexible tape. Keep it level and comfortably snug without pressing into the body. Ask another person to help where possible.</p><ul><li><b>Chest / bust:</b> measure around the fullest part, keeping the tape level.</li><li><b>Waist:</b> measure around the natural waistline without pulling in your stomach.</li><li><b>Hip:</b> measure around the fullest part of the hips and seat.</li><li><b>Length:</b> measure from the garment's stated starting point to its required end point.</li></ul><small>Illustration is a general guide, not a substitute for an in-person fitting. A designer must confirm measurements before production.</small></div>
-          </aside>
+          <MeasurementGuide garmentType={measurementForm.garmentType} />
 
           <p className="portal-hint">Enter measurements with a flexible tape measure. Keep the tape comfortably fitted, not tight. A designer should confirm measurements before garment production.</p>
           <button type="button" onClick={()=>{setAppointmentForm(current=>({...current,service:"Measurement",purpose:`Please verify my ${measurementForm.garmentType.toLowerCase()} measurements${measurementForm.profileName.trim() ? ` (${measurementForm.profileName.trim()})` : ""} in person.`}));document.getElementById("customer-appointments")?.scrollIntoView({behavior:"smooth",block:"start"});setMessage("Choose your preferred date and time in the appointment form. The team must confirm the booking.");}}>Request in-person measurement verification</button>
