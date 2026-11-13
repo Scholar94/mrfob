@@ -45,3 +45,14 @@ This repository uses the Google Drive API for customer reference designs, produc
 6. Verify a non-enrolled account cannot access the Drive file.
 7. Verify a newly paid test student receives access when the payment verification action is run.
 8. Check the browser console and Drive permissions if any step fails.
+
+
+## Super Admin lesson-access recovery controls
+
+The Institute student learning progress register provides two Super Admin-only actions for each enrolment:
+
+- **Retry / grant Drive lesson access** checks the enrolment is marked paid, then grants or confirms Reader access to every published lesson file with a Drive file ID for that course.
+- **Revoke direct Drive lesson access** asks for confirmation, then removes direct user permissions for that student's email from the published lesson files. It does not alter the payment or enrolment record. Inherited permissions are reported and cannot be removed from the child file.
+
+Use revocation after an independently confirmed refund, withdrawal or access decision. The app does not yet automatically synchronize Google Drive permissions with refunds, withdrawals or payment reversals. Recheck the student's enrolment and Drive permissions after any manual action. A fresh Google Drive authorization may be required.
+
