@@ -683,7 +683,7 @@ export default function Portal({ onClose }) {
     try {
       const current = orders.find(item => item.id === id);
       if (Object.prototype.hasOwnProperty.call(changes, "dueDate") && changes.dueDate) {
-        if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(changes.dueDate) || Number.isNaN(Date.parse(changes.dueDate + "T00:00:00"))) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(changes.dueDate) || Number.isNaN(Date.parse(changes.dueDate + "T00:00:00"))) {
           throw new Error("Enter a valid expected delivery date.");
         }
       }
@@ -1019,7 +1019,7 @@ export default function Portal({ onClose }) {
     if (!claims.superAdmin || member?.role !== "tailor") return;
     const draft = designerAvailabilityDraft(member);
     const days = [...new Set(draft.days || [])].filter(day => Number.isInteger(day) && day >= 0 && day <= 6).sort();
-    if (!days.length || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(draft.start) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(draft.end) || draft.end <= draft.start) {
+    if (!days.length || !/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.start) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(draft.end) || draft.end <= draft.start) {
       setError("Set at least one working day and a valid start/end time for this designer. End time must be later than start time.");
       return;
     }
