@@ -328,3 +328,6 @@
 
 
 - **2026-11-13 — Customer directory search usability:** labelled the Super Admin customer search for assistive technology, used the native search input type, trimmed surrounding whitespace when matching names/emails/phone numbers, and added a live status message when a search returns no matches. The empty state now distinguishes an empty customer database from a search with zero results. This is a focused directory usability improvement, not a full customer-management workflow or accessibility audit. No Firestore rules changed. Build and browser/screen-reader checks remain pending.
+
+
+- **2026-11-13 — Account portal keyboard accessibility:** both the configured account portal and the Firebase-setup notice now expose modal dialog semantics, receive initial keyboard focus, keep Tab/Shift+Tab navigation within the portal, close on Escape, and restore focus to the invoking control when the portal unmounts. Escape handling yields to the nested POS receipt dialog while it is open. This is a targeted keyboard interaction improvement, not a complete screen-reader or WCAG audit. No Firestore rules changed. Build, nested-dialog and keyboard checks remain pending.
