@@ -85,7 +85,7 @@ export default function App() {
       <button className="mobile-menu" type="button" onClick={() => setMenu(!menu)} aria-label={menu ? "Close navigation" : "Open navigation"} aria-expanded={menu} aria-controls="primary-navigation">{menu ? <X/> : <Menu/>}</button>
       <nav id="primary-navigation" className={menu ? "nav nav-open" : "nav"}>
         <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#how-to-order" onClick={close}>How to Order</a>
-        <a href="#institute" onClick={close}>Fashion Institute</a><a href="#story" onClick={close}>Our Story</a>
+        <a href="#institute" onClick={close}>Fashion Institute</a><a href="#about" onClick={close}>About</a><a href="#story" onClick={close}>Our Story</a>
         <a href="#contact" onClick={close}>Contact</a>
         <button className="account-cta" onClick={() => {setPortalOpen(true);close();}}><UserRound size={15}/> My Account</button>
         <a className="nav-cta" href={wa} target="_blank" rel="noreferrer">Book a Consultation <ArrowUpRight size={15}/></a>
