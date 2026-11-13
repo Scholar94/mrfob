@@ -120,7 +120,7 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     ...(Array.isArray(metadata.shareWithEmails) ? metadata.shareWithEmails : []),
     metadata.shareWithEmail,
     metadata.customerEmail
-  ].map(value => String(value || "").trim().toLowerCase()).filter(value => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)))];
+  ].map(value => String(value || "").trim().toLowerCase()).filter(value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)))];
   if (metadata.visibility !== "public") {
     for (const emailAddress of shareEmails) {
       await shareDriveFileWithEmail(uploaded.id, emailAddress, driveScope);
@@ -158,7 +158,7 @@ export async function setDriveFilePublic(fileId, isPublic) {
 export async function shareDriveFileWithEmail(fileId, emailAddress, scope = "https://www.googleapis.com/auth/drive") {
   const id = String(fileId || "").trim();
   const email = String(emailAddress || "").trim().toLowerCase();
-  if (!id || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (!id || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("A valid Drive file ID and student email are required.");
   }
   const existing = await driveRequest(
