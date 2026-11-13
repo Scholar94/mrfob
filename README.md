@@ -103,3 +103,8 @@ All uploaders must sign in with a Google account that has Editor access to the s
 - Customer-specific garment production photos and videos remain in the order's private progress updates. They are not made public by the website media publisher.
 - Firestore rules permit anonymous reads only for documents marked both `published: true` and `visibility: 'public'`; media publishing mutations are limited to Super Admin and Manager.
 - Website media supports JPG, PNG, WebP, MP4, WebM and MOV. Image limit: 20 MB. Video limit: 100 MB.
+
+
+## Objective assessment auto-marking
+
+The Fashion Institute supports objective multiple-choice assessments with server-side automatic marking through the free Google Apps Script option. See [docs/google-apps-script/README.md](docs/google-apps-script/README.md) for setup, permissions and deployment. Add the GitHub Actions variable `VITE_ASSESSMENT_GRADING_URL` with the deployed Apps Script `/exec` URL, then redeploy the site. Correct answers are stored in a separate staff-only Firestore collection; the browser never receives the answer key.
