@@ -122,6 +122,15 @@ try {
 
   // Institute withdrawal must decrement the intake and remove paid lesson access atomically.
   await assertSucceeds(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
+  const applicationOnlyWithdrawal = writeBatch(superAdmin);
+  applicationOnlyWithdrawal.update(doc(superAdmin, "instituteApplications", "application-a"), {
+    status: "withdrawn", withdrawalReason: "Learner requested withdrawal.",
+    withdrawnBy: "admin-a", withdrawnAt: now, updatedAt: now
+  });
+  applicationOnlyWithdrawal.update(doc(superAdmin, "trainingWindows", "window-a"), {
+    enrolledCount: 0, updatedAt: now
+  });
+  await assertFails(applicationOnlyWithdrawal.commit());
   const withdrawalBatch = writeBatch(superAdmin);
   withdrawalBatch.update(doc(superAdmin, "instituteApplications", "application-a"), {
     status: "withdrawn", withdrawalReason: "Learner requested withdrawal.",
