@@ -428,3 +428,16 @@ button:disabled{cursor:not-allowed}
 .industrial-enquiry-submit{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-top:4px}
 .industrial-enquiry-submit p{max-width:370px;color:#d9cacc;font-size:10px;line-height:1.7;margin:0}
 @media(max-width:760px){.industrial-enquiry{grid-template-columns:1fr;gap:20px}.industrial-enquiry-form{grid-template-columns:1fr}.industrial-enquiry-wide,.industrial-enquiry-submit{grid-column:auto}.industrial-enquiry-submit{align-items:flex-start;flex-direction:column}}
+
+
+/* Homepage value proposition — grounded in verified company scope and existing workflows */
+.why-us{background:#f7f3ec}
+.why-us-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 28px;margin-top:38px;border-top:1px solid #ded5c8}
+.why-us-grid article{display:grid;grid-template-columns:38px minmax(0,1fr);gap:13px;padding:25px 0;border-bottom:1px solid #ded5c8}
+.why-us-grid article>span{font:500 14px 'Playfair Display';color:#a77d43}
+.why-us-grid h3{font:500 20px/1.25 'Playfair Display';color:#32151f;margin:0 0 8px}
+.why-us-grid p{font-size:12px;line-height:1.8;color:#746b68;margin:0}
+.why-us-action{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:28px}
+.why-us-action p{font:19px 'Playfair Display';color:#49383d;margin:0}
+@media(max-width:850px){.why-us-grid{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}}
+@media(max-width:560px){.why-us-grid{grid-template-columns:1fr}.why-us-grid article{padding:20px 0}.why-us-action{align-items:flex-start;flex-direction:column}.why-us-action p{font-size:17px}}
