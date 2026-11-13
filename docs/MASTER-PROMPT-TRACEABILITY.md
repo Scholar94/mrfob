@@ -57,6 +57,9 @@
 
 ## Work log
 
+- **2026-11-13 — Fashion Institute certificate revocation:** added an administrator-only revocation action for issued certificates, requiring a meaningful reason before changing status. The record is retained with revocation reason, actor and server timestamp; revoked certificates remain visible in staff and student records and are no longer printable from the learner view. Existing issue/print flow remains unchanged for active certificates. This is an administrative correction workflow, not public certificate verification or an automatic completion check. No Firestore rules changed. Build, permission and student/staff workflow checks remain pending.
+
+
 - **2026-11-13 — Fashion Institute assessment grading usability:** replaced browser prompt-based grading with an inline, labelled score and optional instructor-feedback form. Scores are validated against the existing per-question maximum before the submission is marked graded; feedback is stored with the grade and shown back in the learner view. The change retains manual grading and does not expose answer keys or claim objective auto-marking. Responsive styling added. No Firestore rules changed. Build, instructor/student workflow and accessibility checks remain pending.
 
 
