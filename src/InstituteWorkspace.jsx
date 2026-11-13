@@ -374,7 +374,10 @@ export default function InstituteWorkspace() {
     try {
       if (item.status !== "admitted") throw new Error("Only admitted applicants can have training payment verified.");
       const enrollmentId = item.customerUid + "_" + item.courseId;
-      await setDoc(doc(db, "instituteEnrollments", enrollmentId), { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", studentName:item.fullName||"", studentEmail:item.email||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:serverTimestamp() });
+      const enrollmentRef = doc(db, "instituteEnrollments", enrollmentId);
+      const existingEnrollment = await getDoc(enrollmentRef);
+      const enrollmentData = { studentUid:item.customerUid, applicationId:item.id, applicationRef:item.applicationRef, studentId:item.studentId||"", studentName:item.fullName||"", studentEmail:item.email||"", courseId:item.courseId, courseTitle:item.courseTitle, windowId:item.windowId, windowTitle:item.windowTitle, paymentStatus:"paid", verifiedBy:user.uid, verifiedAt:serverTimestamp(), createdAt:existingEnrollment.exists() ? existingEnrollment.data().createdAt : serverTimestamp() };
+      await setDoc(enrollmentRef, enrollmentData);
       await updateDoc(doc(db, "instituteApplications", item.id), { paymentStatus:"paid", paymentVerifiedBy:user.uid, paymentVerifiedAt:serverTimestamp(), updatedAt:serverTimestamp() });
       setNotice("Payment marked verified and course access activated. Confirm funds have actually arrived before using this action."); await load();
     } catch(e) { setError(e.message || "Could not verify training payment."); } finally { setBusy(false); }
