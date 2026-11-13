@@ -74,8 +74,8 @@ export default function App() {
       "/collections/corporate": ["collection-corporate", "Corporate and Industrial Tailoring | MR FOP FASHIONS"],
       "/fabric-gallery": ["fabric-gallery", "Fabric Gallery | MR FOP FASHIONS"],
       "/fashion-institute": ["institute", "Fashion Institute | MR FOP FASHIONS"],
-      "/courses": ["institute", "Fashion Courses | MR FOP FASHIONS"],
-      "/admissions": ["institute", "Fashion Institute Admissions | MR FOP FASHIONS"],
+      "/courses": ["courses", "Fashion Courses | MR FOP FASHIONS"],
+      "/admissions": ["admissions", "Fashion Institute Admissions | MR FOP FASHIONS"],
       "/contact": ["contact", "Contact MR FOP FASHIONS"],
       "/faq": ["faq", "Frequently Asked Questions | MR FOP FASHIONS"]
     };
@@ -295,8 +295,8 @@ export default function App() {
       <section className="institute" id="institute"><div className="institute-photo"><img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85" alt="Fashion design and creative training" loading="lazy"/></div>
         <div className="institute-content"><img className="institute-brand-logo" src="/mrfob/mr-fop-fashion-institute-logo.webp" alt="MR FOP Fashion Institute" /><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
           <p>Our Fashion Institute is the learning arm of MR FOP FASHIONS. Whether you are starting from the beginning or developing your craft, take the next step with practical fashion training.</p>
-          <div className="training-points"><span><CheckCircle2/> Online learning pathway</span><span><CheckCircle2/> Onsite practical training</span><span><CheckCircle2/> Guided professional development</span></div>
-          <div className="institute-actions"><a href={companyWa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
+          <div className="training-points" id="courses"><span><CheckCircle2/> Online learning pathway</span><span><CheckCircle2/> Onsite practical training</span><span><CheckCircle2/> Guided professional development</span></div>
+          <div className="institute-actions" id="admissions"><a href={companyWa} target="_blank" rel="noreferrer" className="button button-gold">Ask about training <ArrowUpRight size={17}/></a><button type="button" className="button institute-account-button" onClick={() => setPortalOpen(true)}><UserRound size={16}/> Open learner account</button></div>
         </div>
       </section>
       <section className="industrial section-pad" id="industrial">
