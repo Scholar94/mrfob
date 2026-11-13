@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, where, doc } from "firebase/firestore";
 import { db } from "./firebase.js";
+import { recordAuditEvent } from "./auditLog.js";
 
 const REQUEST_TYPES = [
   ["access", "Request a copy of my personal data"],
@@ -82,6 +83,7 @@ export default function PrivacyRequestCenter({ user, claims }) {
         reviewedBy: user.uid,
         updatedAt: serverTimestamp()
       });
+      await recordAuditEvent({ user, claims, action: "privacy_request_updated", entityType: "privacyRequest", entityId: item.id, summary: "Privacy request status changed to " + status + "." });
       setItems(current => current.map(row => row.id === item.id ? { ...row, status, staffNote } : row));
       setNotice("Privacy request status updated.");
     } catch (err) {
