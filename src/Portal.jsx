@@ -2018,6 +2018,16 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   function printFinanceReport(){const w=window.open("","_blank");if(!w){setError("Allow pop-ups to print the report.");return;}const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));const periodLabel=financePeriod==="custom"?(financeStart+" to "+financeEnd):financePeriod;const html="<html><head><title>MR FOP Financial Report</title><style>body{font:12px Arial;padding:25px;color:#32151f}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}</style></head><body><h1>MR FOP FASHIONS</h1><h2>Financial report</h2><p>Reporting period: "+esc(periodLabel)+"</p><p>Revenue: ₦"+financeRevenue.toLocaleString("en-NG")+" · Gross profit: ₦"+financeGross.toLocaleString("en-NG")+" · Expenses: ₦"+financeExpenseTotal.toLocaleString("en-NG")+" · Net profit: ₦"+financeNet.toLocaleString("en-NG")+"</p><table><tr><th>Expense</th><th>Category</th><th>Date</th><th>Method</th><th>Amount</th></tr>"+financeExpenses.map(x=>"<tr><td>"+esc(x.title)+"</td><td>"+esc(x.category)+"</td><td>"+esc(x.expenseDate)+"</td><td>"+esc(x.method)+"</td><td>₦"+Number(x.amount||0).toLocaleString("en-NG")+"</td></tr>").join("")+"</table><script>window.onload=function(){window.print()}<\\/script></body></html>";w.document.write(html);w.document.close();}
   const filteredCustomers = customers.filter(item => [item.displayName, item.email, item.phone].some(value => (value || "").toLowerCase().includes(customerSearch.trim().toLowerCase())));
   const activeProductionCount = orders.filter(order => !["delivered", "cancelled"].includes(order.status)).length;
+  const completedOrderCount = orders.filter(order => ["completed", "ready_for_collection", "dispatched", "delivered"].includes(order.status)).length;
+  const verifiedOrderPaymentsTotal = payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const outstandingQuotedBalanceTotal = orders.reduce((sum, order) => {
+    const quoted = Number(order.amount || 0);
+    return sum + (quoted > 0 ? Math.max(0, quoted - Number(order.amountPaid || 0)) : 0);
+  }, 0);
+  const newCustomerCount30Days = customers.filter(item => {
+    const created = item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt instanceof Date ? item.createdAt : null;
+    return created && created >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  }).length;
   const pendingAppointmentCount = appointments.filter(item => ["pending", "alternative_proposed"].includes(item.status || "pending")).length;
   const pendingPaymentCount = paymentDeclarations.filter(item => item.status === "pending").length;
   const pendingTrainingCount = allTrainingEnquiries.filter(item => ["pending", "submitted"].includes(item.status || "pending")).length;
@@ -2062,7 +2072,11 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       </div>}
       {(claims.superAdmin || ["manager", "sales", "tailor"].includes(claims.staffRole)) && <div className="dashboard-grid staff-dashboard-summary" aria-label="Fashion operations overview">
         {claims.superAdmin && <article className="dashboard-tile"><strong>{customers.length}</strong><span>Registered customers</span><small>Customer directory</small></article>}
+        {claims.superAdmin && <article className="dashboard-tile"><strong>{newCustomerCount30Days}</strong><span>New customers · last 30 days</span><small>Customer growth</small></article>}
         <article className="dashboard-tile"><strong>{orders.length}</strong><span>Total accessible orders</span><small>Order management</small></article>
+        {claims.superAdmin && <article className="dashboard-tile"><strong>{completedOrderCount}</strong><span>Completed / delivered orders</span><small>Order fulfilment</small></article>
+        {claims.superAdmin && <article className="dashboard-tile"><strong>₦{verifiedOrderPaymentsTotal.toLocaleString("en-NG")}</strong><span>Verified customer-order payments</span><small>Payment ledger · not POS revenue</small></article>
+        {claims.superAdmin && <article className="dashboard-tile"><strong>₦{outstandingQuotedBalanceTotal.toLocaleString("en-NG")}</strong><span>Outstanding quoted balances</span><small>Orders with a confirmed amount</small></article>
         <article className="dashboard-tile"><strong>{activeProductionCount}</strong><span>Orders not yet delivered</span><small>Production pipeline</small></article>
         <article className="dashboard-tile"><strong>{pendingAppointmentCount}</strong><span>Appointments awaiting action</span><small>Scheduling</small></article>
         {claims.superAdmin && <article className="dashboard-tile"><strong>{pendingPaymentCount}</strong><span>Transfer declarations pending review</span><small>Finance verification</small></article>}
