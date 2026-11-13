@@ -39,6 +39,7 @@ async function getDriveToken(scope = "https://www.googleapis.com/auth/drive") {
           return;
         }
         accessToken = response.access_token;
+        accessTokenScope = scope;
         tokenExpiresAt = Date.now() + Number(response.expires_in || 3600) * 1000;
         resolve(accessToken);
       },
@@ -48,8 +49,8 @@ async function getDriveToken(scope = "https://www.googleapis.com/auth/drive") {
   });
 }
 
-async function driveRequest(path, options = {}) {
-  const token = await getDriveToken();
+async function driveRequest(path, options = {}, scope = "https://www.googleapis.com/auth/drive") {
+  const token = await getDriveToken(scope);
   const response = await fetch(DRIVE_API + path, {
     ...options,
     headers: { Authorization: "Bearer " + token, ...(options.headers || {}) }
@@ -87,7 +88,8 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     ...(parentId ? { parents: [parentId] } : {}),
     description: JSON.stringify({ app: "MR FOP FASHIONS", orderId: metadata.orderId || "", uploadedBy: metadata.uploadedBy || "" })
   };
-  const token = await getDriveToken();
+  const driveScope = customerOwned ? "https://www.googleapis.com/auth/drive.file" : "https://www.googleapis.com/auth/drive";
+  const token = await getDriveToken(driveScope);
   const session = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,webViewLink,thumbnailLink", {
     method: "POST",
     headers: {
@@ -120,7 +122,7 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "user", role: "reader", emailAddress: shareEmail })
-    });
+    }, driveScope);
   }
   return {
     fileId: uploaded.id,
