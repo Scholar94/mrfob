@@ -676,11 +676,19 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['applicationRef','customerUid','fullName','email','phone','address','courseId','courseTitle','windowId','windowTitle','mode','experience','note','status','paymentStatus','createdAt','updatedAt']);
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']));
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','paymentStatus','paymentVerifiedBy','paymentVerifiedAt','updatedAt'])
-        && request.resource.data.status in ['pending','admitted','rejected','more_information']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','studentId','reviewedBy','reviewedAt','paymentStatus','paymentVerifiedBy','paymentVerifiedAt','updatedAt','withdrawalReason','withdrawnBy','withdrawnAt'])
+        && request.resource.data.status in ['pending','admitted','rejected','more_information','withdrawn']
         && request.resource.data.updatedAt is timestamp
         && (resource.data.status != 'rejected' || request.resource.data.status == 'rejected')
-        && (request.resource.data.status != 'rejected' || resource.data.status == 'rejected'
+        && (resource.data.status != 'withdrawn' || request.resource.data.status == 'withdrawn')
+        && (request.resource.data.status != 'withdrawn' || (
+          request.resource.data.withdrawalReason is string
+          && request.resource.data.withdrawalReason.size() >= 5
+          && request.resource.data.withdrawalReason.size() <= 500
+          && request.resource.data.withdrawnBy == request.auth.uid
+          && request.resource.data.withdrawnAt is timestamp
+        ))
+        && (!(request.resource.data.status in ['rejected','withdrawn']) || resource.data.status in ['rejected','withdrawn']
           || getAfter(/databases/$(database)/documents/trainingWindows/$(resource.data.windowId)).data.enrolledCount
             == get(/databases/$(database)/documents/trainingWindows/$(resource.data.windowId)).data.enrolledCount - 1);
       allow delete: if isSuperAdmin();
@@ -688,32 +696,44 @@ service cloud.firestore {
 
     match /instituteEnrollments/{enrollmentId} {
       function validVerifiedEnrollment(data) {
-        return data.keys().hasOnly(['studentUid','applicationId','applicationRef','studentId','studentName','studentEmail','courseId','courseTitle','windowId','windowTitle','paymentStatus','verifiedBy','verifiedAt','createdAt'])
+        return data.keys().hasOnly(['studentUid','applicationId','applicationRef','studentId','studentName','studentEmail','courseId','courseTitle','windowId','windowTitle','paymentStatus','verifiedBy','verifiedAt','createdAt','enrollmentStatus','withdrawalReason','withdrawnBy','withdrawnAt','updatedAt'])
           && data.studentUid is string
           && data.courseId is string
           && enrollmentId == data.studentUid + '_' + data.courseId
           && data.applicationId is string
           && exists(/databases/$(database)/documents/instituteApplications/$(data.applicationId))
-          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.customerUid == data.studentUid
-          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseId == data.courseId
-          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowId == data.windowId
-          && get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'admitted'
-          && data.studentEmail == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.email
-          && data.courseTitle == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseTitle
-          && data.windowTitle == get(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowTitle
+          && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.customerUid == data.studentUid
+          && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseId == data.courseId
+          && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowId == data.windowId
+          && ((('enrollmentStatus' in data) && data.enrollmentStatus == 'withdrawn'
+              && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'withdrawn')
+            || ((!('enrollmentStatus' in data) || data.enrollmentStatus == 'active')
+              && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'admitted'))
+          && data.studentEmail == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.email
+          && data.courseTitle == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseTitle
+          && data.windowTitle == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowTitle
           && data.paymentStatus == 'paid'
-          && data.verifiedBy == request.auth.uid
+          && data.verifiedBy is string
           && data.verifiedAt is timestamp
-          && data.createdAt is timestamp;
+          && data.createdAt is timestamp
+          && (!('enrollmentStatus' in data) || data.enrollmentStatus in ['active','withdrawn'])
+          && (!('withdrawalReason' in data) || (data.withdrawalReason is string && data.withdrawalReason.size() >= 5 && data.withdrawalReason.size() <= 500))
+          && (!('withdrawnBy' in data) || data.withdrawnBy is string)
+          && (!('withdrawnAt' in data) || data.withdrawnAt is timestamp)
+          && (!('updatedAt' in data) || data.updatedAt is timestamp);
       }
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
-        && validVerifiedEnrollment(request.resource.data);
+        && validVerifiedEnrollment(request.resource.data)
+        && request.resource.data.verifiedBy == request.auth.uid;
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && validVerifiedEnrollment(request.resource.data)
         && request.resource.data.studentUid == resource.data.studentUid
         && request.resource.data.courseId == resource.data.courseId
         && request.resource.data.applicationId == resource.data.applicationId
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.verifiedBy == resource.data.verifiedBy
+        && request.resource.data.verifiedAt == resource.data.verifiedAt
+        && request.resource.data.paymentStatus == resource.data.paymentStatus;
       allow read: if signedIn() && (resource.data.studentUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['institute','manager']) || hasInstructorCourseAccess(resource.data.courseId));
       allow delete: if isSuperAdmin();
     }
@@ -729,14 +749,18 @@ service cloud.firestore {
     function hasPaidEnrollmentForStudent(courseId, studentUid) {
       let enrollmentId = studentUid + '_' + courseId;
       return exists(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId))
-        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid';
+        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid'
+        && (!('enrollmentStatus' in get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data)
+          || get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.enrollmentStatus == 'active');
     }
 
     function hasPaidCourseAccess(courseId) {
       let enrollmentId = request.auth.uid + '_' + courseId;
       return signedIn()
         && exists(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId))
-        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid';
+        && get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.paymentStatus == 'paid'
+        && (!('enrollmentStatus' in get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data)
+          || get(/databases/$(database)/documents/instituteEnrollments/$(enrollmentId)).data.enrollmentStatus == 'active');
     }
 
     match /instituteAssignments/{assignmentId} {
@@ -1164,7 +1188,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['actorUid','actorRole','action','entityType','entityId','summary','createdAt'])
         && request.resource.data.actorUid == request.auth.uid
         && request.resource.data.actorRole == roleOf(request.auth.uid)
-        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','refund_status_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated','faq_created','faq_updated','faq_archived']
+        && request.resource.data.action in ['customer_benefits_updated','referral_reviewed','corporate_request_updated','fabric_created','fabric_updated','fabric_archived','privacy_request_updated','refund_status_updated','payment_declaration_reviewed','appointment_status_updated','staff_role_assigned','inventory_stock_adjusted','company_profile_updated','payment_instructions_updated','appointment_assignment_updated','designer_availability_updated','institute_application_reviewed','training_payment_verified','institute_enrollment_withdrawn','drive_lesson_access_granted','drive_lesson_access_revoked','order_assigned','order_production_updated','order_delivery_date_updated','faq_created','faq_updated','faq_archived']
         && request.resource.data.entityType in ['customerBenefits','referral','corporateRequest','fabric','privacyRequest','paymentDeclaration','appointment','role','product','companyProfile','paymentInstructions','refund','designerAvailability','instituteApplication','instituteEnrollment','order','faq']
         && request.resource.data.entityId is string
         && request.resource.data.entityId.size() <= 150
