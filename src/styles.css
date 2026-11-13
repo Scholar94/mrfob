@@ -441,3 +441,12 @@ button:disabled{cursor:not-allowed}
 .why-us-action p{font:19px 'Playfair Display';color:#49383d;margin:0}
 @media(max-width:850px){.why-us-grid{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}}
 @media(max-width:560px){.why-us-grid{grid-template-columns:1fr}.why-us-grid article{padding:20px 0}.why-us-action{align-items:flex-start;flex-direction:column}.why-us-action p{font-size:17px}}
+
+
+/* Fashion Institute public-to-portal pathway */
+.institute-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px}
+.institute-actions .button{margin-top:0}
+.institute-account-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 19px;border:1px solid #d6b36d;background:transparent;color:#f7f3ec;font:600 11px 'DM Sans',sans-serif;letter-spacing:.5px;cursor:pointer}
+.institute-account-button:hover{background:#ffffff12}
+.institute-account-button:focus-visible{outline:3px solid #d6b36d;outline-offset:4px}
+@media(max-width:560px){.institute-actions{align-items:stretch;flex-direction:column}.institute-actions .button{width:100%}}
