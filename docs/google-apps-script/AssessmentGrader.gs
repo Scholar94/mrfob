@@ -31,7 +31,9 @@ function doPost(e) {
     if (!enrollment || enrollment.studentUid !== uid || enrollment.courseId !== assessment.courseId || enrollment.paymentStatus !== "paid") throw new Error("A paid course enrolment is required.");
     const key = getDocument_(config.projectId, "instituteAssessmentAnswerKeys", assessmentId);
     if (!key || key.courseId !== assessment.courseId || !Array.isArray(key.correctOptions)) throw new Error("The answer key is unavailable.");
+    if (!Array.isArray(assessment.questions) || assessment.questions.some(q => !q || typeof q.text !== "string" || !Array.isArray(q.options) || q.options.length !== 4)) throw new Error("The published objective questions are invalid.");
     if (body.answers.length !== assessment.questions.length || key.correctOptions.length !== assessment.questions.length) throw new Error("The submitted answer count is invalid.");
+    if (Number(key.pointsPerQuestion) !== 10) throw new Error("The assessment scoring configuration is invalid.");
     const answers = body.answers.map(a => String(a || "").trim().toUpperCase());
     if (answers.some(a => !["A","B","C","D"].includes(a))) throw new Error("Select an option for every question.");
     const correct = key.correctOptions.map(a => String(a).toUpperCase());
@@ -39,7 +41,7 @@ function doPost(e) {
     const submissionId = uid + "_" + assessmentId;
     const existing = getDocument_(config.projectId, "instituteAssessmentSubmissions", submissionId);
     if (existing) throw new Error("This assessment has already been submitted.");
-    const points = Number(key.pointsPerQuestion || 10);
+    const points = 10;
     const maxScore = correct.length * points;
     const score = answers.reduce((total, answer, index) => total + (answer === correct[index] ? points : 0), 0);
     const now = new Date();
