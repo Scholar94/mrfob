@@ -1341,9 +1341,13 @@ export default function Portal({ onClose }) {
         const legacyLedger = await getDocs(query(collection(db, "payments"), where("orderId", "==", item.orderId)));
         const legacyPaid = legacyLedger.docs.reduce((sum, row) => sum + Number(row.data().amount || 0), 0);
         await runTransaction(db, async transaction => {
-          const declarationSnap = await transaction.get(declarationRef);
-          const orderSnap = await transaction.get(orderRef);
+          const [declarationSnap, orderSnap, paymentSnap] = await Promise.all([
+            transaction.get(declarationRef),
+            transaction.get(orderRef),
+            transaction.get(paymentRef)
+          ]);
           if (!declarationSnap.exists() || declarationSnap.data().status !== "pending") throw new Error("This declaration has already been reviewed. Refresh the list.");
+          if (paymentSnap.exists()) throw new Error("A payment ledger entry already exists for this declaration. Reconcile the order balance before retrying.");
           if (!orderSnap.exists() || orderSnap.data().customerUid !== item.customerUid) throw new Error("The linked order could not be verified.");
           const alreadyPaid = typeof orderSnap.data().amountPaid === "number" ? orderSnap.data().amountPaid : legacyPaid;
           const newPaid = alreadyPaid + Number(declarationSnap.data().amount || 0);
