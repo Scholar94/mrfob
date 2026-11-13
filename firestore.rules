@@ -706,7 +706,10 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.courseId == data.courseId
           && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.windowId == data.windowId
           && ((('enrollmentStatus' in data) && data.enrollmentStatus == 'withdrawn'
-              && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'withdrawn')
+              && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'withdrawn'
+              && data.withdrawalReason == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.withdrawalReason
+              && data.withdrawnBy == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.withdrawnBy
+              && data.withdrawnAt == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.withdrawnAt)
             || ((!('enrollmentStatus' in data) || data.enrollmentStatus == 'active')
               && getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.status == 'admitted'))
           && data.studentEmail == getAfter(/databases/$(database)/documents/instituteApplications/$(data.applicationId)).data.email
@@ -724,6 +727,7 @@ service cloud.firestore {
       }
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && validVerifiedEnrollment(request.resource.data)
+        && (!('enrollmentStatus' in request.resource.data) || request.resource.data.enrollmentStatus == 'active')
         && request.resource.data.verifiedBy == request.auth.uid;
       allow update: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && validVerifiedEnrollment(request.resource.data)
