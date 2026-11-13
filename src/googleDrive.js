@@ -113,7 +113,8 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
   }
   const uploaded = await uploadResponse.json();
-  const shareEmail = metadata.shareWithEmail || metadata.customerEmail;\n  if (shareEmail && metadata.visibility !== "public") {
+  const shareEmail = metadata.shareWithEmail || metadata.customerEmail;
+  if (shareEmail && metadata.visibility !== "public") {
     await driveRequest("/files/" + uploaded.id + "/permissions?sendNotificationEmail=false", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
