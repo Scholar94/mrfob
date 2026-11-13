@@ -119,6 +119,12 @@ service cloud.firestore {
       ) || (
         signedIn()
         && resource.data.customerUid == request.auth.uid
+        && resource.data.status in ['pending', 'alternative_proposed']
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+      ) || (
+        signedIn()
+        && resource.data.customerUid == request.auth.uid
         && resource.data.status == 'alternative_proposed'
         && request.resource.data.status == 'confirmed'
         && request.resource.data.appointmentDate == resource.data.proposedDate
