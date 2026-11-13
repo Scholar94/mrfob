@@ -774,11 +774,25 @@ export default function Portal({ onClose }) {
     if (reply.length > 2000) { setError("The reply must be 2,000 characters or fewer."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "supportTickets", ticket.id), {
-        staffReply: reply, status: ticket.status === "closed" ? "closed" : "in_progress",
+      const nextStatus = ticket.status === "closed" ? "closed" : "in_progress";
+      const batch = writeBatch(db);
+      batch.update(doc(db, "supportTickets", ticket.id), {
+        staffReply: reply, status: nextStatus,
         repliedBy: user.uid, repliedAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
-      setMessage("Your reply has been saved to the customer's support request.");
+      const noticeRef = doc(collection(db, "notifications"));
+      batch.set(noticeRef, {
+        customerUid: ticket.customerUid,
+        supportTicketId: ticket.id,
+        type: "support_update",
+        supportStatus: nextStatus,
+        title: "The team has replied to your support request",
+        message: "A response is available for your request: " + ticket.subject.slice(0, 180),
+        createdAt: serverTimestamp(),
+        readAt: null
+      });
+      await batch.commit();
+      setMessage("Your reply has been saved and the customer has been notified.");
       await loadSupportTickets();
     } catch (err) { setError(err.message || "Could not save the support reply."); }
     finally { setBusy(false); }
@@ -788,9 +802,22 @@ export default function Portal({ onClose }) {
     if (!canManageSupport || !ticket?.id || !["open","in_progress","closed"].includes(status)) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await updateDoc(doc(db, "supportTickets", ticket.id), { status, updatedAt: serverTimestamp(), statusUpdatedBy: user.uid });
+      const batch = writeBatch(db);
+      batch.update(doc(db, "supportTickets", ticket.id), { status, updatedAt: serverTimestamp(), statusUpdatedBy: user.uid });
+      const noticeRef = doc(collection(db, "notifications"));
+      batch.set(noticeRef, {
+        customerUid: ticket.customerUid,
+        supportTicketId: ticket.id,
+        type: "support_update",
+        supportStatus: status,
+        title: "Your support request status has changed",
+        message: "Your request "" + ticket.subject.slice(0, 180) + "" is now " + status.replaceAll("_", " ") + ".",
+        createdAt: serverTimestamp(),
+        readAt: null
+      });
+      await batch.commit();
       setSupportTickets(items => items.map(item => item.id === ticket.id ? { ...item, status } : item));
-      setMessage("Support request status updated.");
+      setMessage("Support request status updated and the customer has been notified.");
     } catch (err) { setError(err.message || "Could not update support request."); }
     finally { setBusy(false); }
   }
