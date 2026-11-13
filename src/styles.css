@@ -364,3 +364,10 @@
 :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #b68b4c;outline-offset:3px}
 button:disabled{cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+/* Public-site interaction feedback and direct contact links */
+.install-feedback{position:fixed;right:92px;bottom:76px;z-index:21;max-width:min(360px,calc(100vw - 32px));margin:0;padding:12px 14px;background:#fffaf0;border:1px solid #c9b58f;color:#32151f;font-size:11px;line-height:1.6;box-shadow:0 8px 24px #0002}
+.contact-detail[href]{width:fit-content;text-decoration:underline;text-decoration-color:#9d8157;text-underline-offset:4px}
+.contact-detail[href]:focus-visible,.install-button:focus-visible{outline:3px solid #d6b36d;outline-offset:4px}
+@media(max-width:650px){.install-feedback{right:12px;bottom:58px;max-width:calc(100vw - 24px)}}
