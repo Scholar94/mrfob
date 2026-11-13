@@ -182,6 +182,7 @@ export default function InstituteWorkspace() {
     });
 
     const blockers = [];
+    if (enrollment.enrollmentStatus === "withdrawn") blockers.push("This enrolment has been withdrawn and is not eligible for course completion or certificate issuance.");
     if (!courseLessons.length) blockers.push("No published lessons are available to verify learning completion.");
     if (incompleteLessons.length) blockers.push(`${incompleteLessons.length} published lesson(s) remain incomplete.`);
     if (incompleteAssignments.length) blockers.push(`${incompleteAssignments.length} published assignment(s) are not yet submitted and graded.`);
@@ -580,7 +581,7 @@ export default function InstituteWorkspace() {
         if (!allowed.includes(lessonUploadFile.type)) throw new Error("Upload a PDF, JPG, PNG, WebP, MP4, WebM or MOV lesson file.");
         if (lessonUploadFile.size > 100 * 1024 * 1024) throw new Error("Each Institute lesson file must be 100 MB or smaller.");
         const studentEmails = [...new Set(allEnrollments
-          .filter(en => en.courseId === lessonForm.courseId && en.paymentStatus === "paid")
+          .filter(en => en.courseId === lessonForm.courseId && en.paymentStatus === "paid" && en.enrollmentStatus !== "withdrawn")
           .map(en => String(en.studentEmail || "").trim().toLowerCase())
           .filter(email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))];
         const uploaded = await uploadFileToGoogleDrive(lessonUploadFile, {
@@ -847,7 +848,7 @@ export default function InstituteWorkspace() {
     setBusy(true); setError(""); setNotice("");
     try {
       const enrollment = allEnrollments.find(item => item.id === certificateEnrollmentId);
-      if (!enrollment || enrollment.paymentStatus !== "paid") throw new Error("Select a student with verified paid-course access.");
+      if (!enrollment || enrollment.paymentStatus !== "paid" || enrollment.enrollmentStatus === "withdrawn") throw new Error("Select a student with verified paid, active course access.");
       const completion = getCourseCompletionStatus(enrollment);
       if (!completion.eligible) throw new Error("Certificate issuance is blocked until all completion checks are satisfied: " + completion.blockers.join(" "));
       const certificateId = enrollment.studentUid + "_" + enrollment.courseId;
@@ -1144,14 +1145,14 @@ export default function InstituteWorkspace() {
     {(isAdmin || isInstructor) && <section className="institute-window-list">
       <h4>Student attendance register</h4>
       <label>Attendance date<input type="date" value={attendanceDate} onChange={e=>setAttendanceDate(e.target.value)}/></label>
-      {allEnrollments.filter(en=>!isInstructor || instructorAssignments.some(a=>a.courseId===en.courseId&&a.active)).map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><p>{(()=>{const history=attendance.filter(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId);const attended=history.filter(a=>a.status==="present"||a.status==="late").length;return history.length?`${attended} of ${history.length} marked sessions attended (${Math.round(attended/history.length*100)}%).`:"No historical attendance has been recorded.";})()}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
+      {allEnrollments.filter(en=>en.enrollmentStatus !== "withdrawn" && (!isInstructor || instructorAssignments.some(a=>a.courseId===en.courseId&&a.active))).map(en=>{const record=attendance.find(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId&&a.date===attendanceDate);return <article className="appointment-card" key={en.id}><strong>{en.studentName || en.studentEmail || en.studentUid}</strong><span>{en.studentId} · {en.courseTitle} · {en.windowTitle}</span><p>Attendance: {record?.status || "Not marked"}</p><p>{(()=>{const history=attendance.filter(a=>a.studentUid===en.studentUid&&a.courseId===en.courseId);const attended=history.filter(a=>a.status==="present"||a.status==="late").length;return history.length?`${attended} of ${history.length} marked sessions attended (${Math.round(attended/history.length*100)}%).`:"No historical attendance has been recorded.";})()}</p><div className="finance-form-actions">{["present","absent","late","excused"].map(status=><button type="button" key={status} disabled={busy} onClick={()=>markAttendance(en,status)}>{status[0].toUpperCase()+status.slice(1)}</button>)}</div></article>})}
       {!allEnrollments.length&&<p className="staff-empty">No enrolled students are available for attendance marking.</p>}
     </section>}
     {isAdmin && <section className="institute-window-list">
       <h4>Certificates and completion status</h4>
       <label>Paid student and course<select value={certificateEnrollmentId} onChange={e=>setCertificateEnrollmentId(e.target.value)}>
         <option value="">Select a paid enrolment</option>
-        {allEnrollments.filter(en=>en.paymentStatus==="paid"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
+        {allEnrollments.filter(en=>en.paymentStatus==="paid"&&en.enrollmentStatus!=="withdrawn"&&!allCertificates.some(c=>c.id===en.id)).map(en=><option key={en.id} value={en.id}>{en.studentName||en.studentEmail||en.studentUid} · {en.courseTitle}</option>)}
       </select></label>
       {certificateEnrollmentId && (() => {
         const selectedEnrollment = allEnrollments.find(item => item.id === certificateEnrollmentId);
