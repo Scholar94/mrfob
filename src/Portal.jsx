@@ -1711,7 +1711,7 @@ export default function Portal({ onClose }) {
     if (!user) { setAccountNavItems([]); setAccountMenuOpen(false); return; }
     const root = portalDialogRef.current;
     if (!root) return;
-    const sections = Array.from(root.querySelectorAll("section")).filter(section =>
+    const sections = Array.from(root.querySelectorAll("section, form.staff-form")).filter(section =>
       section.querySelector("h2, h3, h4") && section.getClientRects().length
     );
     const items = sections.map((section, index) => {
