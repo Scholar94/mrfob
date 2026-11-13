@@ -262,3 +262,6 @@
 
 
 - **2026-11-13 — Homepage location and directions:** added an embedded Google Maps view for the company's stated Bonojo Road/Eka Junction address in Ijebu Ode, alongside the studio address, opening hours, telephone and a directions link. The map uses Google's public search/embed URL and does not require a paid Maps API key. Confirm the map pin resolves to the correct premises during live review; the embed is not a verified geocoding result.
+
+
+- **2026-11-13 — Local SEO and structured business metadata:** expanded the HTML document title/description and social sharing metadata, added Nigerian locale and Ogun State location metadata, and included Schema.org `ClothingStore` JSON-LD using the company's stated name, address, telephone, email, founding year and opening hours. This improves crawler-readable business context but does not guarantee search ranking, Google Business Profile verification, rich-result eligibility or correct map pin placement. Sitemap, robots.txt and canonical URL remain to be completed after confirming the production domain.
