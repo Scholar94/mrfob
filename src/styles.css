@@ -787,3 +787,14 @@ button:disabled{cursor:not-allowed}
 .corporate-request-admin label { display:grid; gap:6px; font-size:13px; }
 .corporate-request-admin textarea,.corporate-request-admin select { width:100%; border:1px solid #d9d0c7; border-radius:8px; padding:9px; font:inherit; }
 @media(max-width:640px){.corporate-request-admin{grid-template-columns:1fr}}
+
+
+/* Super Admin audit log */
+.audit-log-search { display:grid; gap:6px; max-width:520px; margin:16px 0; font-size:13px; }
+.audit-log-search input { border:1px solid #d9d0c7; border-radius:8px; padding:10px 12px; font:inherit; }
+.audit-log-list { display:grid; gap:10px; }
+.audit-log-item { border:1px solid #e8e0d8; border-radius:12px; padding:13px 15px; background:#fff; }
+.audit-log-item-heading { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.audit-log-item-heading strong { text-transform:capitalize; color:#32151f; }
+.audit-log-item-heading span,.audit-log-item small { color:#766b63; font-size:12px; }
+.audit-log-item p { margin:8px 0; overflow-wrap:anywhere; }
