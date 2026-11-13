@@ -116,13 +116,15 @@ export async function uploadFileToGoogleDrive(file, metadata = {}) {
     throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
   }
   const uploaded = await uploadResponse.json();
-  const shareEmail = metadata.shareWithEmail || metadata.customerEmail;
-  if (shareEmail && metadata.visibility !== "public") {
-    await driveRequest("/files/" + uploaded.id + "/permissions?sendNotificationEmail=false", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "user", role: "reader", emailAddress: shareEmail })
-    }, driveScope);
+  const shareEmails = [...new Set([
+    ...(Array.isArray(metadata.shareWithEmails) ? metadata.shareWithEmails : []),
+    metadata.shareWithEmail,
+    metadata.customerEmail
+  ].map(value => String(value || "").trim().toLowerCase()).filter(value => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)))];
+  if (metadata.visibility !== "public") {
+    for (const emailAddress of shareEmails) {
+      await shareDriveFileWithEmail(uploaded.id, emailAddress, driveScope);
+    }
   }
   return {
     fileId: uploaded.id,
@@ -150,4 +152,26 @@ export async function setDriveFilePublic(fileId, isPublic) {
   } else if (!isPublic && anyone) {
     await driveRequest("/files/" + encodeURIComponent(fileId) + "/permissions/" + encodeURIComponent(anyone.id), { method: "DELETE" });
   }
+}
+
+
+export async function shareDriveFileWithEmail(fileId, emailAddress, scope = "https://www.googleapis.com/auth/drive") {
+  const id = String(fileId || "").trim();
+  const email = String(emailAddress || "").trim().toLowerCase();
+  if (!id || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    throw new Error("A valid Drive file ID and student email are required.");
+  }
+  const existing = await driveRequest(
+    "/files/" + encodeURIComponent(id) + "/permissions?fields=permissions(id,type,role,emailAddress)",
+    {},
+    scope
+  );
+  if ((existing.permissions || []).some(permission =>
+    permission.type === "user" && String(permission.emailAddress || "").toLowerCase() === email && permission.role === "reader"
+  )) return;
+  await driveRequest("/files/" + encodeURIComponent(id) + "/permissions?sendNotificationEmail=false", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "user", role: "reader", emailAddress: email })
+  }, scope);
 }
