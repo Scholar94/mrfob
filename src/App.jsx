@@ -110,7 +110,7 @@ export default function App() {
       <a className="brand" href="#home"><span className="brand-mark">M<span>F</span></span><span className="brand-copy"><b>MR FOP</b><small>FASHIONS COMPANY</small></span></a>
       <button className="mobile-menu" type="button" onClick={() => setMenu(!menu)} aria-label={menu ? "Close navigation" : "Open navigation"} aria-expanded={menu} aria-controls="primary-navigation">{menu ? <X/> : <Menu/>}</button>
       <nav id="primary-navigation" className={menu ? "nav nav-open" : "nav"}>
-        <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#how-to-order" onClick={close}>How to Order</a>
+        <a href="#collections" onClick={close}>Collections</a><a href="#services" onClick={close}>What We Do</a><a href="#why-us" onClick={close}>Why MR FOP</a><a href="#how-to-order" onClick={close}>How to Order</a>
         <a href="#institute" onClick={close}>Fashion Institute</a><a href="#about" onClick={close}>About</a><a href="#story" onClick={close}>Our Story</a>
         <a href="#contact" onClick={close}>Contact</a>
         <button className="account-cta" onClick={() => {setPortalOpen(true);close();}}><UserRound size={15}/> My Account</button>
@@ -164,6 +164,18 @@ export default function App() {
       <section className="services section-pad" id="services">
         <div className="section-heading"><div><p className="eyebrow"><i/> OUR EXPERTISE</p><h2>Craft. Create. <em>Become.</em></h2></div><p>One fashion house. Three ways to bring your vision to life.</p></div>
         <div className="service-grid">{services.map(({icon: Icon, title, copy}, i) => <article className="service-card" key={title}><span className="service-number">0{i+1}</span><div className="service-icon"><Icon size={25}/></div><h3>{title}</h3><p>{copy}</p><a href={i === 2 ? "#institute" : wa} target={i === 2 ? undefined : "_blank"} rel="noreferrer" className="service-link">Discover more <ArrowUpRight size={16}/></a></article>)}</div>
+      </section>
+      <section className="why-us section-pad" id="why-us">
+        <div className="section-heading"><div><p className="eyebrow"><i/> THE DIFFERENCE IS IN THE DETAIL</p><h2>Why choose <em>MR FOP?</em></h2></div><p>A fashion partner for personal style, coordinated production and professional learning.</p></div>
+        <div className="why-us-grid">
+          <article><span>01</span><div><h3>Established experience</h3><p>Building our fashion and tailoring practice since 2010, with a mission centred on professional service and customer satisfaction.</p></div></article>
+          <article><span>02</span><div><h3>Personal and group solutions</h3><p>From individual bespoke garments to uniforms and coordinated group projects, discuss the scope with one fashion team.</p></div></article>
+          <article><span>03</span><div><h3>Consultation before commitment</h3><p>We review garment details, measurements, quantities and preferences before confirming the quotation and proposed schedule.</p></div></article>
+          <article><span>04</span><div><h3>Learning alongside practice</h3><p>Our Fashion Institute provides a pathway to enquire about online learning and onsite practical fashion training.</p></div></article>
+          <article><span>05</span><div><h3>A guided customer journey</h3><p>Customers can use the account portal to submit requests, keep measurement profiles and follow available order and appointment updates.</p></div></article>
+          <article><span>06</span><div><h3>Direct communication</h3><p>Speak with the team about your needs, ask questions and clarify the next steps before a project is accepted.</p></div></article>
+        </div>
+        <div className="why-us-action"><p>Have a garment, group order or training goal in mind?</p><a className="button button-gold" href={wa} target="_blank" rel="noreferrer">Talk to our team <ArrowUpRight size={17}/></a></div>
       </section>
       <section className="institute" id="institute"><div className="institute-photo"><img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85" alt="Fashion design and creative training" loading="lazy"/></div>
         <div className="institute-content"><p className="eyebrow light"><i/> LEARN A SKILL. BUILD A FUTURE.</p><h2>Turn your passion<br/>into <em>your profession.</em></h2>
