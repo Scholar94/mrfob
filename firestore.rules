@@ -367,11 +367,24 @@ service cloud.firestore {
     }
 
     match /measurements/{measurementId} {
-      allow create: if signedIn()
-        && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'createdAt', 'updatedAt'])
-        && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
+      allow create: if signedIn() && (
+        (request.resource.data.customerUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'createdAt', 'updatedAt'])
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp)
+        || ((isSuperAdmin() || hasStaffRole(['manager', 'tailor']))
+          && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'profileName', 'garmentType', 'chest', 'waist', 'hip', 'shoulder', 'sleeve', 'length', 'neck', 'inseam', 'bicep', 'wrist', 'armhole', 'shirtLength', 'acrossBack', 'outseam', 'thigh', 'knee', 'ankle', 'frontRise', 'backRise', 'bust', 'underBust', 'bustPoint', 'dressLength', 'waistToHip', 'skirtLength', 'jacketLength', 'blouseLength', 'notes', 'entrySource', 'createdByUid', 'createdByName', 'verificationStatus', 'verificationNote', 'verifiedByUid', 'verifiedByName', 'verifiedAt', 'createdAt', 'updatedAt'])
+          && request.resource.data.customerUid is string
+          && get(/databases/$(database)/documents/users/$(request.resource.data.customerUid)).data.accountType == 'customer'
+          && request.resource.data.entrySource == 'designer'
+          && request.resource.data.createdByUid == request.auth.uid
+          && request.resource.data.verificationStatus == 'pending'
+          && request.resource.data.verificationNote == ''
+          && request.resource.data.verifiedByUid == request.auth.uid
+          && request.resource.data.verifiedAt is timestamp
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp)
+      );
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'tailor']));
       allow update: if signedIn() && (
         (resource.data.customerUid == request.auth.uid
