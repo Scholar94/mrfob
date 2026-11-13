@@ -64,7 +64,7 @@ service cloud.firestore {
           && request.resource.data.amount >= 0
         )
       );
-      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff());
+      allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || isStaff() || isFinanceOfficer());
       allow update: if (signedIn() && resource.data.customerUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['instructions', 'fabric', 'colour', 'preferredDate', 'deliveryMethod', 'updatedAt'])
         && request.resource.data.customerUid == resource.data.customerUid
@@ -367,7 +367,7 @@ service cloud.firestore {
 
 
     match /expenses/{expenseId} {
-      allow create: if isSuperAdmin()
+      allow create: if (isSuperAdmin() || isFinanceOfficer())
         && request.resource.data.keys().hasOnly(['title', 'category', 'amount', 'currency', 'expenseDate', 'method', 'note', 'createdAt', 'createdBy'])
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.title is string && request.resource.data.title.size() > 0
