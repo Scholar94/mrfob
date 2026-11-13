@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, Timestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, Timestamp, writeBatch } from "firebase/firestore";
 
 const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
 const env = await initializeTestEnvironment({
@@ -25,6 +25,26 @@ try {
     await setDoc(doc(db, "payments", "payment-a"), {
       customerUid: "customer-a", amount: 10000, orderId: "order-a",
       orderNumber: "MFF-001", currency: "NGN", createdAt: now
+    });
+    await setDoc(doc(db, "instituteCourses", "course-a"), { title: "Test course", active: true });
+    await setDoc(doc(db, "trainingWindows", "window-a"), {
+      courseId: "course-a", status: "open", capacity: 5, enrolledCount: 1
+    });
+    await setDoc(doc(db, "instituteApplications", "application-a"), {
+      customerUid: "customer-a", fullName: "Test Learner", email: "customer-a@example.com",
+      courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
+      windowTitle: "Test intake", status: "admitted", paymentStatus: "paid",
+      applicationRef: "MFF-APP-001", createdAt: now, updatedAt: now
+    });
+    await setDoc(doc(db, "instituteEnrollments", "customer-a_course-a"), {
+      studentUid: "customer-a", applicationId: "application-a", applicationRef: "MFF-APP-001",
+      studentId: "MFF-STU-001", studentName: "Test Learner", studentEmail: "customer-a@example.com",
+      courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
+      windowTitle: "Test intake", paymentStatus: "paid", verifiedBy: "admin-a",
+      verifiedAt: now, createdAt: now
+    });
+    await setDoc(doc(db, "instituteLessons", "lesson-a"), {
+      courseId: "course-a", title: "Test lesson", published: true
     });
     await setDoc(doc(db, "fabrics", "active-fabric"), {
       name: "Test cotton", color: "Navy", texture: "Soft",
@@ -99,6 +119,29 @@ try {
     availability: "available", suitableCategories: [], imageUrl: "",
     active: true, createdAt: now, createdBy: "customer-a", updatedAt: now
   }));
+
+  // Institute withdrawal must decrement the intake and remove paid lesson access atomically.
+  await assertSucceeds(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
+  const withdrawalBatch = writeBatch(superAdmin);
+  withdrawalBatch.update(doc(superAdmin, "instituteApplications", "application-a"), {
+    status: "withdrawn", withdrawalReason: "Learner requested withdrawal.",
+    withdrawnBy: "admin-a", withdrawnAt: now, updatedAt: now
+  });
+  withdrawalBatch.update(doc(superAdmin, "trainingWindows", "window-a"), {
+    enrolledCount: 0, updatedAt: now
+  });
+  withdrawalBatch.update(doc(superAdmin, "instituteEnrollments", "customer-a_course-a"), {
+    enrollmentStatus: "withdrawn", withdrawalReason: "Learner requested withdrawal.",
+    withdrawnBy: "admin-a", withdrawnAt: now, updatedAt: now
+  });
+  await assertSucceeds(withdrawalBatch.commit());
+  await assertFails(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
+  const withdrawnApplication = await getDoc(doc(superAdmin, "instituteApplications", "application-a"));
+  const withdrawnWindow = await getDoc(doc(superAdmin, "trainingWindows", "window-a"));
+  assertSucceeds(Promise.resolve(withdrawnApplication));
+  if (withdrawnApplication.data().status !== "withdrawn" || withdrawnWindow.data().enrolledCount !== 0) {
+    throw new Error("Institute withdrawal did not update application status and intake capacity.");
+  }
 
   // Referral rules compile and preserve owner-only visibility.
   await assertSucceeds(setDoc(doc(customerA, "referralClaims", "referral-a"), {
