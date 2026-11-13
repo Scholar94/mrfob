@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight, Menu, X, Scissors, Sparkles, GraduationCap, Ruler,
   ShieldCheck, Heart, Phone, MessageCircle, CheckCircle2, Play, UserRound
@@ -24,11 +24,43 @@ export default function App() {
   const [musicNotice, setMusicNotice] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
   const [policyOpen, setPolicyOpen] = useState("");
+  const dialogRef = useRef(null);
+  const returnFocusRef = useRef(null);
   useEffect(() => {
     const handler = e => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
+  useEffect(() => {
+    if (!policyOpen && !musicNotice) return;
+    returnFocusRef.current = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusable = () => dialog?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [];
+    focusable()[0]?.focus();
+    function handleDialogKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPolicyOpen("");
+        setMusicNotice(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = Array.from(focusable());
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog?.contains(document.activeElement))) {
+        event.preventDefault(); first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleDialogKeyDown);
+      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+    };
+  }, [policyOpen, musicNotice]);
   async function install() {
     if (!installPrompt) { alert("Open your browser menu and choose Add to Home screen or Install app."); return; }
     installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null);
@@ -136,7 +168,7 @@ export default function App() {
     <button className="install-button" onClick={install}>Install app <ArrowUpRight size={16}/></button>
     <a className="whatsapp-float" href={wa} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp"><MessageCircle size={25}/></a>
 
-    {policyOpen && <div className="modal-backdrop policy-backdrop" onClick={() => setPolicyOpen("")}><section className="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-title" onClick={e => e.stopPropagation()}>
+    {policyOpen && <div className="modal-backdrop policy-backdrop" onClick={() => setPolicyOpen("")}><section ref={dialogRef} className="policy-modal" role="dialog" aria-modal="true" aria-labelledby="policy-title" onClick={e => e.stopPropagation()}>
       <button className="policy-close" onClick={() => setPolicyOpen("")} aria-label="Close policy">×</button>
       <p className="eyebrow"><i/> MR FOP FASHIONS COMPANY NIGERIA LIMITED</p>
       <h2 id="policy-title">{policyOpen === "privacy" ? "Privacy notice" : "Terms of service"}</h2>
@@ -175,7 +207,7 @@ export default function App() {
         <p className="policy-note">These are operational website terms, not a substitute for a separately negotiated order, course agreement or professional legal advice. No unconfirmed refund or cancellation policy is created by this page.</p>
       </>}
     </section></div>}
-    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></section></div>}
+    {musicNotice && <div className="modal-backdrop" onClick={() => setMusicNotice(false)}><section ref={dialogRef} className="music-modal" role="dialog" aria-modal="true" aria-labelledby="brand-music-title" onClick={e => e.stopPropagation()}><button type="button" onClick={() => setMusicNotice(false)} aria-label="Close brand music notice">×</button><h3 id="brand-music-title">MR FOP Brand Music</h3><p>The official company theme song will be connected when you upload the audio file. Browser audio requires a visitor interaction before playback.</p></section></div>}
     {portalOpen && <Portal onClose={() => setPortalOpen(false)}/>}
   </div>;
 }
