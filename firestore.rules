@@ -206,6 +206,15 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == request.resource.data.customerUid
           && getAfter(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.dueDate == request.resource.data.dueDate
         ) || (
+          (isSuperAdmin() || hasStaffRole(['manager','tailor']))
+          && request.resource.data.type == 'measurement_review'
+          && request.resource.data.keys().hasOnly(['customerUid','measurementId','type','verificationStatus','title','message','createdAt','readAt'])
+          && request.resource.data.customerUid is string
+          && request.resource.data.measurementId is string
+          && getAfter(/databases/$(database)/documents/measurements/$(request.resource.data.measurementId)).data.customerUid == request.resource.data.customerUid
+          && getAfter(/databases/$(database)/documents/measurements/$(request.resource.data.measurementId)).data.verificationStatus == request.resource.data.verificationStatus
+          && request.resource.data.verificationStatus in ['pending','verified','revision-needed']
+        ) || (
           (isSuperAdmin() || isStaff())
           && request.resource.data.type == 'support_update'
           && request.resource.data.keys().hasOnly(['customerUid','supportTicketId','type','supportStatus','title','message','createdAt','readAt'])
