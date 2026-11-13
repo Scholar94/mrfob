@@ -9,7 +9,7 @@ const requiredFiles = [
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
   "src/PrivacyRequestCenter.jsx", "src/FAQManager.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
-  "docs/MASTER-PROMPT-TRACEABILITY.md"
+  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md"
 ];
 for (const file of requiredFiles) assert.ok(fs.existsSync(file), `Missing required platform file: ${file}`);
 
@@ -41,6 +41,7 @@ assert.ok(manifest.start_url === "/mrfob/" && manifest.scope === "/mrfob/", "PWA
 assert.ok(read("index.html").includes("application/ld+json"), "Structured business metadata is missing");
 assert.ok(read("public/robots.txt").includes("sitemap.xml"), "Robots file does not reference the sitemap");
 assert.ok(traceability.includes("24-section master-prompt traceability register"), "24-section traceability register is missing");
+assert.ok(read("docs/QA-TEST-PLAN.md").includes("T22"), "Final acceptance test plan is missing.");
 assert.ok(drive.includes("uploadFileToGoogleDrive"), "Google Drive upload integration is missing");
 assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"), "Firestore catch-all deny rule is missing");
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
