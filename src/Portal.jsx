@@ -95,12 +95,12 @@ function localDateString(date = new Date()) {
 
 const QUOTE_LINE_ITEMS = ["Garment / agreed scope", "Fabric", "Labour", "Design", "Accessories", "Delivery"];
 
-export default function Portal({ onClose }) {
+export default function Portal({ onClose, initialMode = "login" }) {
   const { user, claims, loading, configured } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountNavItems, setAccountNavItems] = useState([]);
   const [activeAccountSection, setActiveAccountSection] = useState("");
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
