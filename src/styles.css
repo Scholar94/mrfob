@@ -343,3 +343,16 @@
 .support-ticket-actions select{padding:9px;border:1px solid #d9cfc4;border-radius:7px;background:#fff}
 .support-ticket-actions button{padding:10px 14px;border:0;border-radius:7px;background:#32151f;color:#fff;font-weight:600}
 @media(max-width:560px){.support-ticket-heading{flex-direction:column}.support-ticket-actions{align-items:stretch}.support-ticket-actions label,.support-ticket-actions button{width:100%}}
+
+/* Public privacy notice and service terms */
+.footer-legal{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.footer-legal button{border:0;background:transparent;color:inherit;font:inherit;font-size:10px;letter-spacing:.5px;text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.policy-backdrop{z-index:120}
+.policy-modal{position:relative;width:min(760px,calc(100vw - 28px));max-height:88vh;overflow:auto;background:#f7f3ec;color:#32151f;padding:clamp(24px,5vw,48px);box-shadow:0 24px 90px #10080b80}
+.policy-modal h2{font:500 clamp(34px,5vw,48px)/1.1 'Playfair Display';margin:12px 40px 8px 0}
+.policy-modal h3{font:700 15px 'DM Sans',sans-serif;margin:24px 0 7px;color:#6f4d31}
+.policy-modal p{font-size:13px;line-height:1.8;color:#5e5350}
+.policy-modal .policy-updated{font-size:11px;color:#8a7b70;margin:0 0 22px}
+.policy-modal .policy-note{border-left:3px solid #b99652;padding:12px 15px;background:#eee7db;font-size:11px}
+.policy-close{position:absolute;right:17px;top:12px;border:0;background:transparent;color:#32151f;font-size:30px;cursor:pointer}
+@media(max-width:680px){.footer-legal{gap:12px}.footer-bottom{align-items:flex-start;flex-direction:column}.policy-modal{max-height:90vh}}
