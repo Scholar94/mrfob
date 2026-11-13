@@ -726,3 +726,22 @@ button:disabled{cursor:not-allowed}
 .fabric-card-actions { padding: 0 16px 16px; }
 .fabric-card-actions button, .fabric-form-actions button:not(.portal-submit) { border: 1px solid #d9c9b2; border-radius: 8px; padding: 8px 12px; background: #faf7f2; color: #38232a; }
 @media (max-width: 640px) { .fabric-catalogue { padding: 28px 0; } .fabric-grid { grid-template-columns: 1fr; } }
+
+
+/* Loyalty and VIP customer benefits */
+.customer-benefits-center { margin-top: 22px; }
+.benefits-customer-select { display: grid; gap: 7px; max-width: 520px; margin: 14px 0; font-size: 13px; }
+.benefits-customer-select select, .benefits-admin-form input, .benefits-admin-form select, .benefits-admin-form textarea { width: 100%; border: 1px solid #d9d0c7; border-radius: 8px; padding: 10px; font: inherit; }
+.benefits-summary-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin: 16px 0; }
+.benefits-summary-grid article { display: grid; gap: 7px; padding: 15px; border: 1px solid #e8e0d8; border-radius: 12px; background: #fbf8f4; }
+.benefits-summary-grid span { color: #786d68; font-size: 12px; }
+.benefits-summary-grid strong { color: #38232a; font: 600 21px Georgia,serif; }
+.benefits-admin-form { margin: 18px 0; }
+.benefits-admin-form label { display: grid; gap: 6px; }
+.benefits-priority-toggle { display: flex !important; align-items: center; gap: 9px; }
+.benefits-priority-toggle input { width: auto !important; }
+.benefits-history { margin-top: 20px; }
+.benefits-history article { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; padding: 11px 0; border-bottom: 1px solid #eee7df; }
+.benefits-history article strong { color: #71552f; }
+.benefits-history article small { grid-column: 2; color: #837772; }
+@media (max-width: 540px) { .benefits-history article { grid-template-columns: 1fr; } .benefits-history article small { grid-column: 1; } }
