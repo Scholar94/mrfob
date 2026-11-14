@@ -95,6 +95,10 @@ try {
     email: "reader@example.com", consent: true, status: "subscribed",
     source: "public_website", createdAt: now
   }));
+  await assertFails(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-valid"), {
+    email: "reader@example.com", consent: true, status: "subscribed",
+    source: "public_website", createdAt: now
+  }));
   await assertFails(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-no-consent"), {
     email: "reader2@example.com", consent: false, status: "subscribed",
     source: "public_website", createdAt: now
