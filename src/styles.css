@@ -911,3 +911,8 @@ button:disabled{cursor:not-allowed}
 .newsletter-admin ul{flex-basis:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;margin:8px 0 0;padding:0;list-style:none}
 .newsletter-admin li{font-size:10px;overflow-wrap:anywhere}
 @media(max-width:700px){.newsletter-section{grid-template-columns:1fr;gap:20px;padding:36px 20px}.newsletter-input-row{flex-direction:column}.newsletter-input-row button{min-height:46px}.newsletter-admin{align-items:stretch}.newsletter-admin>div{flex-basis:100%}}
+
+
+.newsletter-admin li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #70545b}
+.newsletter-admin li>span{min-width:0;overflow-wrap:anywhere}
+.newsletter-admin li button{flex:none;border:1px solid #b99a70;padding:5px 8px;background:transparent;color:#f4e6c9;font:600 9px 'DM Sans',sans-serif;cursor:pointer}
