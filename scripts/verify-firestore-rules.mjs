@@ -51,6 +51,14 @@ try {
       courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
       date: "2026-11-13", status: "present", markedBy: "admin-a", markedAt: now, updatedAt: now
     });
+    await setDoc(doc(db, "appointments", "appointment-a"), {
+      customerUid: "customer-a", customerName: "Test Customer",
+      customerEmail: "customer-a@example.com", service: "Measurement",
+      appointmentDate: "2026-11-20", appointmentTime: "10:00",
+      purpose: "Test appointment", status: "pending",
+      createdAt: now, updatedAt: now
+    });
+
     await setDoc(doc(db, "fabrics", "active-fabric"), {
       name: "Test cotton", color: "Navy", texture: "Soft",
       priceRange: "Price on request", availability: "available",
@@ -113,6 +121,47 @@ try {
   await assertFails(updateDoc(doc(finance, "refunds", "payment-a"), {
     status: "approved", reviewNote: "Attempt to change a completed refund.",
     refundReference: "BANK-TRANSFER-001", reviewedBy: "finance-a", updatedAt: now
+  }));
+
+  // Appointment lifecycle: customers may request only their own pending bookings.
+  await assertSucceeds(setDoc(doc(customerA, "appointments", "appointment-customer-request"), {
+    customerUid: "customer-a", customerName: "Test Customer",
+    customerEmail: "customer-a@example.com", service: "Measurement",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00",
+    purpose: "Customer-created request", status: "pending",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "appointments", "appointment-forged-owner"), {
+    customerUid: "customer-b", customerName: "Other Customer",
+    customerEmail: "customer-b@example.com", service: "Measurement",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00",
+    purpose: "Forged owner", status: "pending",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "appointments", "appointment-forged-confirmed"), {
+    customerUid: "customer-a", customerName: "Test Customer",
+    customerEmail: "customer-a@example.com", service: "Measurement",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00",
+    purpose: "Customer cannot self-confirm", status: "confirmed",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(updateDoc(doc(customerB, "appointments", "appointment-a"), {
+    status: "cancelled", updatedAt: now
+  }));
+  const confirmedBooking = writeBatch(superAdmin);
+  confirmedBooking.update(doc(superAdmin, "appointments", "appointment-a"), {
+    status: "confirmed", updatedAt: now
+  });
+  confirmedBooking.set(doc(superAdmin, "appointmentSlots", "2026-11-20_1000"), {
+    appointmentId: "appointment-a", customerUid: "customer-a",
+    appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
+  });
+  await assertSucceeds(confirmedBooking.commit());
+  await assertSucceeds(getDoc(doc(customerA, "appointments", "appointment-a")));
+  await assertFails(getDoc(doc(customerB, "appointments", "appointment-a")));
+  await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-20_1000"), {
+    appointmentId: "appointment-a", customerUid: "customer-a",
+    appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
   }));
 
   // Public fabric visibility: active records are public; archived records remain private.
@@ -225,7 +274,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
