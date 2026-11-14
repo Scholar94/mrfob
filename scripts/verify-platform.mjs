@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs"
 ];
@@ -74,6 +74,8 @@ assert.ok(app.includes('id={"collection-" + group.slug}'), "Collection category 
 assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions": ["admissions"') && app.includes('id="courses"') && app.includes('id="admissions"'), "Course and admissions routes do not target their own sections");
 
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
+assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage(path)"), "Standalone public route layouts are not mounted");
+
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
 assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll guard is missing");
 assert.ok(fallback.includes("__route="), "GitHub Pages 404 fallback does not preserve the requested route");
