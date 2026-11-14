@@ -12,13 +12,30 @@ try {
   await page.locator(".hero h1").waitFor({ state: "visible", timeout: 15000 });
   assert.ok((await page.locator(".hero h1").innerText()).trim().length > 0, "Homepage hero heading is empty");
 
-  await page.goto(base + "/about", { waitUntil: "domcontentloaded" });
-  await page.locator(".standalone-hero h1").waitFor({ state: "visible", timeout: 15000 });
-  assert.match(await page.locator(".standalone-hero h1").innerText(), /About/i, "About route did not render its standalone page");
+  const publicRoutes = [
+    "/about", "/collections", "/collections/men", "/collections/women",
+    "/collections/bridal", "/collections/traditional", "/collections/corporate",
+    "/fabric-gallery", "/fashion-institute", "/courses", "/admissions",
+    "/contact", "/faq"
+  ];
+  for (const route of publicRoutes) {
+    await page.goto(base + route, { waitUntil: "domcontentloaded" });
+    await page.locator(".standalone-hero h1").waitFor({ state: "visible", timeout: 15000 });
+    assert.ok((await page.locator(".standalone-hero h1").innerText()).trim().length > 0, `Route did not render a heading: ${route}`);
+  }
 
-  await page.goto(base + "/collections/men", { waitUntil: "domcontentloaded" });
-  await page.locator(".standalone-hero h1").waitFor({ state: "visible", timeout: 15000 });
-  assert.match(await page.locator(".standalone-hero h1").innerText(), /menswear/i, "Collection route did not render");
+  await page.goto(base + "/privacy", { waitUntil: "domcontentloaded" });
+  await page.locator(".policy-modal").waitFor({ state: "visible", timeout: 15000 });
+  assert.match(await page.locator(".policy-modal h2").innerText(), /Privacy/i, "Privacy route did not render legal content");
+
+  await page.goto(base + "/terms", { waitUntil: "domcontentloaded" });
+  await page.locator(".policy-modal").waitFor({ state: "visible", timeout: 15000 });
+  assert.match(await page.locator(".policy-modal h2").innerText(), /Terms/i, "Terms route did not render legal content");
+
+  await page.goto(base + "/register", { waitUntil: "domcontentloaded" });
+  const registrationPortal = page.locator(".portal-card");
+  await registrationPortal.getByText("Create your customer account", { exact: true }).waitFor({ state: "visible", timeout: 20000 });
+  await registrationPortal.locator('input[type="email"]').waitFor({ state: "visible" });
 
   await page.goto(base + "/login", { waitUntil: "domcontentloaded" });
   const portal = page.locator(".portal-card");
