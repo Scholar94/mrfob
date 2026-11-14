@@ -981,3 +981,23 @@ button:disabled{cursor:not-allowed}
 .standalone-whatsapp-float{position:fixed;right:22px;bottom:24px;z-index:1000;width:54px;height:54px;display:grid;place-items:center;border-radius:50%;background:#1d9b59;color:white;box-shadow:0 8px 28px #1c342b55;transition:transform .2s ease,box-shadow .2s ease}
 .standalone-whatsapp-float:hover{transform:translateY(-3px);box-shadow:0 12px 32px #1c342b66}
 @media(max-width:600px){.standalone-whatsapp-float{right:14px;bottom:16px;width:50px;height:50px}}
+
+
+.welcome-experience{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;overflow:hidden;padding:24px;background:radial-gradient(circle at 50% 42%,#69404b 0,#351720 48%,#180d12 100%);color:#fff5e6;animation:welcome-fade-in .55s ease both}
+.welcome-experience:before,.welcome-experience:after{position:absolute;content:"";width:min(72vw,650px);height:min(72vw,650px);border:1px solid #d8b77b35;border-radius:50%;animation:welcome-orbit 18s linear infinite}
+.welcome-experience:after{width:min(88vw,820px);height:min(88vw,820px);animation-direction:reverse;animation-duration:27s}
+.welcome-experience-glow{position:absolute;width:320px;height:320px;border-radius:50%;background:#d4ad6b22;filter:blur(90px);animation:welcome-glow 4s ease-in-out infinite alternate}
+.welcome-experience-content{position:relative;z-index:1;display:grid;justify-items:center;max-width:760px;text-align:center;animation:welcome-rise .9s cubic-bezier(.2,.8,.2,1) both}
+.welcome-experience-content>img{width:min(220px,55vw);max-height:100px;object-fit:contain;filter:drop-shadow(0 12px 24px #0005);margin-bottom:24px}
+.welcome-experience-eyebrow{display:flex;align-items:center;gap:7px;color:#dfc18d;font:700 9px 'DM Sans',sans-serif;letter-spacing:2px}
+.welcome-experience-content h2{margin:18px 0 12px;font:500 clamp(32px,6vw,68px)/1.08 'Playfair Display',Georgia,serif;letter-spacing:.02em}
+.welcome-experience-content h2 em{color:#e1c28d;font-style:normal}
+.welcome-experience-content>p:not(.welcome-experience-eyebrow){max-width:510px;color:#eadbce;font-size:13px;line-height:1.8}
+.welcome-experience-content button{display:inline-flex;align-items:center;gap:10px;margin:26px 0 20px;padding:14px 22px;border:1px solid #e1c28d;background:#d0ad73;color:#301720;font:700 11px 'DM Sans',sans-serif;cursor:pointer;transition:transform .2s ease,background .2s ease}
+.welcome-experience-content button:hover{transform:translateY(-3px);background:#f0d6a5}
+.welcome-experience-content>small{color:#c9b5a7;font:700 8px 'DM Sans',sans-serif;letter-spacing:1.8px}
+@keyframes welcome-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes welcome-rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes welcome-orbit{from{transform:rotate(0deg) scaleX(.8)}to{transform:rotate(360deg) scaleX(.8)}}
+@keyframes welcome-glow{from{transform:scale(.85);opacity:.5}to{transform:scale(1.2);opacity:1}}
+@media(prefers-reduced-motion:reduce){.welcome-experience,.welcome-experience:before,.welcome-experience:after,.welcome-experience-glow,.welcome-experience-content{animation:none}}
