@@ -116,6 +116,10 @@ assert.ok(read("src/RefundManagement.jsx").includes("paidRefundTotal") && read("
 assert.ok(app.includes("<NewsletterSignup />"), "Public newsletter sign-up is not mounted");
 assert.ok(read("src/NewsletterSignup.jsx").includes("crypto.subtle.digest") && read("src/NewsletterSignup.jsx").includes("setDoc") && read("src/NewsletterSignup.jsx").includes("changeSubscriptionStatus") && read("src/NewsletterSignup.jsx").includes("updateDoc"), "Newsletter duplicate protection or preference management is missing");
 assert.ok(rules.includes("match /newsletterSubscribers/{subscriberId}") && rules.includes("allow read: if isSuperAdmin();"), "Newsletter subscriber privacy rules are missing");
+assert.ok(read("src/googleDrive.js").includes("publicSettings", "driveIntegration") && read("src/googleDrive.js").includes("getDriveConfig"), "Runtime Google Drive configuration fallback is missing");
+assert.ok(portal.includes("driveIntegrationDraft") && portal.includes("saveDriveIntegration"), "Super Admin Drive integration settings panel is missing");
+assert.ok(rules.includes("settingId == 'driveIntegration'") && rules.includes("request.resource.data.updatedBy == request.auth.uid"), "Google Drive integration write rules are missing");
+
 assert.ok(read(".github/workflows/deploy.yml").includes("playwright install --with-deps chromium") && read(".github/workflows/deploy.yml").includes("node scripts/smoke-test.mjs"), "Browser smoke tests are not wired into deployment CI");
 
 
