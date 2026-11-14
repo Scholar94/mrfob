@@ -104,6 +104,19 @@ try {
     accounts: [{ bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" }],
     instructions: "", updatedAt: now, updatedBy: "admin-a"
   }));
+  await assertFails(getDoc(doc(anonymous, "publicSettings", "paymentInstructions")));
+  await assertFails(setDoc(doc(customerA, "publicSettings", "paymentInstructions"), {
+    accounts: [{ bankName: "Loma Bank", accountName: "MR FOP FASHIONS", accountNumber: "0061030714" }],
+    instructions: "", updatedAt: now, updatedBy: "customer-a"
+  }));
+  await assertFails(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions"), {
+    accounts: [{ bankName: "Loma Bank", accountName: "MR FOP FASHIONS", accountNumber: "12345" }],
+    instructions: "", updatedAt: now, updatedBy: "admin-a"
+  }));
+  await assertFails(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions"), {
+    accounts: [{ bankName: "", accountName: "MR FOP FASHIONS", accountNumber: "0061030714" }],
+    instructions: "", updatedAt: now, updatedBy: "admin-a"
+  }));
 
   // Google Drive identifiers are readable to authenticated users for runtime
   // OAuth initialisation, but only Super Admin may configure them.
