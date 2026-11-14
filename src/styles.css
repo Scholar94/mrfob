@@ -1001,3 +1001,7 @@ button:disabled{cursor:not-allowed}
 @keyframes welcome-orbit{from{transform:rotate(0deg) scaleX(.8)}to{transform:rotate(360deg) scaleX(.8)}}
 @keyframes welcome-glow{from{transform:scale(.85);opacity:.5}to{transform:scale(1.2);opacity:1}}
 @media(prefers-reduced-motion:reduce){.welcome-experience,.welcome-experience:before,.welcome-experience:after,.welcome-experience-glow,.welcome-experience-content{animation:none}}
+
+
+.music-preference{display:flex;align-items:flex-start;gap:9px;margin-top:12px;color:#78666b;font-size:10px;line-height:1.5}
+.music-preference input{margin-top:2px;accent-color:#9a794d}
