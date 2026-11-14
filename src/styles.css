@@ -1012,3 +1012,13 @@ button:disabled{cursor:not-allowed}
 .customer-bank-account{padding:10px 0;border-bottom:1px solid #e3d7c8}
 .customer-bank-account:last-of-type{border-bottom:0}
 .customer-bank-account p{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+
+
+.payment-account-choice{display:grid;gap:12px;padding:16px;border:1px solid #e4d9ce;border-radius:12px;background:#fffaf5}
+.payment-account-copy{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:center}
+.payment-account-copy span{display:grid;gap:4px;min-width:0}
+.payment-account-copy small{color:#7b6b69;font-size:10px}
+.payment-account-copy strong{overflow-wrap:anywhere;color:#38232a;font-size:13px}
+.payment-account-copy button{grid-column:1/-1;justify-self:start;border:1px solid #7e4a57;border-radius:7px;background:#fff;color:#6c3544;padding:9px 13px;font-weight:700;cursor:pointer}
+.payment-account-copy button:hover{background:#f7edf0}
+@media(max-width:520px){.payment-account-copy{grid-template-columns:1fr}}
