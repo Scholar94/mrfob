@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
@@ -76,6 +76,8 @@ assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions":
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
 assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage") && app.includes("standalonePage"), "Standalone public route layouts are not mounted");
 assert.ok(read("src/PublicRoutePage.jsx").includes("standalone-whatsapp-float"), "Floating WhatsApp contact is missing from standalone public pages");
+assert.ok(app.includes("<WelcomeExperience/>") && read("src/WelcomeExperience.jsx").includes("Explore the experience"), "First-visit homepage welcome experience is missing");
+
 
 
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
