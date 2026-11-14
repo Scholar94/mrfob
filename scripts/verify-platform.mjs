@@ -75,6 +75,8 @@ assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions":
 
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
 assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage") && app.includes("standalonePage"), "Standalone public route layouts are not mounted");
+assert.ok(read("src/PublicRoutePage.jsx").includes("standalone-whatsapp-float"), "Floating WhatsApp contact is missing from standalone public pages");
+
 
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
 assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll guard is missing");
