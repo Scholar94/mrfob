@@ -20,7 +20,8 @@ const collections = [
   { name: "Bespoke Menswear", tag: "Precision in every stitch", type: "MEN", image: "https://images.unsplash.com/photo-1593032465175-481ac7f401a0?auto=format&fit=crop&w=1000&q=85" },
   { name: "Women's Elegance", tag: "Designed around you", type: "WOMEN", image: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1000&q=85" },
   { name: "Bridal & Occasion", tag: "For your unforgettable moments", type: "BRIDAL", image: "https://images.unsplash.com/photo-1594552072238-b8a33785b7a7?auto=format&fit=crop&w=1000&q=85" },
-  { name: "African Heritage", tag: "Tradition, tailored beautifully", type: "TRADITIONAL", image: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=1000&q=85" }
+  { name: "African Heritage", tag: "Tradition, tailored beautifully", type: "TRADITIONAL", image: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?auto=format&fit=crop&w=1000&q=85" },
+  { name: "Corporate & Industrial", tag: "Professional uniforms and group production", type: "CORPORATE", image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=1000&q=85" }
 ];
 
 const collectionCategories = [
