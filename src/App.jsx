@@ -10,6 +10,7 @@ import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
 import NewsletterSignup from "./NewsletterSignup.jsx";
 import PublicRoutePage from "./PublicRoutePage.jsx";
+import WelcomeExperience from "./WelcomeExperience.jsx";
 import StyleRecommendations from "./StyleRecommendations.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
@@ -261,6 +262,7 @@ export default function App() {
   if (standalonePage) return <PublicRoutePage path={standalonePage} collections={collections} companyProfile={companyProfile} publicFaqs={publicFaqs}/>;
 
   return <div className="site-shell">
+    <WelcomeExperience/>
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
       <a className="brand" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a>
