@@ -20,14 +20,14 @@ export default function WelcomeExperience() {
   }
 
   if (!open) return null;
-  return <div className="welcome-experience" role="dialog" aria-modal="true" aria-labelledby="welcome-experience-title">
+  return <div className="welcome-experience" role="dialog" aria-modal="true" aria-labelledby="welcome-experience-title" onKeyDown={event => { if (event.key === "Escape") enterSite(); }}>
     <div className="welcome-experience-glow" aria-hidden="true"/>
     <div className="welcome-experience-content">
       <img src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS" />
       <p className="welcome-experience-eyebrow"><Sparkles size={14}/> EST. 2010 · IJEBU ODE, NIGERIA</p>
       <h2 id="welcome-experience-title">WELCOME TO<br/><em>MR FOP FASHIONS</em></h2>
       <p>Distinctive fashion, bespoke tailoring and practical fashion education — crafted with purpose.</p>
-      <button type="button" onClick={enterSite}>Explore the experience <ArrowUpRight size={17}/></button>
+      <button type="button" autoFocus onClick={enterSite}>Explore the experience <ArrowUpRight size={17}/></button>
       <small>MR FOP FASHIONS COMPANY NIGERIA LIMITED</small>
     </div>
   </div>;
