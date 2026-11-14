@@ -23,7 +23,7 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 
 | ID | Area | Test action | Expected result | Status |
 |---|---|---|---|---|
-| T01 | Deployment | Open the deployed homepage and refresh it; open the Account section, sign in with a test customer and inspect the dashboard; check browser console and network errors. If a render failure is deliberately introduced in a test build, verify that the portal error boundary shows its recovery panel rather than a blank screen. | Homepage and account dashboard render, assets load, no fatal console error; an intentional portal render failure shows the recovery panel. The error boundary is not a substitute for fixing any reproducible underlying account error. | Not run |
+| T01 | Deployment | Open the deployed homepage and refresh it; open the Account section, sign in with a test customer and inspect the dashboard; check browser console and network errors. If a render failure is deliberately introduced in a test build, verify that the portal error boundary shows its recovery panel rather than a blank screen. | CI runs a Chromium smoke test for the homepage, standalone public routes and the unauthenticated account login portal. Owner acceptance still requires a real customer sign-in and dashboard test. Homepage and account dashboard render, assets load, no fatal console error; an intentional portal render failure shows the recovery panel. The error boundary is not a substitute for fixing any reproducible underlying account error. | Not run |
 | T02 | Responsive design | Test Android portrait/landscape, tablet and desktop widths. | Navigation, cards, forms, modals and account portal remain usable without horizontal overflow. | Not run |
 | T03 | Deep links | Open /about, each /collections/{men,women,bridal,traditional,corporate} route, /fabric-gallery, /courses, /admissions, /faq, /privacy, /terms, /register, /login, /customer/orders, /student/lessons and /admin/audit-logs directly, including refresh. | GitHub Pages 404 fallback returns to the SPA; public paths render their dedicated standalone page layouts; account paths open the role-protected portal and focus the matching section where available. | Not run |
 | T04 | Authentication | Register a customer, verify email, sign in, sign out, reset password and sign in again. | Authentication lifecycle works; unverified/invalid credentials are handled safely; password reset does not expose account secrets. | Not run |
@@ -48,7 +48,7 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 
 ### Automated Firestore Emulator checks
 
-The deployment workflow runs scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, appointment ownership and confirmation/slot reservation, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
+The deployment workflow runs a Chromium browser smoke test, scripts/verify-platform.mjs and scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, appointment ownership and confirmation/slot reservation, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
 
 ### Additional source-level feature check
 
@@ -65,4 +65,4 @@ The deployment workflow runs scripts/verify-firestore-rules.mjs against the Fire
 - Current Firestore rules are published and tested against the same Firebase project used by the deployed site.
 - Any unsupported or owner-dependent integration is recorded as a blocker, not marked passed.
 
-**Do not mark this plan complete based on CI alone.** The current CI workflow checks production compilation and static source guardrails; it does not sign in to Firebase, upload to Drive, run the Apps Script grader or simulate separate real user roles.
+**Do not mark this plan complete based on CI alone.** The current CI workflow checks production compilation, Chromium public/account-login rendering, static source guardrails and the focused Firestore Emulator suite; it does not sign in to a real customer account, upload to Drive, run the Apps Script grader or simulate all separate production roles.
