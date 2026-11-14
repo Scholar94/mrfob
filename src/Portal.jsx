@@ -1131,7 +1131,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   }
 
   function appointmentSlotId(date, time) {
-    return String(date || "").replace(/[^0-9-]/g, "") + "_" + String(time || "").replace(/[^0-9]/g, "");
+    return String(date || "").trim() + "_" + String(time || "").trim();
   }
 
   async function reserveAppointmentSlot(transaction, item, date, time) {
