@@ -222,7 +222,9 @@ export default function App() {
       document.title = "MR FOP FASHIONS | Premium Bespoke Fashion";
     }
   };
-  if (standalonePage) return <PublicRoutePage path={standalonePage} collections={collections} companyProfile={companyProfile} publicFaqs={publicFaqs}/>;\n\n  return <div className="site-shell">
+  if (standalonePage) return <PublicRoutePage path={standalonePage} collections={collections} companyProfile={companyProfile} publicFaqs={publicFaqs}/>;
+
+  return <div className="site-shell">
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
       <a className="brand" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a>
