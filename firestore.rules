@@ -198,6 +198,11 @@ service cloud.firestore {
         && request.resource.data.appointmentDate == resource.data.proposedDate
         && request.resource.data.appointmentTime == resource.data.proposedTime
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'appointmentDate', 'appointmentTime', 'updatedAt'])
+        && existsAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime))
+        && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentId == appointmentId
+        && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.customerUid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentDate == request.resource.data.appointmentDate
+        && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentTime == request.resource.data.appointmentTime
       );
       allow delete: if isSuperAdmin();
     }
