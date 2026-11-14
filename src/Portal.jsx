@@ -1134,6 +1134,12 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     return String(date || "").trim() + "_" + String(time || "").trim();
   }
 
+  // Previous releases removed punctuation from slot IDs. Keep this legacy key
+  // only for migration/cleanup so old confirmed bookings cannot leave stale locks.
+  function legacyAppointmentSlotId(date, time) {
+    return String(date || "").replace(/[^0-9-]/g, "") + "_" + String(time || "").replace(/[^0-9]/g, "");
+  }
+
   async function reserveAppointmentSlot(transaction, item, date, time) {
     const slotRef = doc(db, "appointmentSlots", appointmentSlotId(date, time));
     const slotSnapshot = await transaction.get(slotRef);
@@ -1152,9 +1158,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         const snapshot = await transaction.get(appointmentRef);
         if (!snapshot.exists()) throw new Error("This appointment no longer exists.");
         const item = { id, ...snapshot.data() };
-        const oldSlotRef = item.status === "confirmed" && item.appointmentDate && item.appointmentTime
-          ? doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime)) : null;
-        const oldSlot = oldSlotRef ? await transaction.get(oldSlotRef) : null;
+        const oldSlotRefs = item.status === "confirmed" && item.appointmentDate && item.appointmentTime
+          ? [...new Set([appointmentSlotId(item.appointmentDate, item.appointmentTime), legacyAppointmentSlotId(item.appointmentDate, item.appointmentTime)])].map(slotId => doc(db, "appointmentSlots", slotId))
+          : [];
+        const oldSlots = await Promise.all(oldSlotRefs.map(ref => transaction.get(ref)));
         if (status === "confirmed") {
           if (["Delivery", "Collection"].includes(item.service)) {
             if (!item.orderId) throw new Error("Link this delivery or collection appointment to the customer's order before confirming it.");
@@ -1162,8 +1169,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
             await ensureDesignerAvailability(transaction, item, item.appointmentDate, item.appointmentTime);
           }
           await reserveAppointmentSlot(transaction, item, item.appointmentDate, item.appointmentTime);
-        } else if (oldSlot?.exists() && oldSlot.data().appointmentId === id) {
-          transaction.delete(oldSlotRef);
+        } else {
+          oldSlots.forEach((slot, index) => {
+            if (slot.exists() && slot.data().appointmentId === id) transaction.delete(oldSlotRefs[index]);
+          });
         }
         transaction.update(appointmentRef, { status, updatedAt: serverTimestamp() });
         if (["confirmed", "alternative_proposed", "completed", "cancelled"].includes(status)) {
@@ -1274,10 +1283,16 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           await runTransaction(db, async transaction => {
             const appointmentRef = doc(db, "appointments", item.id);
             const slotRef = doc(db, "appointmentSlots", appointmentSlotId(item.appointmentDate, item.appointmentTime));
-            const [current, slot] = await Promise.all([transaction.get(appointmentRef), transaction.get(slotRef)]);
+            const legacySlotRef = doc(db, "appointmentSlots", legacyAppointmentSlotId(item.appointmentDate, item.appointmentTime));
+            const [current, slot, legacySlot] = await Promise.all([
+              transaction.get(appointmentRef), transaction.get(slotRef),
+              legacySlotRef.path === slotRef.path ? Promise.resolve(null) : transaction.get(legacySlotRef)
+            ]);
             if (!current.exists() || current.data().status !== "confirmed") return;
             if (slot.exists() && slot.data().appointmentId !== item.id) throw new Error("Slot already belongs to another confirmed appointment.");
+            if (legacySlot?.exists() && legacySlot.data().appointmentId !== item.id) throw new Error("Legacy slot is occupied by another confirmed appointment.");
             transaction.set(slotRef, { appointmentId: item.id, customerUid: item.customerUid, appointmentDate: item.appointmentDate, appointmentTime: item.appointmentTime, updatedAt: serverTimestamp() });
+            if (legacySlot?.exists() && legacySlot.data().appointmentId === item.id) transaction.delete(legacySlotRef);
             reserved++;
           });
         } catch (err) {
@@ -1308,11 +1323,16 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         if (!currentSnapshot.exists()) throw new Error("This appointment no longer exists.");
         const current = currentSnapshot.data();
         if (!["pending", "confirmed", "alternative_proposed"].includes(current.status || "pending")) throw new Error("Only pending or confirmed appointments can receive an alternative proposal.");
-        let oldSlotRef = null;
         if (current.status === "confirmed" && current.appointmentDate && current.appointmentTime) {
-          oldSlotRef = doc(db, "appointmentSlots", appointmentSlotId(current.appointmentDate, current.appointmentTime));
-          const oldSlot = await transaction.get(oldSlotRef);
-          if (oldSlot.exists() && oldSlot.data().appointmentId === item.id) transaction.delete(oldSlotRef);
+          const oldSlotIds = [...new Set([
+            appointmentSlotId(current.appointmentDate, current.appointmentTime),
+            legacyAppointmentSlotId(current.appointmentDate, current.appointmentTime)
+          ])];
+          const oldSlotRefs = oldSlotIds.map(slotId => doc(db, "appointmentSlots", slotId));
+          const oldSlots = await Promise.all(oldSlotRefs.map(ref => transaction.get(ref)));
+          oldSlots.forEach((slot, index) => {
+            if (slot.exists() && slot.data().appointmentId === item.id) transaction.delete(oldSlotRefs[index]);
+          });
         }
         transaction.update(appointmentRef, patch);
         const notificationRef = doc(collection(db, "notifications"));
