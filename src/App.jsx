@@ -37,6 +37,41 @@ const services = [
   { icon: GraduationCap, title: "Fashion Institute", copy: "Practical fashion education for people ready to build a skill and a future." }
 ];
 
+const ROUTE_DESCRIPTIONS = {
+  "/": "Bespoke fashion, bridal wear, industrial tailoring and practical fashion training in Ijebu Ode, Ogun State, Nigeria.",
+  "/about": "Learn about MR FOP FASHIONS, our craftsmanship, bespoke clothing, industrial tailoring and practical fashion education in Ijebu Ode.",
+  "/collections": "Explore bespoke menswear, women's fashion, bridal and occasion wear, African heritage and corporate tailoring.",
+  "/collections/men": "Explore bespoke menswear and made-to-measure clothing from MR FOP FASHIONS in Ijebu Ode, Nigeria.",
+  "/collections/women": "Discover women's bespoke fashion, elegant outfits and occasion wear tailored around your style.",
+  "/collections/bridal": "Discuss bridal and special occasion outfits with the MR FOP FASHIONS design team.",
+  "/collections/traditional": "Explore African heritage clothing and traditional styles crafted with care by MR FOP FASHIONS.",
+  "/collections/corporate": "Professional uniforms, corporate garments and group production from MR FOP FASHIONS.",
+  "/fabric-gallery": "Explore fabric colours and textures for bespoke garments. Final availability and pricing are confirmed by our team.",
+  "/fashion-institute": "Learn practical fashion design, tailoring and garment construction at the MR FOP Fashion Institute.",
+  "/courses": "Explore practical fashion design, pattern drafting, garment construction, tailoring and entrepreneurship courses.",
+  "/admissions": "Learn about the MR FOP Fashion Institute application and admissions process.",
+  "/contact": "Contact or visit MR FOP FASHIONS in Ijebu Ode, Ogun State, Nigeria.",
+  "/faq": "Find answers about bespoke orders, measurements, appointments, payments and fashion training."
+};
+
+function setRouteMetadata(title, description, path, noIndex = false) {
+  document.title = title;
+  const setContent = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) element.setAttribute("content", value);
+  };
+  setContent('meta[name="description"]', description);
+  setContent('meta[name="robots"]', noIndex ? "noindex,nofollow" : "index,follow,max-image-preview:large");
+  setContent('meta[property="og:title"]', title);
+  setContent('meta[property="og:description"]', description);
+  setContent('meta[name="twitter:title"]', title);
+  setContent('meta[name="twitter:description"]', description);
+  const basePath = import.meta.env.BASE_URL.replace(/\\/$/, "");
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = new URL(basePath + (path === "/" ? "/" : path), window.location.origin).href;
+  setContent('meta[property="og:url"]', window.location.href);
+}
+
 export default function App() {
   const [menu, setMenu] = useState(false);
   const [standalonePage, setStandalonePage] = useState("");
@@ -88,7 +123,7 @@ export default function App() {
     if (path === "/privacy" || path === "/terms") {
       setPortalOpen(false);
       setPolicyOpen(path === "/privacy" ? "privacy" : "terms");
-      document.title = path === "/privacy" ? "Privacy Notice | MR FOP FASHIONS" : "Terms of Service | MR FOP FASHIONS";
+      setRouteMetadata(path === "/privacy" ? "Privacy Notice | MR FOP FASHIONS" : "Terms of Service | MR FOP FASHIONS", path === "/privacy" ? "Read the MR FOP FASHIONS privacy notice and learn how account and customer information is handled." : "Read the terms governing use of the MR FOP FASHIONS website and account services.", path);
       return;
     }
     if (path === "/register" || path === "/login" || path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/")) {
@@ -96,7 +131,7 @@ export default function App() {
       setInitialPortalMode(path === "/register" ? "register" : "login");
       setInitialPortalSection(path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/") ? path.split("/").pop() : "");
       setPortalOpen(true);
-      document.title = path === "/register" ? "Create Account | MR FOP FASHIONS" : path === "/login" ? "Sign In | MR FOP FASHIONS" : "Account Portal | MR FOP FASHIONS";
+      setRouteMetadata(path === "/register" ? "Create Account | MR FOP FASHIONS" : path === "/login" ? "Sign In | MR FOP FASHIONS" : "Account Portal | MR FOP FASHIONS", "Secure customer and staff account access for MR FOP FASHIONS.", path, true);
       return;
     }
     const route = publicRoutes[path];
@@ -104,12 +139,12 @@ export default function App() {
       setPortalOpen(false);
       setPolicyOpen("");
       setStandalonePage(route[0] === "home" ? "" : path);
-      document.title = route[1];
+      setRouteMetadata(route[1], ROUTE_DESCRIPTIONS[path] || "Discover MR FOP FASHIONS bespoke clothing, tailoring and fashion education.", path);
       if (route[0] === "home") window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
     setStandalonePage("");
-    document.title = "Page Not Found | MR FOP FASHIONS";
+    setRouteMetadata("Page Not Found | MR FOP FASHIONS", "The requested page could not be found on the MR FOP FASHIONS website.", path, true);
     window.requestAnimationFrame(() => document.getElementById("home")?.scrollIntoView({ behavior: "auto" }));
   }, []);
   useEffect(() => {
