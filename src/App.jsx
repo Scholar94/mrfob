@@ -66,7 +66,7 @@ function setRouteMetadata(title, description, path, noIndex = false) {
   setContent('meta[property="og:description"]', description);
   setContent('meta[name="twitter:title"]', title);
   setContent('meta[name="twitter:description"]', description);
-  const basePath = import.meta.env.BASE_URL.replace(/\\/$/, "");
+  const basePath = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL.slice(0, -1) : import.meta.env.BASE_URL;
   const canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = new URL(basePath + (path === "/" ? "/" : path), window.location.origin).href;
   setContent('meta[property="og:url"]', window.location.href);
