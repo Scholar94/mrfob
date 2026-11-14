@@ -165,7 +165,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [paymentEvidenceFile, setPaymentEvidenceFile] = useState(null);
   const [selectedPaymentAccount, setSelectedPaymentAccount] = useState("0");
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
-  const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
+  const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "Monday–Saturday, 9:00 AM–6:00 PM (West Africa Time)", mission: "To make customers feel brand new and happy always through excellent and professional services.", vision: "To be recognized as a leading service delivery company providing maximum customer satisfaction.", businessScope: "Clothing Designing and Industrial Tailoring; Fashion Institute and Professional Fashion Training." });
   const defaultBankAccounts = [
     { bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" },
     { bankName: "FCMB", accountName: "", accountNumber: "2209515029" }
@@ -1426,8 +1426,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       setCompanyProfileDraft(current => ({
         companyName: data.companyName || current.companyName, phone: data.phone || current.phone,
         whatsapp: data.whatsapp || current.whatsapp, email: data.email || current.email,
-        address: data.address || current.address, openingHours: data.openingHours || "",
-        mission: data.mission || "", vision: data.vision || "", businessScope: data.businessScope || ""
+        address: data.address || current.address, openingHours: data.openingHours || current.openingHours,
+        mission: data.mission || current.mission, vision: data.vision || current.vision, businessScope: data.businessScope || current.businessScope
       }));
     } catch (err) { setError(err.message || "Could not load company profile settings."); }
   }
