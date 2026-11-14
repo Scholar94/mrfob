@@ -2378,10 +2378,15 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         {claims.superAdmin && <section className="payment-instructions-admin">
           <div className="customer-management-heading"><div><h3>Customer Bank Transfer Instructions</h3><p>Manage the business account details customers see before declaring a transfer</p></div></div>
           <form className="portal-form" onSubmit={savePaymentInstructions}>
-            <label>Bank name<input maxLength="80" value={paymentInstructionsDraft.bankName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,bankName:e.target.value})} placeholder="e.g. Access Bank"/></label>
-            <label>Account name<input maxLength="100" value={paymentInstructionsDraft.accountName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountName:e.target.value})} placeholder="Registered account name"/></label>
-            <label>Account number<input inputMode="numeric" maxLength="10" value={paymentInstructionsDraft.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountNumber:e.target.value.replace(/\D/g,"").slice(0,10)})} placeholder="10-digit account number"/></label>
+            {(paymentInstructionsDraft.accounts || []).map((account, index) => <div className="payment-account-editor" key={index}>
+              <strong>Bank account {index + 1}</strong>
+              <label>Bank name<input maxLength="80" value={account.bankName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accounts:paymentInstructionsDraft.accounts.map((item,i)=>i===index?{...item,bankName:e.target.value}:item)})} placeholder="Bank name"/></label>
+              <label>Registered account name<input maxLength="100" value={account.accountName} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accounts:paymentInstructionsDraft.accounts.map((item,i)=>i===index?{...item,accountName:e.target.value}:item)})} placeholder="Confirm the exact registered name"/></label>
+              <label>Account number<input inputMode="numeric" maxLength="10" value={account.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accounts:paymentInstructionsDraft.accounts.map((item,i)=>i===index?{...item,accountNumber:e.target.value.replace(/\D/g,"").slice(0,10)}:item)})} placeholder="10-digit account number"/></label>
+            </div>)}
+            {(paymentInstructionsDraft.accounts || []).length < 2 && <button type="button" className="secondary-button" onClick={()=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accounts:[...(paymentInstructionsDraft.accounts || []),{bankName:"",accountName:"",accountNumber:""}]})}>Add another bank account</button>}
             <label>Additional transfer instructions<textarea maxLength="600" value={paymentInstructionsDraft.instructions} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,instructions:e.target.value})} placeholder="Payment reference, deposit guidance or other customer instructions"/></label>
+            <p className="portal-hint">Account details are hidden from customers until the bank name, 10-digit number and exact registered account name are all supplied.</p>
             <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save bank instructions"}</button>
           </form>
         </section>}
@@ -2425,7 +2430,17 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="payment-management customer-self-service">
         <div className="customer-management-heading"><div><h3>Declare a Bank Transfer</h3><p>Tell us about a transfer you have made so the team can verify it</p></div><button type="button" onClick={loadPaymentDeclarations} disabled={declarationsLoading}>{declarationsLoading ? "Loading…" : "Refresh declarations"}</button></div>
-        {(paymentInstructions.bankName || paymentInstructions.accountNumber || paymentInstructions.instructions) && <div className="customer-bank-instructions"><h4>Official bank transfer details</h4>{paymentInstructions.bankName && <p><span>Bank</span><b>{paymentInstructions.bankName}</b></p>}{paymentInstructions.accountName && <p><span>Account name</span><b>{paymentInstructions.accountName}</b></p>}{paymentInstructions.accountNumber && <p><span>Account number</span><b>{paymentInstructions.accountNumber}</b></p>}{paymentInstructions.instructions && <p className="bank-extra-instructions">{paymentInstructions.instructions}</p>}<small>Confirm these details before making a transfer. MR FOP FASHIONS will independently verify payments.</small></div>}
+        <div className="customer-bank-instructions">
+          <h4>Official bank transfer details</h4>
+          {(paymentInstructions.accounts || (paymentInstructions.accountNumber ? [paymentInstructions] : [])).filter(account => account.bankName && account.accountName && account.accountNumber).map((account, index) => <div className="customer-bank-account" key={account.bankName + index}>
+            <p><span>Bank</span><b>{account.bankName}</b></p>
+            <p><span>Account name</span><b>{account.accountName}</b></p>
+            <p><span>Account number</span><b>{account.accountNumber}</b></p>
+          </div>)}
+          {!(paymentInstructions.accounts || (paymentInstructions.accountNumber ? [paymentInstructions] : [])).some(account => account.bankName && account.accountName && account.accountNumber) && <p className="bank-extra-instructions">Company bank details are awaiting registered account-name verification. Please contact MR FOP FASHIONS through the website WhatsApp link before making a transfer.</p>}
+          {paymentInstructions.instructions && <p className="bank-extra-instructions">{paymentInstructions.instructions}</p>}
+          <small>Confirm these details before making a transfer. MR FOP FASHIONS will independently verify payments.</small>
+        </div>
         <p className="payment-declaration-notice">Submitting this form does not confirm receipt of funds. Do not submit passwords, PINs, OTPs or full card details. Do not upload bank statements here.</p>
         <form className="portal-form" onSubmit={submitPaymentDeclaration}>
           <label>Order<select required value={declarationForm.orderId} onChange={e=>setDeclarationForm({...declarationForm,orderId:e.target.value})}><option value="">Select your order</option>{myOrders.map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.item}</option>)}</select></label>
