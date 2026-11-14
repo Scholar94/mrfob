@@ -78,6 +78,12 @@ try {
   await portal.locator('input[type="password"]').waitFor({ state: "visible" });
   const accountRobots = await page.locator('meta[name="robots"]').getAttribute("content");
   assert.match(accountRobots || "", /noindex,nofollow/i, "Private account route should not be indexed");
+  for (const route of ["/customer/orders", "/student/lessons", "/admin/audit-logs"]) {
+    await page.goto(base + route, { waitUntil: "domcontentloaded" });
+    const protectedPortal = page.locator(".portal-card");
+    await protectedPortal.getByText("Welcome back", { exact: true }).waitFor({ state: "visible", timeout: 20000 });
+    assert.ok((await protectedPortal.innerText()).trim().length > 60, `Protected route did not open the account portal: ${route}`);
+  }
   assert.ok((await portal.innerText()).trim().length > 80, "Account portal rendered an empty/blank panel");
 
   assert.deepEqual(pageErrors, [], "Browser runtime errors were detected during public/account route smoke tests");
