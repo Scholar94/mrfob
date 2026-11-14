@@ -43,6 +43,18 @@ try {
     await page.goto(base + route, { waitUntil: "domcontentloaded" });
     await page.locator(".standalone-hero h1").waitFor({ state: "visible", timeout: 15000 });
     assert.ok((await page.locator(".standalone-hero h1").innerText()).trim().length > 0, `Route did not render a heading: ${route}`);
+    if (route === "/about") {
+      const metadata = await page.evaluate(() => ({
+        title: document.title,
+        description: document.querySelector('meta[name="description"]')?.content || "",
+        canonical: document.querySelector('link[rel="canonical"]')?.href || "",
+        robots: document.querySelector('meta[name="robots"]')?.content || ""
+      }));
+      assert.match(metadata.title, /About/i, "Route-specific document title was not set");
+      assert.ok(metadata.description.length > 40, "Route-specific meta description is missing");
+      assert.ok(metadata.canonical.endsWith("/mrfob/about"), "Canonical URL does not match the current public route");
+      assert.match(metadata.robots, /index,follow/i, "Public route should remain indexable");
+    }
   }
 
   await page.goto(base + "/privacy", { waitUntil: "domcontentloaded" });
@@ -64,6 +76,8 @@ try {
   await portal.getByText("Welcome back", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
   await portal.locator('input[type="email"]').waitFor({ state: "visible" });
   await portal.locator('input[type="password"]').waitFor({ state: "visible" });
+  const accountRobots = await page.locator('meta[name="robots"]').getAttribute("content");
+  assert.match(accountRobots || "", /noindex,nofollow/i, "Private account route should not be indexed");
   assert.ok((await portal.innerText()).trim().length > 80, "Account portal rendered an empty/blank panel");
 
   assert.deepEqual(pageErrors, [], "Browser runtime errors were detected during public/account route smoke tests");
