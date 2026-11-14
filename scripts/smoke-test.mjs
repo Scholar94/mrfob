@@ -9,6 +9,11 @@ page.on("pageerror", error => pageErrors.push(error.message));
 
 try {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const welcomeDialog = page.locator(".welcome-experience");
+  if (await welcomeDialog.isVisible().catch(() => false)) {
+    await welcomeDialog.getByRole("button", { name: /Explore the experience/i }).click();
+    await welcomeDialog.waitFor({ state: "hidden" });
+  }
   await page.locator(".hero h1").waitFor({ state: "visible", timeout: 15000 });
   assert.ok((await page.locator(".hero h1").innerText()).trim().length > 0, "Homepage hero heading is empty");
   await page.waitForLoadState("load");
