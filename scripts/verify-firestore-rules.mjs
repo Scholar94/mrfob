@@ -89,6 +89,22 @@ try {
     });
   });
 
+  // Company bank transfer instructions are private to signed-in customers
+  // and cannot publish an account number without a verified registered name.
+  await assertSucceeds(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions"), {
+    accounts: [
+      { bankName: "Loma Bank", accountName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", accountNumber: "0061030714" },
+      { bankName: "FCMB", accountName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", accountNumber: "2209515029" }
+    ],
+    instructions: "Use your order number as the transfer reference.",
+    updatedAt: now, updatedBy: "admin-a"
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "publicSettings", "paymentInstructions")));
+  await assertFails(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions-unverified"), {
+    accounts: [{ bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" }],
+    instructions: "", updatedAt: now, updatedBy: "admin-a"
+  }));
+
   // Google Drive identifiers are readable to authenticated users for runtime
   // OAuth initialisation, but only Super Admin may configure them.
   await assertSucceeds(setDoc(doc(superAdmin, "publicSettings", "driveIntegration"), {
