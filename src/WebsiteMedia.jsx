@@ -39,6 +39,9 @@ export function PublicWebsiteMedia() {
 export function PublicWebsiteMusic() {
   const [track, setTrack] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [rememberPreference, setRememberPreference] = useState(() => {
+    try { return window.localStorage.getItem("mrfop-music-panel") === "show"; } catch { return false; }
+  });
   useEffect(() => {
     let active = true;
     getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public")))
@@ -56,7 +59,15 @@ export function PublicWebsiteMusic() {
     <strong>{track.title}</strong>
     {track.description && <p>{track.description}</p>}
     <iframe className="site-media-audio" src={track.drivePreviewUrl} title={track.title + " audio player"} allow="autoplay" loading="lazy"/>
-    <small>Use the player controls to start, pause or adjust the volume.</small>
+    <small>Use the player controls to start, pause, mute or adjust the volume. Playback never starts automatically.</small>
+    <label className="music-preference"><input type="checkbox" checked={rememberPreference} onChange={event => {
+      const checked = event.target.checked;
+      setRememberPreference(checked);
+      try {
+        if (checked) window.localStorage.setItem("mrfop-music-panel", "show");
+        else window.localStorage.removeItem("mrfop-music-panel");
+      } catch {}
+    }}/> <span>Remember to show the music player on my next visit. I will still press Play to start audio.</span></label>
   </div>;
 }
 
