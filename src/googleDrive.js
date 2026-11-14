@@ -9,6 +9,12 @@ let accessTokenScope = "";
 let cachedDriveConfig = null;
 let cachedDriveConfigAt = 0;
 
+export function clearGoogleDriveConfigCache() {
+  cachedDriveConfig = null;
+  cachedDriveConfigAt = 0;
+}
+
+
 async function getDriveConfig() {
   const environmentClientId = String(import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || "").trim();
   const environmentFolderId = String(import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "").trim();
