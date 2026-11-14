@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { collection, doc, getDocs, query, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -70,6 +70,20 @@ export default function NewsletterSignup() {
     }
   }
 
+  async function changeSubscriptionStatus(item) {
+    if (!claims.superAdmin || !item?.id) return;
+    const nextStatus = item.status === "unsubscribed" ? "subscribed" : "unsubscribed";
+    try {
+      await updateDoc(doc(db, "newsletterSubscribers", item.id), {
+        status: nextStatus,
+        updatedAt: serverTimestamp()
+      });
+      setSubscribers(current => current.map(row => row.id === item.id ? { ...row, status: nextStatus } : row));
+    } catch {
+      setError("The subscriber preference could not be updated.");
+    }
+  }
+
   function exportSubscribers() {
     const rows = [["Email", "Status", "Consent", "Created"]];
     subscribers.forEach(item => rows.push([
@@ -114,7 +128,10 @@ export default function NewsletterSignup() {
       <div><strong>Newsletter subscribers</strong><span>{subscribers.length} records</span></div>
       <button type="button" onClick={loadSubscribers} disabled={loadingSubscribers}>{loadingSubscribers ? "Refreshing…" : "Refresh list"}</button>
       <button type="button" onClick={exportSubscribers} disabled={!subscribers.length}>Export CSV</button>
-      {subscribers.length > 0 && <ul>{subscribers.slice(0, 8).map(item => <li key={item.id}>{item.email} <small>{item.status || "subscribed"}</small></li>)}</ul>}
+      {subscribers.length > 0 && <ul>{subscribers.slice(0, 8).map(item => <li key={item.id}>
+        <span>{item.email} <small>{item.status || "subscribed"}</small></span>
+        <button type="button" onClick={() => changeSubscriptionStatus(item)}>{item.status === "unsubscribed" ? "Resubscribe" : "Unsubscribe"}</button>
+      </li>)}</ul>}
     </div>}
   </section>;
 }
