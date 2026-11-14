@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { addDoc, collection, getDocs, query, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDocs, query, serverTimestamp, setDoc } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
 import { useAuth } from "./AuthProvider.jsx";
 
@@ -34,7 +34,10 @@ export default function NewsletterSignup() {
     }
     setBusy(true);
     try {
-      await addDoc(collection(db, "newsletterSubscribers"), {
+      if (!globalThis.crypto?.subtle) throw new Error("secure_hash_unavailable");
+      const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalizedEmail));
+      const subscriberId = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      await setDoc(doc(db, "newsletterSubscribers", subscriberId), {
         email: normalizedEmail,
         consent: true,
         status: "subscribed",
