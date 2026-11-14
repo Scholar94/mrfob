@@ -1098,11 +1098,29 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
 
   async function bookAppointment(e) {
     e.preventDefault();
-    if (hasConfirmedAppointmentConflict(appointmentForm.appointmentDate, appointmentForm.appointmentTime)) {
+    const appointmentDate = appointmentForm.appointmentDate;
+    const appointmentTime = appointmentForm.appointmentTime;
+    const parsedDate = new Date(appointmentDate + "T12:00:00");
+    const timeMatch = /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(appointmentTime);
+    if (!appointmentDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(appointmentDate)
+      || !Number.isFinite(parsedDate.getTime()) || localDateString(parsedDate) !== appointmentDate
+      || appointmentDate < localDateString()) {
+      setError("Choose a valid appointment date today or later.");
+      return;
+    }
+    if (!timeMatch) {
+      setError("Choose a valid appointment time.");
+      return;
+    }
+    if (appointmentForm.purpose.trim().length > 1000) {
+      setError("Additional appointment details must be 1,000 characters or fewer.");
+      return;
+    }
+    if (hasConfirmedAppointmentConflict(appointmentDate, appointmentTime)) {
       setError("That date and time already has a confirmed appointment. Please choose another slot or contact the team.");
       return;
     }
-    if (!user || !appointmentForm.appointmentDate || !appointmentForm.appointmentTime) return;
+    if (!user) return;
     setBusy(true); setError(""); setMessage("");
     try {
       await addDoc(collection(db, "appointments"), {
