@@ -1,8 +1,42 @@
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./firebase.js";
+
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 let tokenClient;
 let accessToken = "";
 let tokenExpiresAt = 0;
 let accessTokenScope = "";
+let cachedDriveConfig = null;
+let cachedDriveConfigAt = 0;
+
+async function getDriveConfig() {
+  const environmentClientId = String(import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || "").trim();
+  const environmentFolderId = String(import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "").trim();
+  if (environmentClientId && environmentFolderId) {
+    return { clientId: environmentClientId, folderId: environmentFolderId };
+  }
+  if (cachedDriveConfig && Date.now() - cachedDriveConfigAt < 60000) {
+    return {
+      clientId: environmentClientId || cachedDriveConfig.clientId,
+      folderId: environmentFolderId || cachedDriveConfig.folderId
+    };
+  }
+  let stored = {};
+  if (db) {
+    try {
+      const snapshot = await getDoc(doc(db, "publicSettings", "driveIntegration"));
+      if (snapshot.exists()) stored = snapshot.data();
+    } catch (error) {
+      if (!environmentClientId) throw new Error("Google Drive settings could not be loaded. Ask the Super Admin to check the integration settings.");
+    }
+  }
+  cachedDriveConfig = {
+    clientId: environmentClientId || String(stored.clientId || "").trim(),
+    folderId: environmentFolderId || String(stored.folderId || "").trim()
+  };
+  cachedDriveConfigAt = Date.now();
+  return cachedDriveConfig;
+}
 
 function loadGoogleIdentity() {
   return new Promise((resolve, reject) => {
@@ -25,8 +59,8 @@ function loadGoogleIdentity() {
 }
 
 async function getDriveToken(scope = "https://www.googleapis.com/auth/drive") {
-  const clientId = import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID;
-  if (!clientId) throw new Error("Google Drive is not configured. Add VITE_GOOGLE_DRIVE_CLIENT_ID.");
+  const { clientId } = await getDriveConfig();
+  if (!clientId) throw new Error("Google Drive is not configured. A Super Admin must save the Google OAuth Web Client ID in Integration Settings.");
   if (accessToken && accessTokenScope === scope && Date.now() < tokenExpiresAt - 60000) return accessToken;
   await loadGoogleIdentity();
   return new Promise((resolve, reject) => {
@@ -76,8 +110,8 @@ async function ensureDriveFolder(name, parentId) {
 
 export async function uploadFileToGoogleDrive(file, metadata = {}) {
   const customerOwned = metadata.storageOwner === "customer";
-  const configuredFolder = import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID;
-  if (!configuredFolder && !customerOwned) throw new Error("Set VITE_GOOGLE_DRIVE_FOLDER_ID to the shared MR FOP FASHIONS Google Drive folder.");
+  const { folderId: configuredFolder } = await getDriveConfig();
+  if (!configuredFolder && !customerOwned) throw new Error("A Super Admin must save the shared Google Drive folder ID in Integration Settings.");
   const pathParts = customerOwned ? [] : String(metadata.folder || "Uploads").split("/").filter(Boolean);
   let parentId = customerOwned ? null : configuredFolder;
   for (const part of pathParts) parentId = await ensureDriveFolder(part, parentId);
