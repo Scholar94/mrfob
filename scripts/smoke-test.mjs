@@ -79,6 +79,7 @@ try {
   const portal = page.locator(".portal-card");
   await portal.waitFor({ state: "visible", timeout: 20000 });
   await portal.getByText("Welcome back", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  assert.equal(await page.locator(".welcome-experience").count(), 0, "Homepage welcome overlay must not block the account login page");
   await portal.locator('input[type="email"]').waitFor({ state: "visible" });
   await portal.locator('input[type="password"]').waitFor({ state: "visible" });
   const accountRobots = await page.locator('meta[name="robots"]').getAttribute("content");
