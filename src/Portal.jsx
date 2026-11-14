@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, up
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound, Menu, X, ChevronRight } from "lucide-react";
 import { auth, db } from "./firebase.js";
-import { uploadFileToGoogleDrive } from "./googleDrive.js";
+import { uploadFileToGoogleDrive, clearGoogleDriveConfigCache } from "./googleDrive.js";
 import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
@@ -1507,6 +1507,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       await setDoc(doc(db, "publicSettings", "driveIntegration"), {
         clientId, folderId, updatedAt: serverTimestamp(), updatedBy: user.uid
       });
+      clearGoogleDriveConfigCache();
       await recordAuditEvent({
         user, claims, action: "drive_integration_configured",
         entityType: "driveIntegration", entityId: "driveIntegration",
