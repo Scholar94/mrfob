@@ -23,6 +23,14 @@ try {
   await page.waitForFunction(async () => Boolean(await navigator.serviceWorker?.getRegistration("/mrfob/")), { timeout: 15000 });
   const serviceWorkerScope = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration("/mrfob/"))?.scope || "");
   assert.ok(serviceWorkerScope.endsWith("/mrfob/"), "PWA service worker was not registered at the GitHub Pages base path");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), { timeout: 15000 });
+  await page.context().setOffline(true);
+  await page.goto(base + "/offline-smoke-test", { waitUntil: "domcontentloaded" });
+  assert.match(await page.locator("body").innerText(), /You’re currently offline/i, "Offline navigation did not serve the cached offline page");
+  await page.context().setOffline(false);
+
 
 
   const publicRoutes = [
