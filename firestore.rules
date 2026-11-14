@@ -376,12 +376,29 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.updatedBy == request.auth.uid;
       allow create, update: if isSuperAdmin() && settingId == 'paymentInstructions'
-        && request.resource.data.keys().hasOnly(['bankName','accountName','accountNumber','instructions','updatedAt','updatedBy'])
-        && request.resource.data.bankName is string && request.resource.data.bankName.size() <= 80
-        && request.resource.data.accountName is string && request.resource.data.accountName.size() <= 100
-        && request.resource.data.accountNumber is string
-        && (request.resource.data.accountNumber == '' || request.resource.data.accountNumber.matches('^[0-9]{10}$'))
-        && request.resource.data.instructions is string && request.resource.data.instructions.size() <= 600
+        && request.resource.data.keys().hasOnly(['accounts','instructions','updatedAt','updatedBy'])
+        && request.resource.data.accounts is list
+        && request.resource.data.accounts.size() <= 2
+        && (request.resource.data.accounts.size() == 0
+          || (request.resource.data.accounts[0] is map
+            && request.resource.data.accounts[0].keys().hasOnly(['bankName','accountName','accountNumber'])
+            && request.resource.data.accounts[0].bankName is string
+            && request.resource.data.accounts[0].bankName.size() <= 80
+            && request.resource.data.accounts[0].accountName is string
+            && request.resource.data.accounts[0].accountName.size() <= 100
+            && request.resource.data.accounts[0].accountNumber is string
+            && (request.resource.data.accounts[0].accountNumber == '' || request.resource.data.accounts[0].accountNumber.matches('^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$'))))
+        && (request.resource.data.accounts.size() < 2
+          || (request.resource.data.accounts[1] is map
+            && request.resource.data.accounts[1].keys().hasOnly(['bankName','accountName','accountNumber'])
+            && request.resource.data.accounts[1].bankName is string
+            && request.resource.data.accounts[1].bankName.size() <= 80
+            && request.resource.data.accounts[1].accountName is string
+            && request.resource.data.accounts[1].accountName.size() <= 100
+            && request.resource.data.accounts[1].accountNumber is string
+            && (request.resource.data.accounts[1].accountNumber == '' || request.resource.data.accounts[1].accountNumber.matches('^[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$'))))
+        && request.resource.data.instructions is string
+        && request.resource.data.instructions.size() <= 600
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.updatedBy == request.auth.uid;
       allow create, update: if isSuperAdmin() && settingId == 'driveIntegration'
