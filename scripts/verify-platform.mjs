@@ -9,7 +9,7 @@ const requiredFiles = [
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
   "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
-  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs"
+  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
 for (const file of requiredFiles) assert.ok(fs.existsSync(file), `Missing required platform file: ${file}`);
 
@@ -115,6 +115,8 @@ assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), 
 assert.ok(app.includes("<NewsletterSignup />"), "Public newsletter sign-up is not mounted");
 assert.ok(read("src/NewsletterSignup.jsx").includes("crypto.subtle.digest") && read("src/NewsletterSignup.jsx").includes("setDoc") && read("src/NewsletterSignup.jsx").includes("changeSubscriptionStatus") && read("src/NewsletterSignup.jsx").includes("updateDoc"), "Newsletter duplicate protection or preference management is missing");
 assert.ok(rules.includes("match /newsletterSubscribers/{subscriberId}") && rules.includes("allow read: if isSuperAdmin();"), "Newsletter subscriber privacy rules are missing");
+assert.ok(read(".github/workflows/deploy.yml").includes("playwright install --with-deps chromium") && read(".github/workflows/deploy.yml").includes("node scripts/smoke-test.mjs"), "Browser smoke tests are not wired into deployment CI");
+
 
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
 assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
