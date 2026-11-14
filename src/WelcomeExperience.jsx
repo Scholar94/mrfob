@@ -25,7 +25,7 @@ export default function WelcomeExperience() {
     <div className="welcome-experience-content">
       <img src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS" />
       <p className="welcome-experience-eyebrow"><Sparkles size={14}/> EST. 2010 · IJEBU ODE, NIGERIA</p>
-      <h2 id="welcome-experience-title">WELCOME TO<br/><em>MR FOP FASHIONS</em></h2>
+      <h2 id="welcome-experience-title">WELCOME TO<br/><em>MR FOP FASHIONS</em><span>COMPANY NIGERIA LIMITED</span></h2>
       <p>Distinctive fashion, bespoke tailoring and practical fashion education — crafted with purpose.</p>
       <button type="button" autoFocus onClick={enterSite}>Explore the experience <ArrowUpRight size={17}/></button>
       <small>MR FOP FASHIONS COMPANY NIGERIA LIMITED</small>
