@@ -33,6 +33,15 @@ jobs:
         run: npm install
       - name: Install CI test tools
         run: npm install --no-save @firebase/rules-unit-testing@4.0.1 firebase-tools playwright
+      - name: Verify Google Drive integration configuration
+        env:
+          VITE_GOOGLE_DRIVE_CLIENT_ID: ${{ vars.VITE_GOOGLE_DRIVE_CLIENT_ID || secrets.VITE_GOOGLE_DRIVE_CLIENT_ID }}
+          VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ vars.VITE_GOOGLE_DRIVE_FOLDER_ID || secrets.VITE_GOOGLE_DRIVE_FOLDER_ID }}
+        run: |
+          if [ -z "$VITE_GOOGLE_DRIVE_CLIENT_ID" ] || [ -z "$VITE_GOOGLE_DRIVE_FOLDER_ID" ]; then
+            echo "::error::Google Drive client ID and shared folder ID must be configured as repository Variables or Secrets before deployment."
+            exit 1
+          fi
       - name: Build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -40,9 +49,9 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_GOOGLE_DRIVE_CLIENT_ID: ${{ vars.VITE_GOOGLE_DRIVE_CLIENT_ID }}
-          VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ vars.VITE_GOOGLE_DRIVE_FOLDER_ID }}
-          VITE_ASSESSMENT_GRADING_URL: ${{ vars.VITE_ASSESSMENT_GRADING_URL }}
+          VITE_GOOGLE_DRIVE_CLIENT_ID: ${{ vars.VITE_GOOGLE_DRIVE_CLIENT_ID || secrets.VITE_GOOGLE_DRIVE_CLIENT_ID }}
+          VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ vars.VITE_GOOGLE_DRIVE_FOLDER_ID || secrets.VITE_GOOGLE_DRIVE_FOLDER_ID }}
+          VITE_ASSESSMENT_GRADING_URL: ${{ vars.VITE_ASSESSMENT_GRADING_URL || secrets.VITE_ASSESSMENT_GRADING_URL }}
         run: npm run build
       - name: Install Chromium for browser smoke tests
         run: npx playwright install --with-deps chromium
