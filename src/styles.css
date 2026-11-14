@@ -976,3 +976,8 @@ button:disabled{cursor:not-allowed}
 .refund-summary-grid span{color:#76656a;font-size:10px;font-weight:700}
 .refund-summary-grid strong{color:#32151f;font:600 23px 'Playfair Display',Georgia,serif}
 .refund-summary-grid small{color:#8a7b78;font-size:9px;line-height:1.5}
+
+
+.standalone-whatsapp-float{position:fixed;right:22px;bottom:24px;z-index:1000;width:54px;height:54px;display:grid;place-items:center;border-radius:50%;background:#1d9b59;color:white;box-shadow:0 8px 28px #1c342b55;transition:transform .2s ease,box-shadow .2s ease}
+.standalone-whatsapp-float:hover{transform:translateY(-3px);box-shadow:0 12px 32px #1c342b66}
+@media(max-width:600px){.standalone-whatsapp-float{right:14px;bottom:16px;width:50px;height:50px}}
