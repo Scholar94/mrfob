@@ -1330,10 +1330,7 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() >= 6
         && request.resource.data.email.size() <= 254
-        && request.resource.data.email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}
-  }
-}
-)
+        && request.resource.data.email.matches('.*@.*[.].*')
         && request.resource.data.consent == true
         && request.resource.data.status == 'subscribed'
         && request.resource.data.source == 'public_website'
