@@ -9,6 +9,7 @@ import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
 import NewsletterSignup from "./NewsletterSignup.jsx";
+import PublicRoutePage from "./PublicRoutePage.jsx";
 import StyleRecommendations from "./StyleRecommendations.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
@@ -37,6 +38,7 @@ const services = [
 
 export default function App() {
   const [menu, setMenu] = useState(false);
+  const [standalonePage, setStandalonePage] = useState("");
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installMessage, setInstallMessage] = useState("");
   const [musicNotice, setMusicNotice] = useState(false);
@@ -100,11 +102,12 @@ export default function App() {
     if (route) {
       setPortalOpen(false);
       setPolicyOpen("");
+      setStandalonePage(route[0] === "home" ? "" : path);
       document.title = route[1];
-      if (route[0] !== "home") window.requestAnimationFrame(() => document.getElementById(route[0])?.scrollIntoView({ behavior: "smooth", block: "start" }));
-      else window.scrollTo({ top: 0, behavior: "auto" });
+      if (route[0] === "home") window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
+    setStandalonePage("");
     document.title = "Page Not Found | MR FOP FASHIONS";
     window.requestAnimationFrame(() => document.getElementById("home")?.scrollIntoView({ behavior: "auto" }));
   }, []);
@@ -219,7 +222,7 @@ export default function App() {
       document.title = "MR FOP FASHIONS | Premium Bespoke Fashion";
     }
   };
-  return <div className="site-shell">
+  if (standalonePage) return <PublicRoutePage path={standalonePage} collections={collections} companyProfile={companyProfile} publicFaqs={publicFaqs}/>;\n\n  return <div className="site-shell">
     <div className="announcement"><span>CRAFTED WITH PURPOSE SINCE 2010</span><span>IJEBU ODE, OGUN STATE · NIGERIA</span></div>
     <header className="header">
       <a className="brand" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a>
