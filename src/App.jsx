@@ -8,6 +8,7 @@ import PortalErrorBoundary from "./PortalErrorBoundary.jsx";
 import CertificateVerification from "./CertificateVerification.jsx";
 import { PublicWebsiteMedia, PublicWebsiteMusic } from "./WebsiteMedia.jsx";
 import FabricCatalogue from "./FabricCatalogue.jsx";
+import NewsletterSignup from "./NewsletterSignup.jsx";
 import StyleRecommendations from "./StyleRecommendations.jsx";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db, firebaseReady } from "./firebase.js";
@@ -375,6 +376,7 @@ export default function App() {
       </div>
     </section>
     <CertificateVerification />
+    <NewsletterSignup />
     <footer className="footer"><div className="footer-main"><a className="brand brand-footer" href="#home" aria-label="MR FOP FASHIONS home"><img className="brand-image brand-image-footer" src="/mrfob/mr-fop-website-logo.webp" alt="MR FOP FASHIONS COMPANY" /></a><p>Distinctive fashion and professional training.<br/>Making you feel brand new since 2010.</p><a className="footer-wa" href={companyWa} target="_blank" rel="noreferrer"><MessageCircle/> WhatsApp</a></div>
       <div className="footer-bottom"><span>© {new Date().getFullYear()} MR FOP FASHIONS COMPANY NIGERIA LIMITED</span><span>RC 1089546 · IJEBU ODE, OGUN STATE</span><div className="footer-legal"><button onClick={() => setPolicyOpen("privacy")}>Privacy notice</button><button onClick={() => setPolicyOpen("terms")}>Terms of service</button><a href="#home">BACK TO TOP ↑</a></div></div>
     </footer>
