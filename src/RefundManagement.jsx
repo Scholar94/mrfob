@@ -33,6 +33,10 @@ export default function RefundManagement({ user, claims = {} }) {
   }
   useEffect(() => { refresh(); }, [user?.uid, finance]);
 
+  const paidRefunds = refunds.filter(item => item.status === "paid");
+  const openRefunds = refunds.filter(item => ["requested", "reviewing", "approved"].includes(item.status));
+  const paidRefundTotal = paidRefunds.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const openRefundTotal = openRefunds.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const requestedPaymentIds = new Set(refunds.map(item => item.paymentId));
   const availablePayments = payments.filter(item => !requestedPaymentIds.has(item.id));
   const selectedPayment = payments.find(item => item.id === paymentId);
@@ -80,6 +84,10 @@ export default function RefundManagement({ user, claims = {} }) {
 
   return <section className="customer-management refund-management">
     <div className="customer-management-heading"><div><h3>{finance ? "Refund requests and records" : "Refund requests"}</h3><p>{finance ? "Review customer refund requests and record a transfer only after it has actually been completed." : "Request a review of a verified payment. A request is not a payment approval or a bank transfer."}</p></div><button type="button" onClick={refresh} disabled={loading || busy}>{loading ? "Loading…" : "Refresh refunds"}</button></div>
+    {finance && <div className="refund-summary-grid" aria-label="Refund financial summary">
+      <article><span>Paid refunds recorded</span><strong>₦{paidRefundTotal.toLocaleString("en-NG")}</strong><small>{paidRefunds.length} completed transfer record(s)</small></article>
+      <article><span>Open refund exposure</span><strong>₦{openRefundTotal.toLocaleString("en-NG")}</strong><small>{openRefunds.length} requested, reviewing or approved case(s)</small></article>
+    </div>}
     {!finance && <form className="portal-form refund-request-form" onSubmit={submit}>
       <label>Verified payment<select required value={paymentId} onChange={event=>setPaymentId(event.target.value)}><option value="">Choose a payment</option>{availablePayments.map(item=><option key={item.id} value={item.id}>{item.orderNumber || item.orderId || "Payment"} · ₦{Number(item.amount||0).toLocaleString("en-NG")} · {item.reference || item.id}</option>)}</select></label>
       <label>Requested refund amount (₦)<input type="number" min="0.01" step="0.01" max={selectedPayment?.amount || undefined} required value={amount} onChange={event=>setAmount(event.target.value)}/></label>
