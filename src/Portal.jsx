@@ -163,6 +163,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [paymentDeclarations, setPaymentDeclarations] = useState([]);
   const [declarationForm, setDeclarationForm] = useState({ orderId: "", amount: "", reference: "", transferDate: localDateString(), payerName: "", note: "" });
   const [paymentEvidenceFile, setPaymentEvidenceFile] = useState(null);
+  const [selectedPaymentAccount, setSelectedPaymentAccount] = useState("0");
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
   const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
   const defaultBankAccounts = [
@@ -1556,6 +1557,16 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     finally { setDeclarationsLoading(false); }
   }
 
+  async function copyPaymentAccountNumber(accountNumber) {
+    try {
+      await navigator.clipboard.writeText(String(accountNumber || ""));
+      setMessage("Bank account number copied.");
+      setError("");
+    } catch {
+      setError("Could not copy automatically. Please select and copy the account number manually.");
+    }
+  }
+
   async function submitPaymentDeclaration(e) {
     e.preventDefault();
     if (!user || claims.superAdmin || claims.staffRole) return;
@@ -2442,6 +2453,14 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           <small>Confirm these details before making a transfer. MR FOP FASHIONS will independently verify payments.</small>
         </div>
         <p className="payment-declaration-notice">Submitting this form does not confirm receipt of funds. Do not submit passwords, PINs, OTPs or full card details. Do not upload bank statements here.</p>
+        {(() => {
+          const verifiedAccounts = (paymentInstructions.accounts || (paymentInstructions.accountNumber ? [paymentInstructions] : [])).filter(account => account.bankName && account.accountName && account.accountNumber);
+          const selectedAccount = verifiedAccounts[Number(selectedPaymentAccount)] || verifiedAccounts[0];
+          return verifiedAccounts.length ? <div className="payment-account-choice">
+            <label>Choose the company bank account<select value={String(Math.min(Number(selectedPaymentAccount) || 0, verifiedAccounts.length - 1))} onChange={event => setSelectedPaymentAccount(event.target.value)}>{verifiedAccounts.map((account,index)=><option key={account.bankName+index} value={index}>{account.bankName} · {account.accountNumber}</option>)}</select></label>
+            {selectedAccount && <div className="payment-account-copy"><span><small>Account name</small><strong>{selectedAccount.accountName}</strong></span><span><small>Account number</small><strong>{selectedAccount.accountNumber}</strong></span><button type="button" onClick={() => copyPaymentAccountNumber(selectedAccount.accountNumber)}>Copy account number</button></div>}
+          </div> : null;
+        })()}
         <form className="portal-form" onSubmit={submitPaymentDeclaration}>
           <label>Order<select required value={declarationForm.orderId} onChange={e=>setDeclarationForm({...declarationForm,orderId:e.target.value})}><option value="">Select your order</option>{myOrders.map(order=><option key={order.id} value={order.id}>{order.orderNumber || order.id} — {order.item}</option>)}</select></label>
           <label>Amount transferred (₦)<input required type="number" min="0.01" step="0.01" value={declarationForm.amount} onChange={e=>setDeclarationForm({...declarationForm,amount:e.target.value})} placeholder="0.00"/></label>
