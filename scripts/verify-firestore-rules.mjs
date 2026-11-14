@@ -189,6 +189,27 @@ try {
     purpose: "Customer cannot self-confirm", status: "confirmed",
     createdAt: now, updatedAt: now
   }));
+  await assertFails(setDoc(doc(customerA, "appointments", "appointment-invalid-time"), {
+    customerUid: "customer-a", customerName: "Test Customer",
+    customerEmail: "customer-a@example.com", service: "Measurement",
+    appointmentDate: "2026-11-21", appointmentTime: "25:99",
+    purpose: "Invalid time format", status: "pending",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "appointments", "appointment-invalid-service"), {
+    customerUid: "customer-a", customerName: "Test Customer",
+    customerEmail: "customer-a@example.com", service: "Unlisted service",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00",
+    purpose: "Invalid service", status: "pending",
+    createdAt: now, updatedAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "appointments", "appointment-spoofed-email"), {
+    customerUid: "customer-a", customerName: "Test Customer",
+    customerEmail: "someone-else@example.com", service: "Measurement",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00",
+    purpose: "Spoofed email", status: "pending",
+    createdAt: now, updatedAt: now
+  }));
   await assertFails(updateDoc(doc(customerB, "appointments", "appointment-a"), {
     status: "cancelled", updatedAt: now
   }));
