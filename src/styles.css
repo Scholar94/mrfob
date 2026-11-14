@@ -969,3 +969,10 @@ button:disabled{cursor:not-allowed}
 .standalone-footer a{color:#e4cda8;font:600 10px 'DM Sans',sans-serif}
 @media(max-width:760px){.standalone-header{flex-wrap:wrap}.standalone-header nav{order:3;flex-basis:100%;flex-wrap:wrap;gap:12px}.standalone-actions{margin-left:auto}.standalone-content.two-column{grid-template-columns:1fr}.standalone-topline{font-size:7px}.standalone-footer{align-items:flex-start;flex-direction:column}}
 @media(max-width:420px){.standalone-brand img{width:118px}.standalone-header nav a{font-size:9px}.standalone-actions>a{font-size:9px}.standalone-main{width:calc(100% - 28px)}}
+
+
+.refund-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0 22px}
+.refund-summary-grid article{display:grid;gap:7px;padding:17px;border:1px solid #d8c9b5;background:#fffdf8}
+.refund-summary-grid span{color:#76656a;font-size:10px;font-weight:700}
+.refund-summary-grid strong{color:#32151f;font:600 23px 'Playfair Display',Georgia,serif}
+.refund-summary-grid small{color:#8a7b78;font-size:9px;line-height:1.5}
