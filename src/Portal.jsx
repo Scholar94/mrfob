@@ -2041,6 +2041,45 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   useEffect(() => {
     if (!user || !initialSection || !accountNavItems.length || initialRouteHandledRef.current) return;
     const terms = {
+      "customer-dashboard": "overview",
+      "customer-profile": "profile",
+      "customer-orders": "my orders",
+      "customer-new-order": "request a custom order",
+      "customer-measurements": "measurement",
+      "customer-ai-measurement": "ai body measurement",
+      "customer-appointments": "appointment",
+      "customer-payments": "payment",
+      "customer-notifications": "notification",
+      "customer-support": "support",
+      "student-dashboard": "overview",
+      "student-profile": "profile",
+      "student-courses": "course",
+      "student-lessons": "lesson",
+      "student-assignments": "assignment",
+      "student-attendance": "attendance",
+      "student-results": "assessment",
+      "admin-dashboard": "overview",
+      "admin-customers": "customer management",
+      "admin-orders": "order management",
+      "admin-measurements": "measurement",
+      "admin-appointments": "appointment",
+      "admin-production": "order management",
+      "admin-quotations": "quotation",
+      "admin-payments": "payment",
+      "admin-invoices": "order management",
+      "admin-designers": "staff",
+      "admin-fashion-gallery": "inventory",
+      "admin-fabrics": "fabric catalogue",
+      "admin-courses": "course",
+      "admin-training-windows": "training window",
+      "admin-applications": "application",
+      "admin-students": "student",
+      "admin-instructors": "instructor",
+      "admin-media": "website media",
+      "admin-reports": "financial management",
+      "admin-settings": "company profile",
+      "admin-users": "staff",
+      "admin-audit-logs": "audit",
       dashboard: "overview",
       profile: "profile",
       orders: "my orders",
@@ -2071,7 +2110,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     };
     const term = terms[initialSection] || initialSection.replaceAll("-", " ");
     const target = accountNavItems.find(item => item.label.toLowerCase().includes(term))
-      || (initialSection === "dashboard" ? accountNavItems[0] : null);
+      || (initialSection === "dashboard" || initialSection.endsWith("-dashboard") ? accountNavItems[0] : null);
     if (target) {
       initialRouteHandledRef.current = true;
       setActiveAccountSection(target.id);
