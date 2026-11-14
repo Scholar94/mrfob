@@ -1005,3 +1005,10 @@ button:disabled{cursor:not-allowed}
 
 .music-preference{display:flex;align-items:flex-start;gap:9px;margin-top:12px;color:#78666b;font-size:10px;line-height:1.5}
 .music-preference input{margin-top:2px;accent-color:#9a794d}
+
+
+.payment-account-editor{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;padding:16px;border:1px solid #e1d3c2;background:#fbf8f2}
+.payment-account-editor>strong{grid-column:1/-1;color:#4b2d36;font:600 13px 'DM Sans',sans-serif}
+.customer-bank-account{padding:10px 0;border-bottom:1px solid #e3d7c8}
+.customer-bank-account:last-of-type{border-bottom:0}
+.customer-bank-account p{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
