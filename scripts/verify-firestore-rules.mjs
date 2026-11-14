@@ -58,6 +58,14 @@ try {
       purpose: "Test appointment", status: "pending",
       createdAt: now, updatedAt: now
     });
+    await setDoc(doc(db, "appointments", "appointment-alternative"), {
+      customerUid: "customer-a", customerName: "Test Customer",
+      customerEmail: "customer-a@example.com", service: "Measurement",
+      appointmentDate: "2026-11-19", appointmentTime: "09:00",
+      proposedDate: "2026-11-22", proposedTime: "14:00",
+      purpose: "Alternative confirmation test", status: "alternative_proposed",
+      createdAt: now, updatedAt: now
+    });
 
     await setDoc(doc(db, "fabrics", "active-fabric"), {
       name: "Test cotton", color: "Navy", texture: "Soft",
@@ -152,17 +160,33 @@ try {
   confirmedBooking.update(doc(superAdmin, "appointments", "appointment-a"), {
     status: "confirmed", updatedAt: now
   });
-  confirmedBooking.set(doc(superAdmin, "appointmentSlots", "2026-11-20_1000"), {
+  confirmedBooking.set(doc(superAdmin, "appointmentSlots", "2026-11-20_10:00"), {
     appointmentId: "appointment-a", customerUid: "customer-a",
     appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
   });
   await assertSucceeds(confirmedBooking.commit());
   await assertSucceeds(getDoc(doc(customerA, "appointments", "appointment-a")));
   await assertFails(getDoc(doc(customerB, "appointments", "appointment-a")));
-  await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-20_1000"), {
+  await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-20_10:00"), {
     appointmentId: "appointment-a", customerUid: "customer-a",
     appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
   }));
+  // Accepting an alternative must atomically reserve its exact slot; a direct
+  // appointment-document update without the matching slot is rejected.
+  await assertFails(updateDoc(doc(customerA, "appointments", "appointment-alternative"), {
+    status: "confirmed", appointmentDate: "2026-11-22",
+    appointmentTime: "14:00", updatedAt: now
+  }));
+  const acceptedAlternative = writeBatch(customerA);
+  acceptedAlternative.update(doc(customerA, "appointments", "appointment-alternative"), {
+    status: "confirmed", appointmentDate: "2026-11-22",
+    appointmentTime: "14:00", updatedAt: now
+  });
+  acceptedAlternative.set(doc(customerA, "appointmentSlots", "2026-11-22_14:00"), {
+    appointmentId: "appointment-alternative", customerUid: "customer-a",
+    appointmentDate: "2026-11-22", appointmentTime: "14:00", updatedAt: now
+  });
+  await assertSucceeds(acceptedAlternative.commit());
 
   // Public fabric visibility: active records are public; archived records remain private.
   await assertSucceeds(getDoc(doc(anonymous, "fabrics", "active-fabric")));
