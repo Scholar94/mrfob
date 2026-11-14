@@ -89,6 +89,24 @@ try {
     });
   });
 
+  // Newsletter: public users may submit consent-backed sign-ups, but subscriber
+  // records are private and only Super Admin can read them.
+  await assertSucceeds(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-valid"), {
+    email: "reader@example.com", consent: true, status: "subscribed",
+    source: "public_website", createdAt: now
+  }));
+  await assertFails(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-no-consent"), {
+    email: "reader2@example.com", consent: false, status: "subscribed",
+    source: "public_website", createdAt: now
+  }));
+  await assertFails(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-invalid-email"), {
+    email: "not-an-email", consent: true, status: "subscribed",
+    source: "public_website", createdAt: now
+  }));
+  await assertFails(getDoc(doc(customerA, "newsletterSubscribers", "newsletter-valid")));
+  await assertFails(getDoc(doc(anonymous, "newsletterSubscribers", "newsletter-valid")));
+  await assertSucceeds(getDoc(doc(superAdmin, "newsletterSubscribers", "newsletter-valid")));
+
   // Customer privacy: only the owner can create and read their own privacy request.
   const privacyRef = doc(customerA, "privacyRequests", "privacy-a");
   await assertSucceeds(setDoc(privacyRef, {
@@ -316,7 +334,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, newsletter consent and subscriber privacy, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
