@@ -7,7 +7,7 @@ Public website and customer account foundation for **MR FOP FASHIONS COMPANY NIG
 - GitHub Pages hosting and GitHub Actions deployment
 - Firebase Authentication (email/password)
 - Cloud Firestore with role-based Security Rules
-- Google Drive direct upload integration for shared file storage
+- Google Drive direct upload integration for shared file storage, configured from Super Admin Integration Settings
 
 ## Local development
 ```bash
@@ -79,6 +79,19 @@ The three supplied and approved logo images are committed under `public/` and wi
 3. `mr-fop-fashion-institute-logo.webp` — public Fashion Institute section and Institute workspace.
 
 The integration was deployed successfully in commit `6deadba8b59dd90baa7bb7298c9f1a61c57b33f7`. Do not redraw or substitute these approved logos.
+
+## Project operations and acceptance documentation
+
+- [Firebase setup and rules deployment](docs/FIREBASE-SETUP.md)
+- [First Super Admin and staff role setup](docs/ADMIN-BOOTSTRAP.md)
+- [GitHub Pages deployment and release checks](docs/DEPLOYMENT.md)
+- [Google Drive setup and permission management](docs/google-drive/README.md)
+- [Optional Apps Script objective grader](docs/google-apps-script/README.md)
+- [Free-tier usage and limitations](docs/FREE-TIER-GUIDE.md)
+- [24-section master-prompt traceability](docs/MASTER-PROMPT-TRACEABILITY.md)
+- [22-case acceptance test plan](docs/QA-TEST-PLAN.md)
+
+Google Drive OAuth Client ID and shared folder ID can be saved by the Super Admin in the account workspace's **Google Drive Integration** section. Optional GitHub Actions variables/secrets can supply build-time defaults. Do not enter a Google client secret in the website.
 
 ## Phase scope
 Phase 1: public brand website and Pages deployment.
