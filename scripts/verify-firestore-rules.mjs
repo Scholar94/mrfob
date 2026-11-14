@@ -110,6 +110,12 @@ try {
   await assertFails(getDoc(doc(customerA, "newsletterSubscribers", "newsletter-valid")));
   await assertFails(getDoc(doc(anonymous, "newsletterSubscribers", "newsletter-valid")));
   await assertSucceeds(getDoc(doc(superAdmin, "newsletterSubscribers", "newsletter-valid")));
+  await assertSucceeds(updateDoc(doc(superAdmin, "newsletterSubscribers", "newsletter-valid"), {
+    status: "unsubscribed", updatedAt: now
+  }));
+  await assertFails(updateDoc(doc(customerA, "newsletterSubscribers", "newsletter-valid"), {
+    status: "subscribed", updatedAt: now
+  }));
 
   // Customer privacy: only the owner can create and read their own privacy request.
   const privacyRef = doc(customerA, "privacyRequests", "privacy-a");
