@@ -165,8 +165,12 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [paymentEvidenceFile, setPaymentEvidenceFile] = useState(null);
   const [declarationsLoading, setDeclarationsLoading] = useState(false);
   const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
-  const [paymentInstructions, setPaymentInstructions] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
-  const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
+  const defaultBankAccounts = [
+    { bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" },
+    { bankName: "FCMB", accountName: "", accountNumber: "2209515029" }
+  ];
+  const [paymentInstructions, setPaymentInstructions] = useState({ accounts: defaultBankAccounts, instructions: "Please confirm the registered account name with MR FOP FASHIONS before making a transfer." });
+  const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState({ accounts: defaultBankAccounts, instructions: "Please confirm the registered account name with MR FOP FASHIONS before making a transfer." });
   const [driveIntegrationDraft, setDriveIntegrationDraft] = useState({
     clientId: String(import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || ""),
     folderId: String(import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "")
@@ -1448,7 +1452,20 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     try {
       const snapshot = await getDoc(doc(db, "publicSettings", "paymentInstructions"));
       const data = snapshot.exists() ? snapshot.data() : {};
-      const safe = { bankName: data.bankName || "", accountName: data.accountName || "", accountNumber: data.accountNumber || "", instructions: data.instructions || "" };
+      const fallbackAccounts = [
+        { bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" },
+        { bankName: "FCMB", accountName: "", accountNumber: "2209515029" }
+      ];
+      const accounts = Array.isArray(data.accounts)
+        ? data.accounts.map(item => ({ bankName: String(item.bankName || ""), accountName: String(item.accountName || ""), accountNumber: String(item.accountNumber || "") }))
+        : data.accountNumber
+          ? [{ bankName: String(data.bankName || ""), accountName: String(data.accountName || ""), accountNumber: String(data.accountNumber || "") }]
+          : fallbackAccounts;
+      const safe = {
+        accounts,
+        instructions: data.instructions || "Please confirm the registered account name with MR FOP FASHIONS before making a transfer.",
+        bankName: data.bankName || "", accountName: data.accountName || "", accountNumber: data.accountNumber || ""
+      };
       setPaymentInstructions(safe);
       setPaymentInstructionsDraft(safe);
     } catch (err) { setError(err.message || "Could not load payment instructions."); }
@@ -1457,14 +1474,17 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   async function savePaymentInstructions(e) {
     e.preventDefault();
     if (!claims.superAdmin) return;
+    const accounts = (paymentInstructionsDraft.accounts || []).map(item => ({
+      bankName: String(item.bankName || "").trim(),
+      accountName: String(item.accountName || "").trim(),
+      accountNumber: String(item.accountNumber || "").replace(/\D/g, "").slice(0, 10)
+    }));
     const next = {
-      bankName: paymentInstructionsDraft.bankName.trim(),
-      accountName: paymentInstructionsDraft.accountName.trim(),
-      accountNumber: paymentInstructionsDraft.accountNumber.trim(),
+      accounts,
       instructions: paymentInstructionsDraft.instructions.trim()
     };
-    if (next.accountNumber && !/^\d{10}$/.test(next.accountNumber)) { setError("Enter a valid 10-digit Nigerian bank account number, or leave it blank."); return; }
-    if (next.accountNumber && (!next.bankName || !next.accountName)) { setError("Enter the bank name and account name when an account number is supplied."); return; }
+    if (accounts.some(item => item.accountNumber && !/^\d{10}$/.test(item.accountNumber))) { setError("Each bank account number must contain exactly 10 digits."); return; }
+    if (accounts.some(item => item.accountNumber && (!item.bankName || !item.accountName))) { setError("Enter the bank name and registered account name for every account number before publishing payment details."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
       await setDoc(doc(db, "publicSettings", "paymentInstructions"), { ...next, updatedAt: serverTimestamp(), updatedBy: user.uid });
