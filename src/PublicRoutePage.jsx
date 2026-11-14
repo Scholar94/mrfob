@@ -104,6 +104,7 @@ export default function PublicRoutePage({ path, collections = [], companyProfile
 
       {path === "/faq" && <section className="standalone-content"><p className="eyebrow">HELP AND GUIDANCE</p><h2>Answers to common questions.</h2><div className="standalone-faq-list">{faqs.map(([question, answer], index) => <details key={question || index}><summary>{question}</summary><p>{answer}</p></details>)}</div></section>}
     </main>
+    <a className="standalone-whatsapp-float" href={whatsapp} target="_blank" rel="noreferrer" aria-label="Contact MR FOP FASHIONS on WhatsApp"><MessageCircle size={22}/></a>
     <footer className="standalone-footer"><div><strong>{companyName}</strong><p>{address}</p></div><div><a href="/mrfob/privacy">Privacy</a><a href="/mrfob/terms">Terms</a><a href="/mrfob/contact">Contact</a></div></footer>
     <NewsletterSignup/>
   </div>;
