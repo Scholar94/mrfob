@@ -122,6 +122,7 @@ assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && rea
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(read("src/RefundManagement.jsx").includes("paidRefundTotal") && read("src/RefundManagement.jsx").includes("openRefundTotal"), "Finance refund exposure summary is missing");
 assert.ok(portal.includes("0061030714") && portal.includes("2209515029") && portal.includes("registered account name"), "Both company bank account defaults and verification controls are missing");
+assert.ok(portal.includes("copyPaymentAccountNumber") && portal.includes("Choose the company bank account"), "Customer bank account selection and copy controls are missing");
 assert.ok(rules.includes("request.resource.data.accounts is list") && rules.includes("request.resource.data.accounts[0].accountName.size() > 0"), "Bank account publication validation rules are missing");
 
 assert.ok(app.includes("<NewsletterSignup />"), "Public newsletter sign-up is not mounted");
