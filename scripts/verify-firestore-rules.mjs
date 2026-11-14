@@ -66,6 +66,14 @@ try {
       purpose: "Alternative confirmation test", status: "alternative_proposed",
       createdAt: now, updatedAt: now
     });
+    await setDoc(doc(db, "appointments", "appointment-duplicate-slot"), {
+      customerUid: "customer-a", customerName: "Test Customer",
+      customerEmail: "customer-a@example.com", service: "Measurement",
+      appointmentDate: "2026-11-18", appointmentTime: "08:00",
+      proposedDate: "2026-11-22", proposedTime: "14:00",
+      purpose: "Duplicate slot test", status: "alternative_proposed",
+      createdAt: now, updatedAt: now
+    });
 
     await setDoc(doc(db, "fabrics", "active-fabric"), {
       name: "Test cotton", color: "Navy", texture: "Soft",
@@ -187,6 +195,16 @@ try {
     appointmentDate: "2026-11-22", appointmentTime: "14:00", updatedAt: now
   });
   await assertSucceeds(acceptedAlternative.commit());
+  const duplicateSlotAttempt = writeBatch(customerA);
+  duplicateSlotAttempt.update(doc(customerA, "appointments", "appointment-duplicate-slot"), {
+    status: "confirmed", appointmentDate: "2026-11-22",
+    appointmentTime: "14:00", updatedAt: now
+  });
+  duplicateSlotAttempt.set(doc(customerA, "appointmentSlots", "2026-11-22_14:00"), {
+    appointmentId: "appointment-duplicate-slot", customerUid: "customer-a",
+    appointmentDate: "2026-11-22", appointmentTime: "14:00", updatedAt: now
+  });
+  await assertFails(duplicateSlotAttempt.commit());
 
   // Public fabric visibility: active records are public; archived records remain private.
   await assertSucceeds(getDoc(doc(anonymous, "fabrics", "active-fabric")));
