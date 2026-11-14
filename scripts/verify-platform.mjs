@@ -111,7 +111,7 @@ assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && rea
 
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(app.includes("<NewsletterSignup />"), "Public newsletter sign-up is not mounted");
-assert.ok(read("src/NewsletterSignup.jsx").includes("crypto.subtle.digest") && read("src/NewsletterSignup.jsx").includes("setDoc"), "Newsletter duplicate protection is missing");
+assert.ok(read("src/NewsletterSignup.jsx").includes("crypto.subtle.digest") && read("src/NewsletterSignup.jsx").includes("setDoc") && read("src/NewsletterSignup.jsx").includes("changeSubscriptionStatus") && read("src/NewsletterSignup.jsx").includes("updateDoc"), "Newsletter duplicate protection or preference management is missing");
 assert.ok(rules.includes("match /newsletterSubscribers/{subscriberId}") && rules.includes("allow read: if isSuperAdmin();"), "Newsletter subscriber privacy rules are missing");
 
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
