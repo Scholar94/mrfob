@@ -11,10 +11,8 @@ This repository uses the Google Drive API for customer reference designs, produc
 5. Add the exact deployed website origin (scheme + hostname only, without a path) under **Authorized JavaScript origins**. Also add the local development origin if needed.
 6. Copy the OAuth client ID. Do not put a client secret in the website.
 7. In Google Drive, create a normal My Drive folder for MR FOP FASHIONS media. Give each authorized uploader Editor access and copy the folder ID from its URL.
-8. In GitHub repository **Settings → Secrets and variables → Actions → Variables**, set:
-   - `VITE_GOOGLE_DRIVE_CLIENT_ID` — the OAuth Web client ID.
-   - `VITE_GOOGLE_DRIVE_FOLDER_ID` — the shared root folder ID.
-9. Trigger a deployment from the `main` branch so the Vite build receives the variables.
+8. Sign in to the deployed website with the Super Admin account and open the account workspace's **Google Drive Integration** settings. Enter the OAuth Web Client ID and shared root folder ID, then save. These identifiers are stored in the restricted Firestore `publicSettings/driveIntegration` document; they are not passwords. Never enter a Google client secret.
+9. Optionally, set `VITE_GOOGLE_DRIVE_CLIENT_ID` and `VITE_GOOGLE_DRIVE_FOLDER_ID` as GitHub Actions Variables or Secrets to supply build-time defaults. Runtime Super Admin settings are used when those environment values are absent.
 
 ## Upload and access behaviour
 
@@ -37,14 +35,14 @@ This repository uses the Google Drive API for customer reference designs, produc
 
 ## Verification checklist
 
-1. Confirm the website build includes both Drive GitHub Actions variables.
+1. Confirm the Super Admin Drive Integration settings contain the OAuth Web Client ID and shared folder ID (or verify the optional GitHub Actions defaults are present).
 2. Sign in with an authorized staff account and upload a small PDF lesson to a test course.
 3. Confirm the file appears in the expected Drive folder and is not set to public/anyone access.
 4. Confirm the test paid student's Google account has Reader permission.
 5. Sign in as that student and open the lesson resource.
 6. Verify a non-enrolled account cannot access the Drive file.
 7. Verify a newly paid test student receives access when the payment verification action is run.
-8. Check the browser console and Drive permissions if any step fails.
+8. Check the browser console, the saved Super Admin integration settings and Drive permissions if any step fails.
 
 
 ## Super Admin lesson-access recovery controls
