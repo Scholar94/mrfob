@@ -30,7 +30,7 @@ This repository uses the Google Drive API for customer reference designs, produc
 - The staff member performing an upload or new-student media grant must sign in to Google and have permission to upload/share in the configured Drive folder.
 - The app requests Drive OAuth access at the time a staff member performs a Drive action. Browser popup restrictions, OAuth consent configuration, account policy and Drive quotas can prevent the operation.
 - Drive permissions are access controls, not DRM. They do not guarantee prevention of screen recording, screenshots, copying with external tools or redistribution by an authorized viewer.
-- Access revocation when a student is refunded, withdrawn or loses paid status is not yet automated. Review and revoke Drive permissions manually until a controlled revocation workflow is implemented.
+- On an Institute withdrawal, the application first disables Firestore course access and releases the intake place, then attempts to remove the student's direct Drive permissions from lesson files for that course (including unpublished lesson records). This is a best-effort external operation: if Drive authorization or the API fails, use the Super Admin revoke control to retry. Inherited permissions cannot be removed at the child file and require review of the parent folder or shared-drive permissions. Refunds and other payment reversals do not automatically withdraw a learner; Finance/Institute staff must follow the approved access decision and verify Drive permissions.
 - Existing links from external providers remain external links; this integration does not migrate them into Drive.
 - Do not make customer measurements, payment evidence or other private records public.
 - Do not add OAuth client secrets, service-account keys or Firebase credentials to source code.
@@ -51,8 +51,8 @@ This repository uses the Google Drive API for customer reference designs, produc
 
 The Institute student learning progress register provides two Super Admin-only actions for each enrolment:
 
-- **Retry / grant Drive lesson access** checks the enrolment is marked paid, then grants or confirms Reader access to every published lesson file with a Drive file ID for that course.
-- **Revoke direct Drive lesson access** asks for confirmation, then removes direct user permissions for that student's email from the published lesson files. It does not alter the payment or enrolment record. Inherited permissions are reported and cannot be removed from the child file.
+- **Retry / grant Drive lesson access** checks the enrolment is marked paid and active, then grants or confirms Reader access to lesson files with Drive file IDs for that course.
+- **Revoke direct Drive lesson access** asks for confirmation, then removes direct user permissions for that student's email from lesson files with Drive file IDs for that course, including unpublished lesson records. It does not alter the payment or enrolment record. Inherited permissions are reported and cannot be removed from the child file.
 
-Use revocation after an independently confirmed refund, withdrawal or access decision. The app does not yet automatically synchronize Google Drive permissions with refunds, withdrawals or payment reversals. Recheck the student's enrolment and Drive permissions after any manual action. A fresh Google Drive authorization may be required.
+Use revocation after an independently confirmed access decision. Withdrawal triggers a best-effort revocation attempt; if it fails, retry it from the Super Admin control. Refunds/payment reversals do not themselves revoke course access or change enrolment status. Recheck the student's enrolment and Drive permissions after every access change. A fresh Google Drive authorization may be required.
 
