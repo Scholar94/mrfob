@@ -1022,3 +1022,6 @@ button:disabled{cursor:not-allowed}
 .payment-account-copy button{grid-column:1/-1;justify-self:start;border:1px solid #7e4a57;border-radius:7px;background:#fff;color:#6c3544;padding:9px 13px;font-weight:700;cursor:pointer}
 .payment-account-copy button:hover{background:#f7edf0}
 @media(max-width:520px){.payment-account-copy{grid-template-columns:1fr}}
+
+
+.welcome-experience-content h2 span{display:block;margin-top:10px;color:#eadbce;font:700 clamp(9px,1.6vw,13px)/1.5 'DM Sans',sans-serif;letter-spacing:clamp(2px,.55vw,5px)}
