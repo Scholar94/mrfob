@@ -169,7 +169,19 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.keys().hasOnly(['customerUid', 'customerName', 'customerEmail', 'service', 'appointmentDate', 'appointmentTime', 'purpose', 'status', 'createdAt', 'updatedAt'])
-        && request.resource.data.status == 'pending';
+        && request.resource.data.customerName is string
+        && request.resource.data.customerName.size() <= 120
+        && request.resource.data.customerEmail == request.auth.token.email
+        && request.resource.data.service in ['Measurement','Fitting','Consultation','Collection','Delivery']
+        && request.resource.data.appointmentDate is string
+        && request.resource.data.appointmentDate.matches('[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+        && request.resource.data.appointmentTime is string
+        && request.resource.data.appointmentTime.matches('[0-9][0-9]:[0-9][0-9]')
+        && request.resource.data.purpose is string
+        && request.resource.data.purpose.size() <= 1000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
       allow read: if signedIn() && (resource.data.customerUid == request.auth.uid || isSuperAdmin() || hasStaffRole(['manager', 'sales', 'institute']) || (hasStaffRole(['tailor']) && resource.data.assignedDesignerUid == request.auth.uid));
       allow update: if (
         isSuperAdmin()
