@@ -81,7 +81,7 @@ export default function App() {
   const [musicNotice, setMusicNotice] = useState(false);
   useEffect(() => {
     try {
-      if (window.localStorage.getItem("mrfop-music-panel") === "show") setMusicNotice(true);
+      if (window.localStorage.getItem("mrfop-music-panel") === "show" && window.sessionStorage.getItem("mrfop-welcome-seen") === "1") setMusicNotice(true);
     } catch {}
   }, []);
   const [portalOpen, setPortalOpen] = useState(false);
