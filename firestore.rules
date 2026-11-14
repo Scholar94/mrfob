@@ -361,7 +361,7 @@ service cloud.firestore {
     }
 
     match /publicSettings/{settingId} {
-      allow read: if settingId == 'siteProfile' || (signedIn() && settingId == 'paymentInstructions');
+      allow read: if settingId == 'siteProfile' || (signedIn() && settingId in ['paymentInstructions','driveIntegration']);
       allow create, update: if isSuperAdmin() && settingId == 'siteProfile'
         && request.resource.data.keys().hasOnly(['companyName','phone','whatsapp','email','address','openingHours','mission','vision','businessScope','updatedAt','updatedBy'])
         && request.resource.data.companyName is string && request.resource.data.companyName.size() <= 120
@@ -384,7 +384,17 @@ service cloud.firestore {
         && request.resource.data.instructions is string && request.resource.data.instructions.size() <= 600
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.updatedBy == request.auth.uid;
-      allow delete: if isSuperAdmin() && settingId in ['paymentInstructions','siteProfile'];
+      allow create, update: if isSuperAdmin() && settingId == 'driveIntegration'
+        && request.resource.data.keys().hasOnly(['clientId','folderId','updatedAt','updatedBy'])
+        && request.resource.data.clientId is string
+        && request.resource.data.clientId.size() >= 20
+        && request.resource.data.clientId.size() <= 200
+        && request.resource.data.folderId is string
+        && request.resource.data.folderId.size() >= 10
+        && request.resource.data.folderId.size() <= 200
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow delete: if isSuperAdmin() && settingId in ['paymentInstructions','siteProfile','driveIntegration'];
     }
 
 
