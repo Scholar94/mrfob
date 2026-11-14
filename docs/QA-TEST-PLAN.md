@@ -48,7 +48,7 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 
 ### Automated Firestore Emulator checks
 
-The deployment workflow runs scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
+The deployment workflow runs scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, appointment ownership and confirmation/slot reservation, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
 
 ### Additional source-level feature check
 
