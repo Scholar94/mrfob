@@ -89,6 +89,19 @@ try {
     });
   });
 
+  // Google Drive identifiers are readable to authenticated users for runtime
+  // OAuth initialisation, but only Super Admin may configure them.
+  await assertSucceeds(setDoc(doc(superAdmin, "publicSettings", "driveIntegration"), {
+    clientId: "123456789012-test.apps.googleusercontent.com",
+    folderId: "AbCdEfGhIjKlMnOpQrStUv", updatedAt: now, updatedBy: "admin-a"
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "publicSettings", "driveIntegration")));
+  await assertFails(getDoc(doc(anonymous, "publicSettings", "driveIntegration")));
+  await assertFails(setDoc(doc(customerA, "publicSettings", "driveIntegration"), {
+    clientId: "123456789012-test.apps.googleusercontent.com",
+    folderId: "AbCdEfGhIjKlMnOpQrStUv", updatedAt: now, updatedBy: "customer-a"
+  }));
+
   // Newsletter: public users may submit consent-backed sign-ups, but subscriber
   // records are private and only Super Admin can read them.
   await assertSucceeds(setDoc(doc(anonymous, "newsletterSubscribers", "newsletter-valid"), {
