@@ -78,6 +78,10 @@ assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage") &
 
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
 assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll guard is missing");
+for (const routeTarget of ["customer-dashboard","customer-profile","customer-orders","customer-new-order","customer-measurements","customer-ai-measurement","customer-appointments","customer-payments","customer-notifications","customer-support","student-dashboard","student-profile","student-courses","student-lessons","student-assignments","student-attendance","student-results","admin-dashboard","admin-customers","admin-orders","admin-measurements","admin-appointments","admin-production","admin-quotations","admin-payments","admin-invoices","admin-designers","admin-fashion-gallery","admin-fabrics","admin-courses","admin-training-windows","admin-applications","admin-students","admin-instructors","admin-media","admin-reports","admin-settings","admin-users","admin-audit-logs"]) {
+  assert.ok(portal.includes(`"${routeTarget}":`), `Account route target is missing: ${routeTarget}`);
+}
+
 assert.ok(fallback.includes("__route="), "GitHub Pages 404 fallback does not preserve the requested route");
 assert.ok(manifest.start_url === "/mrfob/" && manifest.scope === "/mrfob/", "PWA manifest base path is incorrect");
 assert.ok(read("index.html").includes("application/ld+json"), "Structured business metadata is missing");
