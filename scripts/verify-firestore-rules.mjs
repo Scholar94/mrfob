@@ -100,7 +100,7 @@ try {
     updatedAt: now, updatedBy: "admin-a"
   }));
   await assertSucceeds(getDoc(doc(customerA, "publicSettings", "paymentInstructions")));
-  await assertFails(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions-unverified"), {
+  await assertFails(setDoc(doc(superAdmin, "publicSettings", "paymentInstructions"), {
     accounts: [{ bankName: "Loma Bank", accountName: "", accountNumber: "0061030714" }],
     instructions: "", updatedAt: now, updatedBy: "admin-a"
   }));
