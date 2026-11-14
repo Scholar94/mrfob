@@ -1325,6 +1325,27 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /newsletterSubscribers/{subscriberId} {
+      allow create: if request.resource.data.keys().hasOnly(['email','consent','status','source','createdAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() >= 6
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}
+  }
+}
+)
+        && request.resource.data.consent == true
+        && request.resource.data.status == 'subscribed'
+        && request.resource.data.source == 'public_website'
+        && request.resource.data.createdAt is timestamp;
+      allow read: if isSuperAdmin();
+      allow update: if isSuperAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+        && request.resource.data.status in ['subscribed','unsubscribed']
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isSuperAdmin();
+    }
+
     match /{document=**} { allow read, write: if false; }
   }
 }
