@@ -167,6 +167,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [companyProfileDraft, setCompanyProfileDraft] = useState({ companyName: "MR FOP FASHIONS COMPANY NIGERIA LIMITED", phone: "+234 805 547 2913", whatsapp: "+234 805 547 2913", email: "mrfopvi@gmail.com", address: "Bonojo Road, Eka Junction, via Blooms Pharmacy Store, Ijebu Ode, Ogun State, Nigeria", openingHours: "", mission: "", vision: "", businessScope: "" });
   const [paymentInstructions, setPaymentInstructions] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
   const [paymentInstructionsDraft, setPaymentInstructionsDraft] = useState({ bankName: "", accountName: "", accountNumber: "", instructions: "" });
+  const [driveIntegrationDraft, setDriveIntegrationDraft] = useState({
+    clientId: String(import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || ""),
+    folderId: String(import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "")
+  });
   const [declarationReviewNotes, setDeclarationReviewNotes] = useState({});
   const [paymentForm, setPaymentForm] = useState({ orderId: "", amount: "", method: "Bank transfer", reference: "", note: "" });
   const [products, setProducts] = useState([]);
@@ -1471,6 +1475,52 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     finally { setBusy(false); }
   }
 
+  async function loadDriveIntegration() {
+    if (!claims.superAdmin || !user) return;
+    try {
+      const snapshot = await getDoc(doc(db, "publicSettings", "driveIntegration"));
+      const data = snapshot.exists() ? snapshot.data() : {};
+      setDriveIntegrationDraft({
+        clientId: String(data.clientId || import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID || ""),
+        folderId: String(data.folderId || import.meta.env.VITE_GOOGLE_DRIVE_FOLDER_ID || "")
+      });
+    } catch (err) {
+      setError(err.message || "Could not load Google Drive integration settings.");
+    }
+  }
+
+  async function saveDriveIntegration(e) {
+    e.preventDefault();
+    if (!claims.superAdmin || !user) return;
+    const clientId = driveIntegrationDraft.clientId.trim();
+    const folderId = driveIntegrationDraft.folderId.trim();
+    if (!clientId || !clientId.endsWith(".apps.googleusercontent.com") || clientId.length > 200) {
+      setError("Enter the Google OAuth Web Client ID ending in .apps.googleusercontent.com.");
+      return;
+    }
+    if (!/^[A-Za-z0-9_-]{10,200}$/.test(folderId)) {
+      setError("Enter a valid Google Drive shared folder ID.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await setDoc(doc(db, "publicSettings", "driveIntegration"), {
+        clientId, folderId, updatedAt: serverTimestamp(), updatedBy: user.uid
+      });
+      await recordAuditEvent({
+        user, claims, action: "drive_integration_configured",
+        entityType: "driveIntegration", entityId: "driveIntegration",
+        summary: "Updated Google Drive OAuth client and shared folder identifiers."
+      });
+      setDriveIntegrationDraft({ clientId, folderId });
+      setMessage("Google Drive integration settings saved. New Drive operations will use these settings.");
+    } catch (err) {
+      setError(err.message || "Could not save Google Drive integration settings.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function loadPaymentDeclarations() {
     if (!user) return;
     if (claims.staffRole && claims.staffRole !== "finance" && !claims.superAdmin) { setPaymentDeclarations([]); return; }
@@ -1985,7 +2035,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     finally { setBusy(false); }
   }
 
-  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadCompanyProfile(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
+  React.useEffect(() => { if (claims.superAdmin) { loadStaff(); loadCustomers(); loadOrders(); loadSales(); loadExpenses(); loadAdminCustomerServices(); } else if (["manager", "sales", "tailor"].includes(claims.staffRole)) { loadOrders(); } else if (claims.staffRole === "finance") { loadSales(); loadExpenses(); } else if (claims.staffRole !== "instructor" && user) { loadMyOrders(); loadMyProfile(); loadMeasurements(); loadTrainingEnquiries(); } if (user && claims.staffRole !== "instructor") { loadAppointments(); loadSupportTickets(); if (claims.superAdmin || claims.staffRole === "finance" || !claims.staffRole) { loadPayments(); loadPaymentDeclarations(); } else { setPayments([]); setPaymentDeclarations([]); } loadPaymentInstructions(); loadCompanyProfile(); if (claims.superAdmin) loadDriveIntegration(); loadProducts(); } }, [claims.superAdmin, claims.staffRole, user?.uid]);
 
   useEffect(() => {
     if (!user || !initialSection || !accountNavItems.length || initialRouteHandledRef.current) return;
@@ -2273,6 +2323,15 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
             <label>Account number<input inputMode="numeric" maxLength="10" value={paymentInstructionsDraft.accountNumber} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,accountNumber:e.target.value.replace(/\D/g,"").slice(0,10)})} placeholder="10-digit account number"/></label>
             <label>Additional transfer instructions<textarea maxLength="600" value={paymentInstructionsDraft.instructions} onChange={e=>setPaymentInstructionsDraft({...paymentInstructionsDraft,instructions:e.target.value})} placeholder="Payment reference, deposit guidance or other customer instructions"/></label>
             <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save bank instructions"}</button>
+          </form>
+        </section>}
+        {claims.superAdmin && <section className="customer-management drive-integration-admin">
+          <div className="customer-management-heading"><div><h3>Google Drive Integration</h3><p>Configure the Google OAuth Web Client ID and the shared Drive folder used for company uploads and Institute lesson files. These are identifiers, not passwords; never enter a Google client secret here.</p></div><button type="button" onClick={loadDriveIntegration}>Reload settings</button></div>
+          <form className="portal-form" onSubmit={saveDriveIntegration}>
+            <label>Google OAuth Web Client ID<input type="text" autoComplete="off" maxLength="200" required value={driveIntegrationDraft.clientId} onChange={e=>setDriveIntegrationDraft({...driveIntegrationDraft,clientId:e.target.value.trim()})} placeholder="000000000000-xxxxx.apps.googleusercontent.com"/></label>
+            <label>Shared Google Drive folder ID<input type="text" autoComplete="off" maxLength="200" required value={driveIntegrationDraft.folderId} onChange={e=>setDriveIntegrationDraft({...driveIntegrationDraft,folderId:e.target.value.trim()})} placeholder="Google Drive folder ID"/></label>
+            <p className="portal-hint">In Google Cloud Console, enable the Google Drive API and authorise https://scholar94.github.io as a JavaScript origin for this OAuth Web Client ID.</p>
+            <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : "Save Google Drive settings"}</button>
           </form>
         </section>}
         {claims.superAdmin && <section className="customer-management company-profile-admin"><div className="customer-management-heading"><div><h3>Public Company Profile</h3><p>Manage the company information displayed on the public website. Bank account details remain in the separate private payment settings.</p></div><button type="button" onClick={loadCompanyProfile}>Reload profile</button></div><form className="portal-form" onSubmit={saveCompanyProfile}>
