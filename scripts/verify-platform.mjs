@@ -74,7 +74,7 @@ assert.ok(app.includes('id={"collection-" + group.slug}'), "Collection category 
 assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions": ["admissions"') && app.includes('id="courses"') && app.includes('id="admissions"'), "Course and admissions routes do not target their own sections");
 
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
-assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage(path)"), "Standalone public route layouts are not mounted");
+assert.ok(app.includes("PublicRoutePage") && app.includes('setStandalonePage(route[0] === "home" ? "" : path)'), "Standalone public route layouts are not mounted");
 
 assert.ok(portal.includes("initialSection"), "Account portal does not accept deep-link section selection");
 assert.ok(portal.includes("initialRouteHandledRef"), "Account deep-link scroll guard is missing");
