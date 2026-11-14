@@ -129,7 +129,7 @@ export default function App() {
     if (path === "/register" || path === "/login" || path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/")) {
       setPolicyOpen("");
       setInitialPortalMode(path === "/register" ? "register" : "login");
-      setInitialPortalSection(path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/") ? path.split("/").pop() : "");
+      setInitialPortalSection(path.startsWith("/customer/") || path.startsWith("/student/") || path.startsWith("/admin/") ? path.slice(1).replaceAll("/", "-") : "");
       setPortalOpen(true);
       setRouteMetadata(path === "/register" ? "Create Account | MR FOP FASHIONS" : path === "/login" ? "Sign In | MR FOP FASHIONS" : "Account Portal | MR FOP FASHIONS", "Secure customer and staff account access for MR FOP FASHIONS.", path, true);
       return;
