@@ -79,6 +79,11 @@ export default function App() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installMessage, setInstallMessage] = useState("");
   const [musicNotice, setMusicNotice] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("mrfop-music-panel") === "show") setMusicNotice(true);
+    } catch {}
+  }, []);
   const [portalOpen, setPortalOpen] = useState(false);
   const [initialPortalMode, setInitialPortalMode] = useState("login");
   const [initialPortalSection, setInitialPortalSection] = useState("");
