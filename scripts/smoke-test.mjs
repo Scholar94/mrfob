@@ -11,6 +11,19 @@ try {
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
   await page.locator(".hero h1").waitFor({ state: "visible", timeout: 15000 });
   assert.ok((await page.locator(".hero h1").innerText()).trim().length > 0, "Homepage hero heading is empty");
+  await page.waitForLoadState("load");
+  const manifest = await page.evaluate(async () => {
+    const href = document.querySelector('link[rel="manifest"]')?.href;
+    if (!href) return null;
+    const response = await fetch(href);
+    return response.ok ? response.json() : null;
+  });
+  assert.equal(manifest?.start_url, "/mrfob/", "PWA manifest start URL is incorrect");
+  assert.equal(manifest?.scope, "/mrfob/", "PWA manifest scope is incorrect");
+  await page.waitForFunction(async () => Boolean(await navigator.serviceWorker?.getRegistration("/mrfob/")), { timeout: 15000 });
+  const serviceWorkerScope = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration("/mrfob/"))?.scope || "");
+  assert.ok(serviceWorkerScope.endsWith("/mrfob/"), "PWA service worker was not registered at the GitHub Pages base path");
+
 
   const publicRoutes = [
     "/about", "/collections", "/collections/men", "/collections/women",
@@ -46,7 +59,7 @@ try {
   assert.ok((await portal.innerText()).trim().length > 80, "Account portal rendered an empty/blank panel");
 
   assert.deepEqual(pageErrors, [], "Browser runtime errors were detected during public/account route smoke tests");
-  process.stdout.write("Browser smoke tests passed: homepage, standalone public routes and account login portal.\n");
+  process.stdout.write("Browser smoke tests passed: homepage, PWA manifest/service worker, standalone public/legal routes and account registration/login portals.\n");
 } finally {
   await browser.close();
 }
