@@ -106,7 +106,7 @@ assert.ok(app.includes("FabricCatalogue") && app.includes("<FabricCatalogue />")
 assert.ok(portal.includes("FabricCatalogue admin"), "Super Admin fabric management is not mounted");
 assert.ok(portal.includes("PrivacyRequestCenter"), "Customer privacy request centre is not mounted");
 assert.ok(rules.includes("match /fabrics/{fabricId}") && rules.includes("match /privacyRequests/{requestId}"), "Fabric/privacy Firestore rules are missing");
-assert.ok(portal.includes("transaction.delete(oldSlotRef)") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)"), "Appointment alternative slot release/reservation is not transactional");
+assert.ok(portal.includes("transaction.delete(oldSlotRefs[index])") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)") && portal.includes("legacyAppointmentSlotId"), "Appointment alternative slot release/reservation and legacy migration are not transactional");
 assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && read("src/styles.css").includes(".fabric-grid"), "Responsive style/fabric UI styles are missing");
 
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
