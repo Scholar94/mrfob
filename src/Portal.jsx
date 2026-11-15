@@ -1814,12 +1814,24 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       if (!Number.isInteger(stock) || stock < 0) throw new Error("Opening stock must be a whole number of zero or more.");
       if (galleryImages.length > 8 || availableColors.length > 12 || fabricOptions.length > 12 || customizationOptions.length > 12) throw new Error("Use no more than 8 gallery images and 12 options in each other list.");
       if ([productForm.imageUrl.trim(), ...galleryImages].some(url => url && !/^https:\/\//i.test(url))) throw new Error("Product and gallery images must use HTTPS URLs.");
-      await addDoc(collection(db, "products"), {
+      const productRef = doc(collection(db, "products"));
+      const batch = writeBatch(db);
+      batch.set(productRef, {
         name, sku, category: productForm.category, description: productForm.description.trim(),
         price, costPrice, currency: "NGN", stock, imageUrl: productForm.imageUrl.trim(),
         galleryImages, availableColors, fabricOptions, customizationOptions, active: true,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid
       });
+      if (stock > 0) {
+        const openingMovementRef = doc(collection(db, "inventoryMovements"));
+        batch.set(openingMovementRef, {
+          productId: productRef.id, productName: name, sku, type: "in",
+          quantity: stock, previousStock: 0, newStock: stock,
+          createdAt: serverTimestamp(), createdBy: user.uid, reason: "opening_stock"
+        });
+      }
+      await batch.commit();
+      await recordAuditEvent({ user, claims, action: "inventory_stock_adjusted", entityType: "product", entityId: productRef.id, summary: "Created " + name + " with opening stock of " + stock + " units." });
       setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
       setMessage("Product added to inventory successfully.");
       await loadProducts();
