@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, Timestamp, writeBatch } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, Timestamp, writeBatch } from "firebase/firestore";
 
 const rules = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
 const env = await initializeTestEnvironment({
