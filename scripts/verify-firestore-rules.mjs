@@ -79,6 +79,46 @@ try {
     await setDoc(doc(db, "trainingWindows", "window-a"), {
       courseId: "course-a", status: "open", capacity: 5, enrolledCount: 1
     });
+    // A customer may reserve one institute place only through the atomic window-counter + application batch.
+    await setDoc(doc(superAdmin, "trainingWindows", "capacity-window"), {
+      courseId: "course-a", status: "open", capacity: 2, enrolledCount: 1
+    });
+    const applicationBatch = writeBatch(customerB);
+    applicationBatch.update(doc(customerB, "trainingWindows", "capacity-window"), {
+      enrolledCount: 2, lastApplicationId: "capacity-application-b", updatedAt: now
+    });
+    applicationBatch.set(doc(customerB, "instituteApplications", "capacity-application-b"), {
+      applicationRef: "MFF-CAP-002", customerUid: "customer-b", fullName: "Capacity Test",
+      email: "customer-b@example.com", phone: "08000000000", address: "Test address",
+      courseId: "course-a", courseTitle: "Test course", windowId: "capacity-window",
+      windowTitle: "Capacity test", mode: "Onsite", experience: "", note: "",
+      status: "pending", paymentStatus: "not_due", createdAt: now, updatedAt: now
+    });
+    await assertSucceeds(applicationBatch.commit());
+
+    const overCapacityBatch = writeBatch(customerA);
+    overCapacityBatch.update(doc(customerA, "trainingWindows", "capacity-window"), {
+      enrolledCount: 3, lastApplicationId: "capacity-application-a", updatedAt: now
+    });
+    overCapacityBatch.set(doc(customerA, "instituteApplications", "capacity-application-a"), {
+      applicationRef: "MFF-CAP-003", customerUid: "customer-a", fullName: "Over Capacity",
+      email: "customer-a@example.com", phone: "08000000001", address: "Test address",
+      courseId: "course-a", courseTitle: "Test course", windowId: "capacity-window",
+      windowTitle: "Capacity test", mode: "Onsite", experience: "", note: "",
+      status: "pending", paymentStatus: "not_due", createdAt: now, updatedAt: now
+    });
+    await assertFails(overCapacityBatch.commit());
+
+    const applicationWithoutReservation = writeBatch(customerA);
+    applicationWithoutReservation.set(doc(customerA, "instituteApplications", "application-without-place"), {
+      applicationRef: "MFF-CAP-004", customerUid: "customer-a", fullName: "Unreserved",
+      email: "customer-a@example.com", phone: "08000000002", address: "Test address",
+      courseId: "course-a", courseTitle: "Test course", windowId: "capacity-window",
+      windowTitle: "Capacity test", mode: "Onsite", experience: "", note: "",
+      status: "pending", paymentStatus: "not_due", createdAt: now, updatedAt: now
+    });
+    await assertFails(applicationWithoutReservation.commit());
+
     await setDoc(doc(db, "instituteApplications", "application-a"), {
       customerUid: "customer-a", fullName: "Test Learner", email: "customer-a@example.com",
       courseId: "course-a", courseTitle: "Test course", windowId: "window-a",
