@@ -12,6 +12,8 @@ const customerA = env.authenticatedContext("customer-a", { email: "customer-a@ex
 const customerB = env.authenticatedContext("customer-b", { email: "customer-b@example.com" }).firestore();
 const finance = env.authenticatedContext("finance-a", { email: "finance@example.com" }).firestore();
 const manager = env.authenticatedContext("manager-a", { email: "manager@example.com" }).firestore();
+const tailorA = env.authenticatedContext("tailor-a", { email: "tailor-a@example.com" }).firestore();
+const tailorB = env.authenticatedContext("tailor-b", { email: "tailor-b@example.com" }).firestore();
 const superAdmin = env.authenticatedContext("admin-a", { email: "admin@example.com" }).firestore();
 const anonymous = env.unauthenticatedContext().firestore();
 
@@ -20,8 +22,20 @@ try {
     const db = context.firestore();
     for (const [uid, role] of [
       ["customer-a", "customer"], ["customer-b", "customer"],
-      ["finance-a", "finance"], ["manager-a", "manager"], ["admin-a", "superAdmin"]
+      ["finance-a", "finance"], ["manager-a", "manager"],
+      ["tailor-a", "tailor"], ["tailor-b", "tailor"], ["admin-a", "superAdmin"]
     ]) await setDoc(doc(db, "roles", uid), { role });
+    await setDoc(doc(db, "users", "customer-a"), {
+      uid: "customer-a", displayName: "Test Customer A", email: "customer-a@example.com", accountType: "customer"
+    });
+    await setDoc(doc(db, "users", "customer-b"), {
+      uid: "customer-b", displayName: "Test Customer B", email: "customer-b@example.com", accountType: "customer"
+    });
+    await setDoc(doc(db, "orders", "order-a"), {
+      customerUid: "customer-a", customerName: "Test Customer A", customerEmail: "customer-a@example.com",
+      orderNumber: "MFF-SEC-001", item: "Test garment", quantity: 1, status: "received",
+      paymentStatus: "unquoted", assignedDesignerUid: "tailor-a", createdAt: now, updatedAt: now
+    });
     await setDoc(doc(db, "payments", "payment-a"), {
       customerUid: "customer-a", amount: 10000, orderId: "order-a",
       orderNumber: "MFF-001", currency: "NGN", createdAt: now
@@ -88,6 +102,21 @@ try {
       createdAt: now, createdBy: "admin-a", updatedAt: now
     });
   });
+
+  // Customer ownership, staff assignment and role documents must be enforced by Firestore.
+  await assertSucceeds(getDoc(doc(customerA, "users", "customer-a")));
+  await assertFails(getDoc(doc(customerB, "users", "customer-a")));
+  await assertFails(getDoc(doc(customerA, "roles", "customer-b")));
+  await assertFails(updateDoc(doc(customerA, "roles", "customer-a"), { role: "superAdmin" }));
+  await assertFails(setDoc(doc(customerA, "roles", "customer-a"), { role: "superAdmin" }));
+  await assertSucceeds(getDoc(doc(customerA, "orders", "order-a")));
+  await assertFails(getDoc(doc(customerB, "orders", "order-a")));
+  await assertSucceeds(getDoc(doc(finance, "orders", "order-a")));
+  await assertSucceeds(getDoc(doc(tailorA, "orders", "order-a")));
+  await assertFails(getDoc(doc(tailorB, "orders", "order-a")));
+  await assertSucceeds(getDoc(doc(customerA, "payments", "payment-a")));
+  await assertFails(getDoc(doc(customerB, "payments", "payment-a")));
+  await assertSucceeds(getDoc(doc(finance, "payments", "payment-a")));
 
   // Company bank transfer instructions are private to signed-in customers
   // and cannot publish an account number without a verified registered name.
@@ -420,7 +449,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy, newsletter consent and subscriber privacy, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }

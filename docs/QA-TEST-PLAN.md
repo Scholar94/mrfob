@@ -1,7 +1,7 @@
 # MR FOP FASHIONS — Final acceptance test plan
 
 **Purpose:** Run this plan only after implementation is frozen and the owner has completed Firebase, Google Drive and Apps Script setup.  
-**Current status:** Automated CI checks passed in GitHub Actions run [#882](https://github.com/Scholar94/mrfob/actions/runs/43681463850) for commit `183b9dcad8c162482ee27713a2ca522d32f8b8e1` on 15 November 2026. This included required Firebase-secret preflight, production build, Chromium smoke tests, platform source guardrails and Firestore Emulator tests. The 22 owner-operated acceptance cases below remain **Not run** and must be completed with separate production test accounts and real Drive configuration.  
+**Current status:** Automated CI checks passed in GitHub Actions run [#884](https://github.com/Scholar94/mrfob/actions/runs/43681463850) for commit `dcb6e6f7be87aab7b8a76c06da84ffacd915ef2a` on 15 November 2026. This included required Firebase-secret preflight, production build, Chromium smoke tests, platform source guardrails and Firestore Emulator tests. The 22 owner-operated acceptance cases below remain **Not run** and must be completed with separate production test accounts and real Drive configuration.  
 **Test rule:** Use separate accounts for each role. Never use the Super Admin account to prove customer, Finance, Tailor, Institute or Instructor permissions.
 
 ## Test accounts and prerequisites
@@ -48,13 +48,13 @@ Before testing, verify the correct Firebase project, Email/Password authenticati
 
 ### Automated Firestore Emulator checks
 
-The deployment workflow runs a Chromium browser smoke test, scripts/verify-platform.mjs and scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers privacy request ownership, refund lifecycle and duplicate prevention, appointment ownership and confirmation/slot reservation, Institute schedule-lock privacy, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. This is a focused regression suite, not a complete test of every collection and role.
+The deployment workflow runs a Chromium browser smoke test, scripts/verify-platform.mjs and scripts/verify-firestore-rules.mjs against the Firestore Emulator. It covers cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, privacy request ownership, refund lifecycle and duplicate prevention, appointment ownership and confirmation/slot reservation, Institute schedule-lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, public/archived fabric visibility, product gallery write permissions and deny-by-default. Chromium also checks homepage overflow at four viewport widths, all customer/student/admin account entry routes, and that style recommender preferences are carried into the WhatsApp consultation brief. These are focused regression checks, not a complete test of every collection, authenticated role workflow or physical device.
 
 ### Additional source-level feature check
 
 - Public sitemap includes all currently supported public deep-link routes and excludes private account routes. The sitemap is static and must be updated whenever a new public route is introduced.
 
-- Change every style recommender preference and confirm that the three suggestions and WhatsApp brief reflect the selected occasion, category, garment, colour, personal style, budget and optional reference notes. Confirm that suggestions are not presented as live stock or confirmed prices. This browser test remains Not run until performed.
+- The automated Chromium smoke test now changes occasion, category, garment, colour, personal style, budget and reference notes, then verifies the consultation brief carries those selections. Owner acceptance must still confirm the visible suggestions are appropriate and are not presented as live stock or confirmed prices.
 
 ## Completion criteria
 

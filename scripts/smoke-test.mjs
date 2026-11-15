@@ -16,6 +16,15 @@ try {
   }
   await page.locator(".hero h1").waitFor({ state: "visible", timeout: 15000 });
   assert.ok((await page.locator(".hero h1").innerText()).trim().length > 0, "Homepage hero heading is empty");
+  for (const width of [390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const dimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth
+    }));
+    assert.ok(dimensions.content <= dimensions.viewport + 1, `Homepage horizontal overflow at ${width}px: content ${dimensions.content}px, viewport ${dimensions.viewport}px`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForLoadState("load");
   const manifest = await page.evaluate(async () => {
     const href = document.querySelector('link[rel="manifest"]')?.href;
@@ -62,6 +71,27 @@ try {
     }
   }
 
+  await page.goto(base + "/", { waitUntil: "domcontentloaded" });
+  const styleForm = page.locator(".style-preference-form");
+  await styleForm.locator("select").nth(0).selectOption("Wedding");
+  await styleForm.locator("select").nth(1).selectOption("bridal");
+  await styleForm.locator("select").nth(2).selectOption("Reception dress");
+  await styleForm.locator("select").nth(3).selectOption("Wine / burgundy");
+  await styleForm.locator("select").nth(4).selectOption("Luxury and formal");
+  await styleForm.locator("select").nth(5).selectOption("Above ₦500,000");
+  await styleForm.locator("textarea").fill("Embroidered lace with pearl details");
+  const styleSummary = await page.locator(".style-suggestion-summary").innerText();
+  for (const expected of ["Wedding", "Reception dress", "Wine / burgundy", "Above ₦500,000"]) {
+    assert.ok(styleSummary.includes(expected), `Style summary did not include selected preference: ${expected}`);
+  }
+  assert.equal(await page.locator(".style-suggestion-card").count(), 3, "Style recommender must show three starting ideas");
+  const consultationHref = await page.locator(".style-consult-link").getAttribute("href");
+  assert.ok(consultationHref, "Style recommender consultation link is missing");
+  const consultationBrief = new URL(consultationHref).searchParams.get("text") || "";
+  for (const expected of ["Occasion: Wedding", "Category: bridal", "Garment: Reception dress", "Preferred colour: Wine / burgundy", "Style: Luxury and formal", "Budget: Above ₦500,000", "Embroidered lace with pearl details"]) {
+    assert.ok(consultationBrief.includes(expected), `WhatsApp consultation brief omitted selected preference: ${expected}`);
+  }
+
   await page.goto(base + "/privacy", { waitUntil: "domcontentloaded" });
   await page.locator(".policy-modal").waitFor({ state: "visible", timeout: 15000 });
   assert.match(await page.locator(".policy-modal h2").innerText(), /Privacy/i, "Privacy route did not render legal content");
@@ -84,7 +114,20 @@ try {
   await portal.locator('input[type="password"]').waitFor({ state: "visible" });
   const accountRobots = await page.locator('meta[name="robots"]').getAttribute("content");
   assert.match(accountRobots || "", /noindex,nofollow/i, "Private account route should not be indexed");
-  for (const route of ["/customer/orders", "/student/lessons", "/admin/audit-logs"]) {
+  const protectedRoutes = [
+    "/customer/dashboard", "/customer/profile", "/customer/orders", "/customer/new-order",
+    "/customer/measurements", "/customer/ai-measurement", "/customer/appointments",
+    "/customer/payments", "/customer/notifications", "/customer/support",
+    "/student/dashboard", "/student/profile", "/student/courses", "/student/lessons",
+    "/student/assignments", "/student/attendance", "/student/results",
+    "/admin/dashboard", "/admin/customers", "/admin/orders", "/admin/measurements",
+    "/admin/appointments", "/admin/production", "/admin/quotations", "/admin/payments",
+    "/admin/invoices", "/admin/designers", "/admin/fashion-gallery", "/admin/fabrics",
+    "/admin/courses", "/admin/training-windows", "/admin/applications", "/admin/students",
+    "/admin/instructors", "/admin/media", "/admin/reports", "/admin/settings",
+    "/admin/users", "/admin/audit-logs"
+  ];
+  for (const route of protectedRoutes) {
     await page.goto(base + route, { waitUntil: "domcontentloaded" });
     const protectedPortal = page.locator(".portal-card");
     await protectedPortal.getByText("Welcome back", { exact: true }).waitFor({ state: "visible", timeout: 20000 });
