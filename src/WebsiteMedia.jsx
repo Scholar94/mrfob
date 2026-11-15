@@ -43,6 +43,7 @@ export function PublicWebsiteMusic() {
     try { return window.localStorage.getItem("mrfop-music-panel") === "show"; } catch { return false; }
   });
   useEffect(() => {
+    if (!db) { setLoading(false); return; }
     let active = true;
     getDocs(query(collection(db, "siteMedia"), where("published", "==", true), where("visibility", "==", "public")))
       .then(snapshot => {
@@ -53,6 +54,7 @@ export function PublicWebsiteMusic() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+  if (!db) return null;
   if (loading) return <p>Checking for the official company theme song…</p>;
   if (!track) return <p>The official theme song has not been uploaded and published yet. An administrator can add it under Public Website Media → Company theme song.</p>;
   return <div className="site-public-music">
