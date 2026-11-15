@@ -781,6 +781,27 @@ export default function InstituteWorkspace() {
     } catch(e) { setError(e.message || "Could not save instructor profile."); } finally { setBusy(false); }
   }
 
+  function sessionResourceHash(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < String(value || "").length; index++) {
+      hash ^= String(value || "").charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function buildSessionSlotLockIds(startMs, endMs, instructorUid, mode, venue) {
+    const firstBucket = Math.floor(startMs / 300000);
+    const lastBucket = Math.ceil(endMs / 300000) - 1;
+    const resources = ["instructor_" + sessionResourceHash(instructorUid)];
+    if (mode === "Onsite" && venue.trim()) resources.push("venue_" + sessionResourceHash(venue.trim().toLowerCase()));
+    const ids = [];
+    for (const resource of resources) {
+      for (let bucket = firstBucket; bucket <= lastBucket; bucket++) ids.push(resource + "_" + bucket);
+    }
+    return ids;
+  }
+
   async function scheduleSession(e) {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
     try {
@@ -793,47 +814,56 @@ export default function InstituteWorkspace() {
       const proposedStart = new Date(sessionForm.startsAt).getTime();
       const proposedEnd = new Date(sessionForm.endsAt).getTime();
       if (!Number.isFinite(proposedStart) || !Number.isFinite(proposedEnd)) throw new Error("Enter valid session start and end dates.");
-      const existingSessions = await getDocs(collection(db, "instituteSessions"));
-      const conflicts = existingSessions.docs
-        .map(snapshot => ({ id: snapshot.id, ...snapshot.data() }))
-        .filter(existing => existing.status !== "cancelled" && existing.id)
-        .filter(existing => {
-          const existingStart = new Date(existing.startsAt).getTime();
-          const existingEnd = new Date(existing.endsAt).getTime();
-          if (!Number.isFinite(existingStart) || !Number.isFinite(existingEnd)) return false;
-          const overlaps = proposedStart < existingEnd && existingStart < proposedEnd;
-          if (!overlaps) return false;
-          const sameInstructor = existing.instructorUid === assignment.instructorUid;
-          const sameVenue = sessionForm.mode === "Onsite" && existing.mode === "Onsite"
-            && String(existing.venue || "").trim().toLowerCase() === sessionForm.venue.trim().toLowerCase();
-          return sameInstructor || sameVenue;
-        });
-      if (conflicts.length) {
-        const instructorConflict = conflicts.some(existing => existing.instructorUid === assignment.instructorUid);
-        const venueConflict = conflicts.some(existing => sessionForm.mode === "Onsite" && existing.mode === "Onsite"
-          && String(existing.venue || "").trim().toLowerCase() === sessionForm.venue.trim().toLowerCase());
-        throw new Error(instructorConflict
-          ? "This instructor already has a scheduled session during that time. Choose another time or instructor."
-          : venueConflict
-            ? "This venue already has an onsite session during that time. Choose another time or venue."
-            : "This session conflicts with an existing training session.");
-      }
-      await addDoc(collection(db, "instituteSessions"), {
-        courseId: course.id, courseTitle: course.title, instructorUid: assignment.instructorUid,
-        title: sessionForm.title.trim(), startsAt: sessionForm.startsAt, endsAt: sessionForm.endsAt,
-        mode: sessionForm.mode, venue: sessionForm.venue.trim(), meetingUrl: sessionForm.meetingUrl.trim(),
-        notes: sessionForm.notes.trim(), status: "scheduled", published: true,
-        createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      if (proposedEnd - proposedStart > 12 * 60 * 60 * 1000) throw new Error("A single training session cannot exceed 12 hours.");
+      const slotLockIds = buildSessionSlotLockIds(proposedStart, proposedEnd, assignment.instructorUid, sessionForm.mode, sessionForm.venue);
+      if (!slotLockIds.length || slotLockIds.length > 300) throw new Error("The session duration is outside the supported scheduling range.");
+      const sessionRef = doc(collection(db, "instituteSessions"));
+      const lockRefs = slotLockIds.map(lockId => doc(db, "instituteSessionSlots", lockId));
+      await runTransaction(db, async transaction => {
+        const lockSnapshots = await Promise.all(lockRefs.map(lockRef => transaction.get(lockRef)));
+        const occupiedIndex = lockSnapshots.findIndex(snapshot => snapshot.exists());
+        if (occupiedIndex >= 0) {
+          const resource = slotLockIds[occupiedIndex].startsWith("instructor_") ? "instructor" : "onsite venue";
+          throw new Error("The selected " + resource + " is already reserved during part of this time. Choose another time or resource.");
+        }
+        const sessionData = {
+          courseId: course.id, courseTitle: course.title, instructorUid: assignment.instructorUid,
+          title: sessionForm.title.trim(), startsAt: sessionForm.startsAt, endsAt: sessionForm.endsAt,
+          mode: sessionForm.mode, venue: sessionForm.venue.trim(), meetingUrl: sessionForm.meetingUrl.trim(),
+          notes: sessionForm.notes.trim(), status: "scheduled", published: true, slotLockIds,
+          createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        };
+        transaction.set(sessionRef, sessionData);
+        lockRefs.forEach((lockRef, index) => transaction.set(lockRef, {
+          sessionId: sessionRef.id, resourceToken: slotLockIds[index].split("_").slice(0, 2).join("_"),
+          bucket: Number(slotLockIds[index].split("_").at(-1)), createdAt: serverTimestamp()
+        }));
       });
       setSessionForm({ courseId: "", instructorUid: "", title: "", startsAt: "", endsAt: "", mode: "Onsite", venue: "MR FOP FASHIONS, Ijebu Ode", meetingUrl: "", notes: "" });
-      setNotice("Training session scheduled and published to enrolled students."); await load();
+      setNotice("Training session scheduled. Instructor and onsite venue time blocks are now reserved against concurrent bookings."); await load();
     } catch(e) { setError(e.message || "Could not schedule training session."); } finally { setBusy(false); }
   }
 
   async function updateSessionStatus(session, status) {
     setBusy(true); setError(""); setNotice("");
-    try { await updateDoc(doc(db, "instituteSessions", session.id), { status, updatedAt: serverTimestamp() }); setNotice("Session status updated."); await load(); }
-    catch(e) { setError(e.message || "Could not update session status."); } finally { setBusy(false); }
+    try {
+      const sessionRef = doc(db, "instituteSessions", session.id);
+      await runTransaction(db, async transaction => {
+        const currentSnapshot = await transaction.get(sessionRef);
+        if (!currentSnapshot.exists()) throw new Error("This training session no longer exists.");
+        const current = currentSnapshot.data();
+        const lockIds = Array.isArray(current.slotLockIds) ? current.slotLockIds : [];
+        const lockRefs = lockIds.map(lockId => doc(db, "instituteSessionSlots", lockId));
+        const lockSnapshots = await Promise.all(lockRefs.map(lockRef => transaction.get(lockRef)));
+        transaction.update(sessionRef, { status, updatedAt: serverTimestamp() });
+        if (status === "cancelled" || status === "completed") {
+          lockSnapshots.forEach((snapshot, index) => {
+            if (snapshot.exists() && snapshot.data().sessionId === session.id) transaction.delete(lockRefs[index]);
+          });
+        }
+      });
+      setNotice("Session status updated." + (status === "cancelled" || status === "completed" ? " Its instructor and venue reservations have been released." : "")); await load();
+    } catch(e) { setError(e.message || "Could not update session status."); } finally { setBusy(false); }
   }
 
   async function publishAnnouncement(e) {
