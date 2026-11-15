@@ -36,6 +36,12 @@ try {
       orderNumber: "MFF-SEC-001", item: "Test garment", quantity: 1, status: "received",
       paymentStatus: "unquoted", assignedDesignerUid: "tailor-a", createdAt: now, updatedAt: now
     });
+    await setDoc(doc(db, "products", "stock-product"), {
+      name: "Test stock item", sku: "TST-001", category: "Test", description: "",
+      price: 100, costPrice: 50, currency: "NGN", stock: 2, imageUrl: "",
+      galleryImages: [], availableColors: [], fabricOptions: [], customizationOptions: [],
+      active: true, createdAt: now, updatedAt: now, createdBy: "admin-a"
+    });
     await setDoc(doc(db, "payments", "payment-a"), {
       customerUid: "customer-a", amount: 10000, orderId: "order-a",
       orderNumber: "MFF-001", currency: "NGN", createdAt: now
@@ -117,6 +123,55 @@ try {
   await assertSucceeds(getDoc(doc(customerA, "payments", "payment-a")));
   await assertFails(getDoc(doc(customerB, "payments", "payment-a")));
   await assertSucceeds(getDoc(doc(finance, "payments", "payment-a")));
+
+  // Inventory stock floors, movement integrity, POS sales and expense permissions.
+  await assertSucceeds(updateDoc(doc(superAdmin, "products", "stock-product"), { stock: 1, updatedAt: now }));
+  await assertFails(updateDoc(doc(superAdmin, "products", "stock-product"), { stock: -1, updatedAt: now }));
+  await assertFails(updateDoc(doc(customerA, "products", "stock-product"), { stock: 1, updatedAt: now }));
+  await assertSucceeds(setDoc(doc(superAdmin, "inventoryMovements", "movement-valid"), {
+    productId: "stock-product", productName: "Test stock item", sku: "TST-001",
+    type: "out", quantity: 1, previousStock: 2, newStock: 1,
+    createdAt: now, createdBy: "admin-a", reason: "sale", receiptNumber: "MFS-TEST-001"
+  }));
+  await assertFails(setDoc(doc(superAdmin, "inventoryMovements", "movement-negative"), {
+    productId: "stock-product", productName: "Test stock item", sku: "TST-001",
+    type: "out", quantity: 2, previousStock: 1, newStock: -1,
+    createdAt: now, createdBy: "admin-a"
+  }));
+  await assertFails(setDoc(doc(customerA, "inventoryMovements", "movement-customer"), {
+    productId: "stock-product", productName: "Test stock item", sku: "TST-001",
+    type: "in", quantity: 1, previousStock: 1, newStock: 2,
+    createdAt: now, createdBy: "customer-a"
+  }));
+  await assertSucceeds(getDoc(doc(manager, "inventoryMovements", "movement-valid")));
+  await assertFails(getDoc(doc(customerA, "inventoryMovements", "movement-valid")));
+  await assertSucceeds(setDoc(doc(superAdmin, "sales", "sale-valid"), {
+    receiptNumber: "MFS-TEST-001", customerName: "Walk-in customer",
+    items: [{ productId: "stock-product", quantity: 1, unitPrice: 100 }],
+    subtotal: 100, total: 100, totalCost: 50, grossProfit: 50,
+    amountPaid: 100, balance: 0, paymentStatus: "paid",
+    paymentMethod: "Cash", currency: "NGN", createdAt: now, createdBy: "admin-a"
+  }));
+  await assertFails(setDoc(doc(finance, "sales", "sale-finance"), {
+    receiptNumber: "MFS-FINANCE-001", customerName: "Walk-in customer", items: [],
+    subtotal: 100, total: 100, totalCost: 50, grossProfit: 50,
+    amountPaid: 100, balance: 0, paymentStatus: "paid",
+    paymentMethod: "Cash", currency: "NGN", createdAt: now, createdBy: "finance-a"
+  }));
+  await assertSucceeds(getDoc(doc(finance, "sales", "sale-valid")));
+  await assertFails(getDoc(doc(customerA, "sales", "sale-valid")));
+  await assertSucceeds(setDoc(doc(finance, "expenses", "expense-valid"), {
+    title: "Test studio expense", category: "Supplies", amount: 250,
+    currency: "NGN", expenseDate: "2026-11-15", method: "Cash",
+    note: "Emulator test", createdAt: now, createdBy: "finance-a"
+  }));
+  await assertFails(setDoc(doc(customerA, "expenses", "expense-customer"), {
+    title: "Unauthorised expense", category: "Supplies", amount: 250,
+    currency: "NGN", expenseDate: "2026-11-15", method: "Cash",
+    note: "", createdAt: now, createdBy: "customer-a"
+  }));
+  await assertSucceeds(getDoc(doc(manager, "expenses", "expense-valid")));
+  await assertFails(getDoc(doc(customerA, "expenses", "expense-valid")));
 
   // Company bank transfer instructions are private to signed-in customers
   // and cannot publish an account number without a verified registered name.
@@ -449,7 +504,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock and movement integrity, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
