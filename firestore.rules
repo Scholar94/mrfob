@@ -978,6 +978,17 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /instituteSessionSlots/{slotId} {
+      allow read, delete: if isSuperAdmin() || hasStaffRole(['institute','manager']);
+      allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
+        && request.resource.data.sessionId is string
+        && request.resource.data.resourceToken is string
+        && request.resource.data.bucket is int
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.keys().hasOnly(['sessionId','resourceToken','bucket','createdAt']);
+      allow update: if false;
+    }
+
     match /instituteSessions/{sessionId} {
       allow create: if (isSuperAdmin() || hasStaffRole(['institute','manager']))
         && request.resource.data.courseId is string
@@ -992,11 +1003,14 @@ service cloud.firestore {
         && request.resource.data.endsAt > request.resource.data.startsAt
         && request.resource.data.mode in ['Onsite','Online']
         && request.resource.data.status == 'scheduled'
+        && request.resource.data.slotLockIds is list
+        && request.resource.data.slotLockIds.size() > 0
+        && request.resource.data.slotLockIds.size() <= 300
         && request.resource.data.published == true
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.keys().hasOnly(['courseId','courseTitle','instructorUid','title','startsAt','endsAt','mode','venue','meetingUrl','notes','status','published','createdBy','createdAt','updatedAt']);
+        && request.resource.data.keys().hasOnly(['courseId','courseTitle','instructorUid','title','startsAt','endsAt','mode','venue','meetingUrl','notes','status','published','slotLockIds','createdBy','createdAt','updatedAt']);
       allow read: if isSuperAdmin() || hasStaffRole(['institute','manager'])
         || (signedIn() && resource.data.instructorUid == request.auth.uid && hasInstructorCourseAccess(resource.data.courseId))
         || (signedIn() && resource.data.published == true && hasPaidCourseAccess(resource.data.courseId));
