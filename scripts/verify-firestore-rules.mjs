@@ -172,6 +172,8 @@ try {
 
   await assertSucceeds(getDoc(doc(manager, "inventoryMovements", "movement-valid")));
   await assertFails(getDoc(doc(customerA, "inventoryMovements", "movement-valid")));
+  await assertFails(updateDoc(doc(superAdmin, "inventoryMovements", "movement-valid"), { reason: "attempted ledger edit" }));
+  await assertFails(deleteDoc(doc(superAdmin, "inventoryMovements", "movement-valid")));
 
   const posBatch = writeBatch(superAdmin);
   posBatch.update(doc(superAdmin, "products", "sale-product"), { stock: 0, updatedAt: now });
@@ -540,7 +542,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock, movement-to-stock consistency and atomic POS sale/stock/movement writes, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock, movement-to-stock consistency, immutable inventory ledger and atomic POS sale/stock/movement writes, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
