@@ -42,6 +42,12 @@ try {
       galleryImages: [], availableColors: [], fabricOptions: [], customizationOptions: [],
       active: true, createdAt: now, updatedAt: now, createdBy: "admin-a"
     });
+    await setDoc(doc(db, "products", "sale-product"), {
+      name: "Test POS item", sku: "POS-001", category: "Test", description: "",
+      price: 100, costPrice: 50, currency: "NGN", stock: 1, imageUrl: "",
+      galleryImages: [], availableColors: [], fabricOptions: [], customizationOptions: [],
+      active: true, createdAt: now, updatedAt: now, createdBy: "admin-a"
+    });
     await setDoc(doc(db, "payments", "payment-a"), {
       customerUid: "customer-a", amount: 10000, orderId: "order-a",
       orderNumber: "MFF-001", currency: "NGN", createdAt: now
@@ -128,30 +134,60 @@ try {
   await assertSucceeds(updateDoc(doc(superAdmin, "products", "stock-product"), { stock: 1, updatedAt: now }));
   await assertFails(updateDoc(doc(superAdmin, "products", "stock-product"), { stock: -1, updatedAt: now }));
   await assertFails(updateDoc(doc(customerA, "products", "stock-product"), { stock: 1, updatedAt: now }));
-  await assertSucceeds(setDoc(doc(superAdmin, "inventoryMovements", "movement-valid"), {
+
+  const validMovementBatch = writeBatch(superAdmin);
+  validMovementBatch.update(doc(superAdmin, "products", "stock-product"), { stock: 0, updatedAt: now });
+  validMovementBatch.set(doc(superAdmin, "inventoryMovements", "movement-valid"), {
     productId: "stock-product", productName: "Test stock item", sku: "TST-001",
-    type: "out", quantity: 1, previousStock: 2, newStock: 1,
-    createdAt: now, createdBy: "admin-a", reason: "sale", receiptNumber: "MFS-TEST-001"
-  }));
-  await assertFails(setDoc(doc(superAdmin, "inventoryMovements", "movement-negative"), {
+    type: "out", quantity: 1, previousStock: 1, newStock: 0,
+    createdAt: now, createdBy: "admin-a", reason: "test"
+  });
+  await assertSucceeds(validMovementBatch.commit());
+
+  const negativeMovementBatch = writeBatch(superAdmin);
+  negativeMovementBatch.update(doc(superAdmin, "products", "stock-product"), { stock: -1, updatedAt: now });
+  negativeMovementBatch.set(doc(superAdmin, "inventoryMovements", "movement-negative"), {
     productId: "stock-product", productName: "Test stock item", sku: "TST-001",
-    type: "out", quantity: 2, previousStock: 1, newStock: -1,
+    type: "out", quantity: 1, previousStock: 0, newStock: -1,
     createdAt: now, createdBy: "admin-a"
-  }));
-  await assertFails(setDoc(doc(customerA, "inventoryMovements", "movement-customer"), {
+  });
+  await assertFails(negativeMovementBatch.commit());
+
+  const mismatchedMovementBatch = writeBatch(superAdmin);
+  mismatchedMovementBatch.set(doc(superAdmin, "inventoryMovements", "movement-mismatch"), {
     productId: "stock-product", productName: "Test stock item", sku: "TST-001",
     type: "in", quantity: 1, previousStock: 1, newStock: 2,
+    createdAt: now, createdBy: "admin-a"
+  });
+  await assertFails(mismatchedMovementBatch.commit());
+
+  const customerMovementBatch = writeBatch(customerA);
+  customerMovementBatch.update(doc(customerA, "products", "stock-product"), { stock: 1, updatedAt: now });
+  customerMovementBatch.set(doc(customerA, "inventoryMovements", "movement-customer"), {
+    productId: "stock-product", productName: "Test stock item", sku: "TST-001",
+    type: "in", quantity: 1, previousStock: 0, newStock: 1,
     createdAt: now, createdBy: "customer-a"
-  }));
+  });
+  await assertFails(customerMovementBatch.commit());
+
   await assertSucceeds(getDoc(doc(manager, "inventoryMovements", "movement-valid")));
   await assertFails(getDoc(doc(customerA, "inventoryMovements", "movement-valid")));
-  await assertSucceeds(setDoc(doc(superAdmin, "sales", "sale-valid"), {
+
+  const posBatch = writeBatch(superAdmin);
+  posBatch.update(doc(superAdmin, "products", "sale-product"), { stock: 0, updatedAt: now });
+  posBatch.set(doc(superAdmin, "inventoryMovements", "pos-movement"), {
+    productId: "sale-product", productName: "Test POS item", sku: "POS-001",
+    type: "out", quantity: 1, previousStock: 1, newStock: 0,
+    createdAt: now, createdBy: "admin-a", reason: "sale", receiptNumber: "MFS-TEST-001"
+  });
+  posBatch.set(doc(superAdmin, "sales", "sale-valid"), {
     receiptNumber: "MFS-TEST-001", customerName: "Walk-in customer",
-    items: [{ productId: "stock-product", quantity: 1, unitPrice: 100 }],
+    items: [{ productId: "sale-product", quantity: 1, unitPrice: 100 }],
     subtotal: 100, total: 100, totalCost: 50, grossProfit: 50,
     amountPaid: 100, balance: 0, paymentStatus: "paid",
     paymentMethod: "Cash", currency: "NGN", createdAt: now, createdBy: "admin-a"
-  }));
+  });
+  await assertSucceeds(posBatch.commit());
   await assertFails(setDoc(doc(finance, "sales", "sale-finance"), {
     receiptNumber: "MFS-FINANCE-001", customerName: "Walk-in customer", items: [],
     subtotal: 100, total: 100, totalCost: 50, grossProfit: 50,
@@ -504,7 +540,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock and movement integrity, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock, movement-to-stock consistency and atomic POS sale/stock/movement writes, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }

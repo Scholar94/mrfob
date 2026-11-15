@@ -618,10 +618,19 @@ service cloud.firestore {
       allow create: if isSuperAdmin()
         && request.resource.data.keys().hasOnly(['productId', 'productName', 'sku', 'type', 'quantity', 'previousStock', 'newStock', 'createdAt', 'createdBy', 'reason', 'receiptNumber'])
         && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.productId is string
         && request.resource.data.type in ['in', 'out']
         && request.resource.data.quantity is int && request.resource.data.quantity > 0
         && request.resource.data.previousStock is int && request.resource.data.previousStock >= 0
-        && request.resource.data.newStock is int && request.resource.data.newStock >= 0;
+        && request.resource.data.newStock is int && request.resource.data.newStock >= 0
+        && exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
+        && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.stock == request.resource.data.previousStock
+        && existsAfter(/databases/$(database)/documents/products/$(request.resource.data.productId))
+        && getAfter(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.stock == request.resource.data.newStock
+        && ((request.resource.data.type == 'in'
+              && request.resource.data.newStock == request.resource.data.previousStock + request.resource.data.quantity)
+          || (request.resource.data.type == 'out'
+              && request.resource.data.newStock == request.resource.data.previousStock - request.resource.data.quantity));
       allow read: if isSuperAdmin() || hasStaffRole(['manager']);
       allow update, delete: if isSuperAdmin();
     }
