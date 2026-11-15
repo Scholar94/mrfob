@@ -307,6 +307,19 @@ try {
     active: true, createdAt: now, createdBy: "customer-a", updatedAt: now
   }));
 
+  // Institute scheduling locks are readable and writable only by authorised Institute staff.
+  await assertSucceeds(setDoc(doc(manager, "instituteSessionSlots", "instructor_test_123"), {
+    sessionId: "session-test", resourceToken: "instructor_test", bucket: 123,
+    createdAt: now
+  }));
+  await assertFails(getDoc(doc(customerA, "instituteSessionSlots", "instructor_test_123")));
+  await assertFails(setDoc(doc(customerA, "instituteSessionSlots", "instructor_customer_123"), {
+    sessionId: "session-customer", resourceToken: "instructor_customer", bucket: 123,
+    createdAt: now
+  }));
+  await assertFails(deleteDoc(doc(customerA, "instituteSessionSlots", "instructor_test_123")));
+  await assertSucceeds(deleteDoc(doc(manager, "instituteSessionSlots", "instructor_test_123")));
+
   // Institute withdrawal must decrement the intake and remove paid lesson access atomically.
   await assertSucceeds(getDoc(doc(customerA, "instituteLessons", "lesson-a")));
   const applicationOnlyWithdrawal = writeBatch(superAdmin);
@@ -407,7 +420,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, newsletter consent and subscriber privacy, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: owner privacy, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy, newsletter consent and subscriber privacy, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
