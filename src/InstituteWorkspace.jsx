@@ -790,6 +790,34 @@ export default function InstituteWorkspace() {
       if (!sessionForm.title.trim() || !sessionForm.startsAt || !sessionForm.endsAt) throw new Error("Enter a session title, start time and end time.");
       if (new Date(sessionForm.endsAt) <= new Date(sessionForm.startsAt)) throw new Error("The session end time must be later than its start time.");
       if (sessionForm.mode === "Online" && sessionForm.meetingUrl && !/^https:\/\//i.test(sessionForm.meetingUrl)) throw new Error("Online meeting links must use HTTPS.");
+      const proposedStart = new Date(sessionForm.startsAt).getTime();
+      const proposedEnd = new Date(sessionForm.endsAt).getTime();
+      if (!Number.isFinite(proposedStart) || !Number.isFinite(proposedEnd)) throw new Error("Enter valid session start and end dates.");
+      const existingSessions = await getDocs(collection(db, "instituteSessions"));
+      const conflicts = existingSessions.docs
+        .map(snapshot => ({ id: snapshot.id, ...snapshot.data() }))
+        .filter(existing => existing.status !== "cancelled" && existing.id)
+        .filter(existing => {
+          const existingStart = new Date(existing.startsAt).getTime();
+          const existingEnd = new Date(existing.endsAt).getTime();
+          if (!Number.isFinite(existingStart) || !Number.isFinite(existingEnd)) return false;
+          const overlaps = proposedStart < existingEnd && existingStart < proposedEnd;
+          if (!overlaps) return false;
+          const sameInstructor = existing.instructorUid === assignment.instructorUid;
+          const sameVenue = sessionForm.mode === "Onsite" && existing.mode === "Onsite"
+            && String(existing.venue || "").trim().toLowerCase() === sessionForm.venue.trim().toLowerCase();
+          return sameInstructor || sameVenue;
+        });
+      if (conflicts.length) {
+        const instructorConflict = conflicts.some(existing => existing.instructorUid === assignment.instructorUid);
+        const venueConflict = conflicts.some(existing => sessionForm.mode === "Onsite" && existing.mode === "Onsite"
+          && String(existing.venue || "").trim().toLowerCase() === sessionForm.venue.trim().toLowerCase());
+        throw new Error(instructorConflict
+          ? "This instructor already has a scheduled session during that time. Choose another time or instructor."
+          : venueConflict
+            ? "This venue already has an onsite session during that time. Choose another time or venue."
+            : "This session conflicts with an existing training session.");
+      }
       await addDoc(collection(db, "instituteSessions"), {
         courseId: course.id, courseTitle: course.title, instructorUid: assignment.instructorUid,
         title: sessionForm.title.trim(), startsAt: sessionForm.startsAt, endsAt: sessionForm.endsAt,
