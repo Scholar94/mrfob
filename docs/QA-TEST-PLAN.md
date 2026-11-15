@@ -1,7 +1,7 @@
 # MR FOP FASHIONS — Final acceptance test plan
 
 **Purpose:** Run this plan only after implementation is frozen and the owner has completed Firebase, Google Drive and Apps Script setup.  
-**Current status:** Automated CI checks passed in GitHub Actions run [#863](https://github.com/Scholar94/mrfob/actions/runs/43571640321) for commit `4d0c996bee82847d93aea382a8222242775997a9` on 14 November 2026. This included required Firebase-secret preflight, production build, Chromium smoke tests, platform source guardrails and Firestore Emulator tests. The 22 owner-operated acceptance cases below remain **Not run** and must be completed with separate production test accounts and real Drive configuration.  
+**Current status:** Automated CI checks passed in GitHub Actions run [#870](https://github.com/Scholar94/mrfob/actions/runs/43680817431) for commit `2d0a9e0fe74e68922830b258e185071502a8f8bc` on 15 November 2026. This included required Firebase-secret preflight, production build, Chromium smoke tests, platform source guardrails and Firestore Emulator tests. The 22 owner-operated acceptance cases below remain **Not run** and must be completed with separate production test accounts and real Drive configuration.  
 **Test rule:** Use separate accounts for each role. Never use the Super Admin account to prove customer, Finance, Tailor, Institute or Instructor permissions.
 
 ## Test accounts and prerequisites
