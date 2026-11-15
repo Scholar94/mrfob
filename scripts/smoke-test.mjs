@@ -136,7 +136,7 @@ try {
   assert.ok((await portal.innerText()).trim().length > 80, "Account portal rendered an empty/blank panel");
 
   assert.deepEqual(pageErrors, [], "Browser runtime errors were detected during public/account route smoke tests");
-  process.stdout.write("Browser smoke tests passed: homepage, PWA manifest/service worker, standalone public/legal routes and account registration/login portals.\n");
+  process.stdout.write("Browser smoke tests passed: responsive homepage widths, style recommender and WhatsApp brief, PWA manifest/service worker/offline fallback, standalone public/legal routes and all customer/student/admin account entry routes.\\n");
 } finally {
   await browser.close();
 }
