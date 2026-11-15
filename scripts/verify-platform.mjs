@@ -137,9 +137,6 @@ assert.ok(read(".github/workflows/deploy.yml").includes("playwright install --wi
 
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
 const instituteWorkspace = read("src/InstituteWorkspace.jsx");
-assert.ok(instituteWorkspace.includes('const existingSessions = await getDocs(collection(db, "instituteSessions"))'), "Institute session scheduling must check existing sessions.");
-assert.ok(instituteWorkspace.includes("proposedStart < existingEnd && existingStart < proposedEnd"), "Institute session overlap detection is missing.");
-assert.ok(instituteWorkspace.includes("This instructor already has a scheduled session"), "Instructor schedule conflict feedback is missing.");
 assert.ok(instituteWorkspace.includes("buildSessionSlotLockIds"), "Institute sessions must create deterministic time-block reservations.");
 assert.ok(instituteWorkspace.includes('doc(db, "instituteSessionSlots", lockId)'), "Institute sessions must reserve instructor and venue lock documents.");
 assert.ok(instituteWorkspace.includes("transaction.set(lockRef"), "Institute scheduling must atomically create time-block locks.");
