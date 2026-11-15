@@ -42,6 +42,29 @@ try {
       galleryImages: [], availableColors: [], fabricOptions: [], customizationOptions: [],
       active: true, createdAt: now, updatedAt: now, createdBy: "admin-a"
     });
+    // Product creation and positive opening stock must be recorded atomically in the immutable ledger.
+    const openingStockBatch = writeBatch(superAdmin);
+    openingStockBatch.set(doc(superAdmin, "products", "opening-stock-product"), {
+      name: "Opening stock test item", sku: "OPEN-001", category: "Test", description: "",
+      price: 100, costPrice: 50, currency: "NGN", stock: 5, imageUrl: "",
+      galleryImages: [], availableColors: [], fabricOptions: [], customizationOptions: [],
+      active: true, createdAt: now, updatedAt: now, createdBy: "admin-a"
+    });
+    openingStockBatch.set(doc(superAdmin, "inventoryMovements", "opening-stock-movement"), {
+      productId: "opening-stock-product", productName: "Opening stock test item", sku: "OPEN-001",
+      type: "in", quantity: 5, previousStock: 0, newStock: 5,
+      createdAt: now, createdBy: "admin-a", reason: "opening_stock"
+    });
+    await assertSucceeds(openingStockBatch.commit());
+
+    const invalidOpeningMovementBatch = writeBatch(superAdmin);
+    invalidOpeningMovementBatch.set(doc(superAdmin, "inventoryMovements", "opening-stock-mismatch"), {
+      productId: "opening-stock-product", productName: "Opening stock test item", sku: "OPEN-001",
+      type: "in", quantity: 4, previousStock: 0, newStock: 4,
+      createdAt: now, createdBy: "admin-a", reason: "opening_stock"
+    });
+    await assertFails(invalidOpeningMovementBatch.commit());
+
     await setDoc(doc(db, "products", "sale-product"), {
       name: "Test POS item", sku: "POS-001", category: "Test", description: "",
       price: 100, costPrice: 50, currency: "NGN", stock: 1, imageUrl: "",
