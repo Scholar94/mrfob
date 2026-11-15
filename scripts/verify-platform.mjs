@@ -136,6 +136,12 @@ assert.ok(read(".github/workflows/deploy.yml").includes("playwright install --wi
 
 
 assert.ok(read("src/InstituteWorkspace.jsx").includes("institute-dashboard-summary"), "Institute role dashboards are missing");
+const instituteWorkspace = read("src/InstituteWorkspace.jsx");
+assert.ok(instituteWorkspace.includes('const existingSessions = await getDocs(collection(db, "instituteSessions"))'), "Institute session scheduling must check existing sessions.");
+assert.ok(instituteWorkspace.includes("proposedStart < existingEnd && existingStart < proposedEnd"), "Institute session overlap detection is missing.");
+assert.ok(instituteWorkspace.includes("This instructor already has a scheduled session"), "Instructor schedule conflict feedback is missing.");
+assert.ok(instituteWorkspace.includes("This venue already has an onsite session"), "Onsite venue conflict feedback is missing.");
+assert.ok(read("src/WebsiteMedia.jsx").includes("if (!db) { setLoading(false); return; }"), "Public music must handle an unavailable Firebase database safely.");
 assert.ok(rules.includes("training_payment_verified") && rules.includes("drive_lesson_access_revoked"), "Institute payment/Drive audit rules are missing");
 assert.ok(rules.includes("order_production_updated") && portal.includes("order_assigned"), "Order audit instrumentation is missing");
 
