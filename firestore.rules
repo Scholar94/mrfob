@@ -623,8 +623,10 @@ service cloud.firestore {
         && request.resource.data.quantity is int && request.resource.data.quantity > 0
         && request.resource.data.previousStock is int && request.resource.data.previousStock >= 0
         && request.resource.data.newStock is int && request.resource.data.newStock >= 0
-        && exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
-        && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.stock == request.resource.data.previousStock
+        && ((!exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
+              && request.resource.data.previousStock == 0)
+          || (exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
+              && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.stock == request.resource.data.previousStock))
         && existsAfter(/databases/$(database)/documents/products/$(request.resource.data.productId))
         && getAfter(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.stock == request.resource.data.newStock
         && ((request.resource.data.type == 'in'
