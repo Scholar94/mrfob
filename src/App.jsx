@@ -76,6 +76,7 @@ function setRouteMetadata(title, description, path, noIndex = false) {
 export default function App() {
   const [menu, setMenu] = useState(false);
   const [standalonePage, setStandalonePage] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installMessage, setInstallMessage] = useState("");
   const [musicNotice, setMusicNotice] = useState(false);
@@ -150,6 +151,7 @@ export default function App() {
       return;
     }
     setStandalonePage("");
+    setNotFound(true);
     setRouteMetadata("Page Not Found | MR FOP FASHIONS", "The requested page could not be found on the MR FOP FASHIONS website.", path, true);
     window.requestAnimationFrame(() => document.getElementById("home")?.scrollIntoView({ behavior: "auto" }));
   }, []);
@@ -252,7 +254,7 @@ export default function App() {
       "Project details: " + data.get("projectDetails"),
       "",
       "Please guide me on the next steps, quotation requirements and consultation."
-    ].join("\\n");
+    ].join("\n");
     window.open(whatsappLink(message), "_blank", "noopener,noreferrer");
     form.reset();
   }
