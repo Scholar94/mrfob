@@ -267,6 +267,7 @@ export default function App() {
     }
   };
   if (standalonePage) return <PublicRoutePage path={standalonePage} collections={collections} companyProfile={companyProfile} publicFaqs={publicFaqs}/>;
+  if (notFound) return <main style={{minHeight:"100svh",display:"grid",placeItems:"center",padding:"32px",background:"#f7f3ec",color:"#32151f",textAlign:"center"}}><div style={{maxWidth:"560px"}}><p style={{letterSpacing:"3px",fontSize:"11px",fontWeight:700}}>MR FOP FASHIONS</p><p style={{fontSize:"clamp(72px,15vw,130px)",lineHeight:1,margin:"12px 0",fontFamily:"Georgia,serif"}}>404</p><h1 style={{fontFamily:"Georgia,serif",fontSize:"clamp(28px,5vw,42px)",fontWeight:500}}>This page could not be found.</h1><p style={{lineHeight:1.8,color:"#76636a"}}>The address may be incorrect, or the page may have moved. You can return to the homepage and continue exploring our services.</p><a href="/mrfob/" style={{display:"inline-block",marginTop:"18px",padding:"14px 24px",background:"#572638",color:"#fff",textDecoration:"none",letterSpacing:"1px",fontSize:"12px"}}>RETURN TO HOMEPAGE</a></div></main>;
 
   return <div className="site-shell">
     {(window.location.pathname === import.meta.env.BASE_URL || window.location.pathname === import.meta.env.BASE_URL.replace(/\/$/, "")) && <WelcomeExperience/>}
