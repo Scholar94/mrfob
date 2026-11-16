@@ -9,7 +9,7 @@ const requiredFiles = [
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
   "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
-  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
+  "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "docs/PRODUCTION-OPERATIONS.md", ".github/dependabot.yml", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
 for (const file of requiredFiles) assert.ok(fs.existsSync(file), `Missing required platform file: ${file}`);
 
@@ -161,3 +161,6 @@ console.log(`Platform source checks passed: ${requiredFiles.length} required fil
 
 assert.ok(institute.includes("function localDateString(date = new Date())") && !institute.includes("new Date().toISOString().slice(0,10)"), "Institute date fields and expiry checks must use the local calendar date.");
 assert.ok(corporate.includes("function localDateString(date = new Date())") && corporate.includes("min={localDateString()}") && !corporate.includes("new Date().toISOString().slice(0,10)"), "Corporate order due-date minimum must use the local calendar date.");
+
+assert.ok(read("docs/PRODUCTION-OPERATIONS.md").includes("No automatic production backup"), "Production operations guide must state the current backup limitation.");
+assert.ok(read(".github/dependabot.yml").includes('interval: "monthly"'), "Monthly dependency update proposals are not configured.");
