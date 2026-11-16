@@ -18,6 +18,7 @@ const portal = read("src/Portal.jsx");
 const rules = read("firestore.rules");
 const drive = read("src/googleDrive.js");
 const institute = read("src/InstituteWorkspace.jsx");
+const corporate = read("src/CorporateOrderRequests.jsx");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
@@ -156,3 +157,7 @@ for (const file of sourceFiles) {
 assert.ok(!("deploy:functions" in pkg.scripts), "Cloud Functions deployment script must not be present");
 assert.ok(!("firebase-storage" in pkg.dependencies), "Firebase Storage dependency must not be present");
 console.log(`Platform source checks passed: ${requiredFiles.length} required files, public/account route entry, PWA shell, Drive integration, Firestore deny-by-default and zero-cost guardrails.`);
+
+
+assert.ok(institute.includes("function localDateString(date = new Date())") && !institute.includes("new Date().toISOString().slice(0,10)"), "Institute date fields and expiry checks must use the local calendar date.");
+assert.ok(corporate.includes("function localDateString(date = new Date())") && corporate.includes("min={localDateString()}") && !corporate.includes("new Date().toISOString().slice(0,10)"), "Corporate order due-date minimum must use the local calendar date.");
