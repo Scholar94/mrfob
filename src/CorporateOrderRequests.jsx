@@ -6,6 +6,13 @@ import { recordAuditEvent } from "./auditLog.js";
 const TYPES = ["Corporate uniforms", "School uniforms", "Church / ministry outfits", "Wedding party clothing", "Event clothing", "Bulk bespoke garments", "Other institutional order"];
 const STATUSES = ["pending", "in_review", "quotation_preparation", "quoted", "accepted", "declined", "completed"];
 
+function localDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function CorporateOrderRequests({ user, claims }) {
   const canManage = !!claims?.superAdmin || claims?.staffRole === "manager";
   const [items, setItems] = useState([]);
@@ -73,7 +80,7 @@ export default function CorporateOrderRequests({ user, claims }) {
       <label>Telephone number<input required minLength={7} maxLength={30} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
       <label>Request type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})}>{TYPES.map(type=><option key={type}>{type}</option>)}</select></label>
       <label>Estimated quantity<input type="number" min="2" max="10000" step="1" required value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})}/></label>
-      <label>Preferred completion date (not confirmed)<input type="date" min={new Date().toISOString().slice(0,10)} value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></label>
+      <label>Preferred completion date (not confirmed)<input type="date" min={localDateString()} value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})}/></label>
       <label>Organisation / delivery location<input maxLength={200} value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/></label>
       <label>Project requirements<textarea required minLength={10} maxLength={2000} rows={4} value={form.details} onChange={e=>setForm({...form,details:e.target.value})} placeholder="Describe garment types, sizes, fabric preferences, colours, branding, sample requirements and timeline."/></label>
       <p className="portal-hint">This is a quotation request, not an accepted order or confirmed delivery commitment. Final price, capacity and timeline are confirmed after review.</p>
