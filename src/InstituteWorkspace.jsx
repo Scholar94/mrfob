@@ -9,6 +9,14 @@ const COURSE_TYPES = ["Basic Fashion Designing","Professional Fashion Designing"
 const blankCourse = { title: "", category: "Professional Fashion Designing", description: "", mode: "Online and onsite", duration: "", fee: "", active: true };
 const blankWindow = { title: "", courseId: "", applicationOpen: "", applicationClose: "", commencement: "", duration: "", modes: ["Onsite"], fee: "", capacity: "", timetable: "", venue: "MR FOP FASHIONS, Ijebu Ode", instructorName: "" };
 
+// Date inputs and intake deadlines use the user's local calendar date, not UTC.
+function localDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function InstituteWorkspace() {
   const { user, claims } = useAuth();
   const isAdmin = !!(claims.superAdmin || claims.staffRole === "institute" || claims.staffRole === "manager");
@@ -43,7 +51,7 @@ export default function InstituteWorkspace() {
   const [announcementForm, setAnnouncementForm] = useState({ courseId: "all", title: "", message: "", expiresOn: "" });
   const [certificateEnrollmentId, setCertificateEnrollmentId] = useState("");
   const [certificateRevocationDrafts, setCertificateRevocationDrafts] = useState({});
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0,10));
+  const [attendanceDate, setAttendanceDate] = useState(localDateString());
   const [assignmentForm, setAssignmentForm] = useState({ courseId: "", title: "", instructions: "", dueDate: "", points: "100" });
   const [submissionDrafts, setSubmissionDrafts] = useState({});
   const [lessonForm, setLessonForm] = useState({ courseId: "", title: "", module: "", type: "Text lesson", content: "", videoUrl: "", resourceUrl: "", sequence: "1" });
@@ -94,7 +102,7 @@ export default function InstituteWorkspace() {
         ]);
         const announcementMap = new Map();
         announcementSets.forEach(s => s.docs.forEach(d => announcementMap.set(d.id, { id: d.id, ...d.data() })));
-        setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= new Date().toISOString().slice(0,10)).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+        setAnnouncements([...announcementMap.values()].filter(a => !a.expiresOn || a.expiresOn >= localDateString()).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
       }
       if (isInstructor) {
         const profileSnap = await getDoc(doc(db, "instituteInstructorProfiles", user.uid));
@@ -146,7 +154,7 @@ export default function InstituteWorkspace() {
 
   useEffect(() => { load(); }, [user?.uid, isAdmin]);
 
-  const availableWindows = useMemo(() => windows.filter(w => w.status !== "closed" && (!w.applicationClose || w.applicationClose >= new Date().toISOString().slice(0,10))), [windows]);
+  const availableWindows = useMemo(() => windows.filter(w => w.status !== "closed" && (!w.applicationClose || w.applicationClose >= localDateString())), [windows]);
 
   const activeCourses = useMemo(() => courses.filter(c => c.active !== false), [courses]);
 
@@ -330,7 +338,7 @@ export default function InstituteWorkspace() {
         const latestWindowSnap = await transaction.get(windowRef);
         if (!latestWindowSnap.exists()) throw new Error("This training window no longer exists.");
         const latestWindow = latestWindowSnap.data();
-        const today = new Date().toISOString().slice(0,10);
+        const today = localDateString();
         if (latestWindow.status !== "open" || (latestWindow.applicationOpen && latestWindow.applicationOpen > today) || (latestWindow.applicationClose && latestWindow.applicationClose < today)) {
           throw new Error("This training window is not currently accepting applications.");
         }
@@ -872,7 +880,7 @@ export default function InstituteWorkspace() {
       const title = announcementForm.title.trim();
       const message = announcementForm.message.trim();
       if (!title || !message) throw new Error("Enter an announcement title and message.");
-      if (announcementForm.expiresOn && announcementForm.expiresOn < new Date().toISOString().slice(0,10)) throw new Error("The expiry date cannot be in the past.");
+      if (announcementForm.expiresOn && announcementForm.expiresOn < localDateString()) throw new Error("The expiry date cannot be in the past.");
       await addDoc(collection(db, "instituteAnnouncements"), {
         courseId: announcementForm.courseId || "all", title, message,
         expiresOn: announcementForm.expiresOn || "", audience: announcementForm.courseId === "all" ? "all_students" : "paid_course_students",
