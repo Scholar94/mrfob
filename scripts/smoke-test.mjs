@@ -71,6 +71,10 @@ try {
     }
   }
 
+  await page.goto(base + "/route-that-does-not-exist", { waitUntil: "domcontentloaded" });
+  await page.getByText("This page could not be found.", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+  assert.ok(await page.getByRole("link", { name: "RETURN TO HOMEPAGE" }).isVisible(), "Unknown route does not provide a homepage recovery link");
+
   await page.goto(base + "/", { waitUntil: "domcontentloaded" });
   const styleForm = page.locator(".style-preference-form");
   await styleForm.locator("select").nth(0).selectOption("Wedding");
