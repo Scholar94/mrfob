@@ -95,3 +95,6 @@
 The largest remaining blockers are owner-controlled production tasks: Firebase project setup and rules publication, initial Super Admin UID, Google Drive OAuth/folder permissions, verified bank instructions, optional Apps Script grading configuration, real role-based acceptance tests, and an owner-approved backup destination and restore drill. The backup runbook explicitly notes that supported Firestore export/backup options may incur Google Cloud charges.
 
 Further source development should be driven by reproducible defects or a confirmed workflow requirement. Avoid implementing speculative payment, AI measurement, external messaging or destructive data operations without the necessary provider configuration and business approval. The application remains **partially implemented and not fully production-verified** until the acceptance and operational controls are completed.
+
+
+- **Local calendar date handling (16 November 2026):** Institute attendance dates, intake application-close filtering, announcement expiry validation and corporate-order preferred completion date minimums now use local calendar date components rather than UTC ISO date slicing. Static platform guardrails and the manual QA plan now cover this regression. This prevents date-only business inputs from shifting around midnight in time zones behind UTC.
