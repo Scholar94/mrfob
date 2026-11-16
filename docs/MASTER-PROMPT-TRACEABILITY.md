@@ -2,7 +2,7 @@
 
 **Project:** MR FOP FASHIONS COMPANY NIGERIA LIMITED  
 **Repository:** https://github.com/Scholar94/mrfob  
-**Assessment date:** 15 November 2026  
+**Assessment date:** 16 November 2026  
 **Purpose:** Track implementation honestly against every section of the supplied master prompt. A source-code implementation is not considered production-verified until its Firebase rules, external setup and real-user workflow have been tested.
 
 ## Status definitions
@@ -82,3 +82,16 @@
 7. Run the full 22-case manual test plan using separate customer, designer/tailor, finance, instructor, Institute Administrator and Super Admin accounts.
 
 **Completion rule:** The project must not be described as fully complete until all 24 sections have no outstanding critical requirements, the current Firestore rules are published and tested, all external integrations are verified, and the mandatory end-to-end test report is passed.
+
+
+## Operational hardening added — 16 November 2026
+
+- Added `docs/PRODUCTION-OPERATIONS.md` covering system-of-record inventory, pre-production checks, backup limitations, isolated restore drills, access reviews, incident response, privacy requests and deployment rollback. This is guidance and a control checklist; it does not configure or execute production backups, restore data or review live access.
+- Added monthly Dependabot update proposals for npm dependencies and GitHub Actions. Proposals require human review and CI before merge.
+- No paid service, payment method or new external API was introduced by these changes.
+
+## Remaining work and honest boundary
+
+The largest remaining blockers are owner-controlled production tasks: Firebase project setup and rules publication, initial Super Admin UID, Google Drive OAuth/folder permissions, verified bank instructions, optional Apps Script grading configuration, real role-based acceptance tests, and an owner-approved backup destination and restore drill. The backup runbook explicitly notes that supported Firestore export/backup options may incur Google Cloud charges.
+
+Further source development should be driven by reproducible defects or a confirmed workflow requirement. Avoid implementing speculative payment, AI measurement, external messaging or destructive data operations without the necessary provider configuration and business approval. The application remains **partially implemented and not fully production-verified** until the acceptance and operational controls are completed.
