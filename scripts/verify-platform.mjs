@@ -75,6 +75,8 @@ assert.ok(app.includes('"/courses": ["courses"') && app.includes('"/admissions":
 
 assert.ok(app.includes('get("__route")'), "GitHub Pages fallback query is not consumed");
 assert.ok(app.includes("PublicRoutePage") && app.includes("setStandalonePage") && app.includes("standalonePage"), "Standalone public route layouts are not mounted");
+assert.ok(app.includes("setNotFound(true)") && app.includes("This page could not be found.") && app.includes("RETURN TO HOMEPAGE"), "Unknown routes must render a branded 404 recovery page");
+assert.ok(app.includes("].join(\"\\n\")"), "Industrial WhatsApp enquiry must use real line breaks");
 assert.ok(read("src/PublicRoutePage.jsx").includes("standalone-whatsapp-float"), "Floating WhatsApp contact is missing from standalone public pages");
 assert.ok(app.includes("<WelcomeExperience/>") && read("src/WelcomeExperience.jsx").includes("Explore the experience"), "First-visit homepage welcome experience is missing");
 
