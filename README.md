@@ -224,3 +224,10 @@ The GitHub Actions deployment workflow starts the local Firestore Emulator and r
 ## Institute learner withdrawal
 
 Institute Administrators, Managers and the Super Admin can withdraw an admitted learner with verified paid enrolment. The action atomically updates the enrolment and application status and releases one place in the intake. Firestore lesson access is denied for withdrawn enrolments even though the historical payment record remains paid. The app then attempts to revoke direct Google Drive lesson permissions; inherited permissions may remain and Drive failures must be retried manually. Withdrawal is not a refund. Refunds are handled separately.
+
+
+## Production operations, backup and recovery
+
+The operational runbook in [docs/PRODUCTION-OPERATIONS.md](docs/PRODUCTION-OPERATIONS.md) documents data locations, security reviews, privacy-request handling, incident response, deployment rollback and backup/restore responsibilities. **No automatic production backup or restore drill is currently configured.** Firestore exports and managed backup features may require a billing-enabled Google Cloud project and incur charges; do not enable them without owner cost approval. GitHub source history and successful Pages deployments are not backups of Firestore or Google Drive data.
+
+Dependabot is configured to propose monthly npm and GitHub Actions dependency updates. Review and test each proposed update before merging; automated dependency proposals are not automatically trusted production changes.
