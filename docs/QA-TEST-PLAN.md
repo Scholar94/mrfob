@@ -66,3 +66,11 @@ The deployment workflow runs a Chromium browser smoke test, scripts/verify-platf
 - Any unsupported or owner-dependent integration is recorded as a blocker, not marked passed.
 
 **Do not mark this plan complete based on CI alone.** The current CI workflow checks production compilation, Chromium public/account-login rendering, static source guardrails and the focused Firestore Emulator suite; it does not sign in to a real customer account, upload to Drive, run the Apps Script grader or simulate all separate production roles.
+
+
+## Additional regression check — local calendar dates
+
+- On a device set to the business's local timezone (including Nigeria, UTC+1), open Institute attendance, intake application deadlines, announcement expiry and corporate/bulk-order preferred completion dates.
+- Verify the default attendance date and minimum selectable preferred completion date match the calendar date displayed by the device, including shortly after local midnight.
+- Change the device timezone in a test environment and repeat. Date-only business fields must remain date-only and must not shift to the previous/next day because of UTC conversion.
+- CI source guardrails now ensure the Institute and corporate request forms use local calendar date helpers rather than `toISOString().slice(0,10)`. This static check complements, but does not replace, device testing.
