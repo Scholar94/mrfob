@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, up
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound, Menu, X, ChevronRight } from "lucide-react";
 import { auth, db } from "./firebase.js";
-import { uploadFileToGoogleDrive, clearGoogleDriveConfigCache } from "./googleDrive.js";
+import { uploadFileToGoogleDrive, uploadPaymentEvidenceToCompanyDrive, clearGoogleDriveConfigCache } from "./googleDrive.js";
 import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
@@ -1622,12 +1622,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       const evidenceTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
       if (!evidenceTypes.includes(paymentEvidenceFile.type)) throw new Error("Payment evidence must be a JPG, PNG, WebP image or PDF.");
       if (paymentEvidenceFile.size <= 0 || paymentEvidenceFile.size > 15 * 1024 * 1024) throw new Error("Payment evidence must be no larger than 15 MB.");
-      const uploaded = await uploadFileToGoogleDrive(paymentEvidenceFile, {
-        storageOwner: "customer",
-        shareWithEmail: "mrfopvi@gmail.com",
+      const uploaded = await uploadPaymentEvidenceToCompanyDrive(paymentEvidenceFile, {
+        idToken: await user.getIdToken(),
         orderId: order.id,
-        uploadedBy: user.uid,
-        folder: "Payment Evidence"
+        uploadedBy: user.uid
       });
       await addDoc(collection(db, "paymentDeclarations"), {
         orderId: order.id, orderNumber: order.orderNumber || order.id,
