@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
+import { uploadFileToGoogleDrive, setDriveFilePublic } from "./googleDrive.js";
 
 const emptyForm = { name: "", color: "", texture: "", priceRange: "", availability: "available", suitableCategories: "", imageUrl: "", active: true };
 
@@ -13,6 +14,8 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   async function refresh() {
     if (!db) { setFabrics([]); setLoading(false); return; }
@@ -25,6 +28,23 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
     finally { setLoading(false); }
   }
   useEffect(() => { refresh(); }, [admin]);
+
+  async function uploadFabricImage() {
+    if (!admin || !user || !imageFile) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(imageFile.type)) { setError("Choose a JPG, PNG or WebP image."); return; }
+    if (imageFile.size > 10 * 1024 * 1024) { setError("Fabric image must be 10 MB or smaller."); return; }
+    setImageUploading(true); setError(""); setNotice("");
+    try {
+      const uploaded = await uploadFileToGoogleDrive(imageFile, { folder: "Fabric Images", uploadedBy: user.uid, visibility: "public" });
+      await setDriveFilePublic(uploaded.fileId, true);
+      setForm(current => ({ ...current, imageUrl: uploaded.previewUrl || uploaded.webViewLink }));
+      setImageFile(null);
+      const picker = document.getElementById("mrfop-fabric-image-picker");
+      if (picker) picker.value = "";
+      setNotice("Fabric image uploaded to the company Google Drive. Save the fabric record to publish it.");
+    } catch (err) { setError(err.message || "Could not upload the fabric image to Google Drive."); }
+    finally { setImageUploading(false); }
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -42,7 +62,7 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
       if (editingId) await updateDoc(doc(db, "fabrics", editingId), payload);
       else await addDoc(collection(db, "fabrics"), { ...payload, createdAt: serverTimestamp(), createdBy: user.uid });
       await recordAuditEvent({ user, claims, action: editingId ? "fabric_updated" : "fabric_created", entityType: "fabric", entityId: editingId || "new", summary: (editingId ? "Updated fabric " : "Created fabric ") + name + "." });
-      setForm(emptyForm); setEditingId(""); setNotice(editingId ? "Fabric record updated." : "Fabric added to the catalogue.");
+      setForm(emptyForm); setEditingId(""); setImageFile(null); setNotice(editingId ? "Fabric record updated." : "Fabric added to the catalogue.");
       await refresh();
     } catch (err) { setError(err.message || "Could not save this fabric."); }
     finally { setBusy(false); }
@@ -51,6 +71,7 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
   function edit(item) {
     setEditingId(item.id);
     setForm({ name: item.name || "", color: item.color || "", texture: item.texture || "", priceRange: item.priceRange || "", availability: item.availability || "available", suitableCategories: (item.suitableCategories || []).join(", "), imageUrl: item.imageUrl || "", active: item.active !== false });
+    setImageFile(null);
   }
 
   async function archive(item) {
@@ -76,7 +97,15 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
       <label>Indicative price range<input maxLength={100} value={form.priceRange} onChange={e=>setForm({...form,priceRange:e.target.value})} placeholder="e.g. Price on request"/></label>
       <label>Suitable garment categories<input maxLength={720} value={form.suitableCategories} onChange={e=>setForm({...form,suitableCategories:e.target.value})} placeholder="Suits, trousers, waistcoats"/></label>
       <label>Availability<select value={form.availability} onChange={e=>setForm({...form,availability:e.target.value})}><option value="available">Available</option><option value="limited">Limited availability</option><option value="out_of_stock">Currently unavailable</option></select></label>
-      <label>Fabric image URL (HTTPS)<input type="url" value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder="https://…"/></label>
+      <div className="portal-field">
+        <label htmlFor="mrfop-fabric-image-picker">Upload fabric image from your device gallery</label>
+        <input id="mrfop-fabric-image-picker" type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setImageFile(e.target.files?.[0] || null)}/>
+        <p className="portal-hint">JPG, PNG or WebP; maximum 10 MB. The image will be stored in the company Google Drive.</p>
+        {imageFile && <p className="portal-hint">Selected: {imageFile.name}</p>}
+        <button type="button" className="portal-submit secondary" disabled={busy || imageUploading || !imageFile} onClick={uploadFabricImage}>{imageUploading ? "Uploading image…" : "Upload fabric image"}</button>
+      </div>
+      <label>Fabric image URL (optional)<input type="url" value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder="https://…"/></label>
+      {form.imageUrl && <img className="fabric-upload-preview" src={form.imageUrl} alt="Fabric image preview"/>}
       <label className="fabric-active-toggle"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Show in public fabric gallery</label>
       <div className="fabric-form-actions"><button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingId ? "Save fabric changes" : "Add fabric"}</button>{editingId && <button type="button" onClick={()=>{setEditingId("");setForm(emptyForm);}}>Cancel</button>}</div>
     </form>}
