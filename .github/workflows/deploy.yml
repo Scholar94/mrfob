@@ -81,7 +81,7 @@ jobs:
       - name: Verify Firestore rules in Emulator
         run: npx firebase emulators:exec --only firestore --project demo-mrfop-rules --non-interactive "node scripts/verify-firestore-rules.mjs"
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./dist
   deploy:
