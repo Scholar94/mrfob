@@ -49,8 +49,9 @@ function doPost(e) {
       var roleDocument = JSON.parse(roleResponse.getContentText());
       var role = roleDocument.fields && roleDocument.fields.role && roleDocument.fields.role.stringValue;
       if (payload.purpose === "catalogue_image") { if (role !== "superAdmin") throw new Error("Only the Super Admin can upload catalogue images."); } else if (role && role !== "customer") throw new Error("Only customer accounts can submit transfer evidence.");
-    } else if (roleResponse.getResponseCode() !== 404) {
+    } else if (roleResponse.getResponseCode() === 404) { if (payload.purpose === "catalogue_image") throw new Error("Only the Super Admin can upload catalogue images."); } else {
       throw new Error("Could not verify the account type. Please try again.");
+    }
     }
     var isCatalogueImage = payload.purpose === "catalogue_image";
     var allowed = isCatalogueImage ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -84,21 +85,6 @@ function doPost(e) {
       previewUrl: "https://drive.google.com/uc?export=view&id=" + file.getId()
     }, "");
 
-    var safeName = String(payload.fileName || "payment-evidence")
-      .replace(/[\\\\/:*?"<>|]/g, "_").slice(0, 150);
-    var folder = DriveApp.getFolderById(folderId);
-    var blob = Utilities.newBlob(bytes, mimeType, safeName);
-    var file = folder.createFile(blob);
-    file.setDescription("MR FOP FASHIONS payment evidence. Order: " +
-      String(payload.orderId || "").slice(0, 120) +
-      ". Customer UID: " + String(customer.localId).slice(0, 128));
-    return htmlResult(payload.nonce, true, {
-      fileId: file.getId(),
-      name: file.getName(),
-      mimeType: mimeType,
-      size: bytes.length,
-      webViewLink: "https://drive.google.com/file/d/" + file.getId() + "/view"
-    }, "");
   } catch (err) {
     return htmlResult(payload && payload.nonce, false, null,
       err && err.message ? err.message : "Receipt upload failed.");
