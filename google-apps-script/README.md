@@ -9,6 +9,7 @@ This endpoint lets signed-in MR FOP customers submit transfer evidence directly 
 3. Replace the editor contents with `PaymentEvidenceUpload.gs` from this repository.
 4. In **Project Settings → Script Properties**, add:
    - `FIREBASE_PROJECT_ID`: the exact Firebase project ID used by the website.
+   - `FIREBASE_API_KEY`: the Firebase Web API key for that same project (available in Firebase project settings; it is not a password or service-account key).
    - `DRIVE_FOLDER_ID`: the ID of the private Google Drive folder where payment receipts should be stored.
 5. Run no function manually. Deploy using **Deploy → New deployment → Web app**:
    - Execute as: **Me**
