@@ -6,6 +6,13 @@ import { uploadCatalogueImageToCompanyDrive } from "./googleDrive.js";
 
 const emptyForm = { name: "", color: "", texture: "", priceRange: "", availability: "available", suitableCategories: "", imageUrl: "", active: true };
 
+function getFabricImageUrl(value) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  const driveId = url.match(/(?:[?&]id=|\\/d\\/)([a-zA-Z0-9_-]{10,})/);
+  return driveId ? "https://drive.google.com/thumbnail?id=" + encodeURIComponent(driveId[1]) + "&sz=w1200" : url;
+}
+
 export default function FabricCatalogue({ admin = false, user = null, claims = {} }) {
   const [fabrics, setFabrics] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -105,13 +112,13 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
         <button type="button" className="portal-submit secondary" disabled={busy || imageUploading || !imageFile} onClick={uploadFabricImage}>{imageUploading ? "Uploading image…" : "Upload fabric image"}</button>
       </div>
       <label>Fabric image URL (optional)<input type="url" value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder="https://…"/></label>
-      {form.imageUrl && <img className="fabric-upload-preview" src={form.imageUrl} alt="Fabric image preview"/>}
+      {form.imageUrl && <img className="fabric-upload-preview" src={getFabricImageUrl(form.imageUrl)} alt="Fabric image preview"/>}
       <label className="fabric-active-toggle"><input type="checkbox" checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Show in public fabric gallery</label>
       <div className="fabric-form-actions"><button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingId ? "Save fabric changes" : "Add fabric"}</button>{editingId && <button type="button" onClick={()=>{setEditingId("");setForm(emptyForm);}}>Cancel</button>}</div>
     </form>}
     {error && <p className="portal-error" role="alert">{error}</p>}{notice && <p className="portal-success" role="status">{notice}</p>}
     {loading ? <p className="staff-empty">Loading fabric options…</p> : fabrics.length ? <div className="fabric-grid">{fabrics.map(item=><article className="fabric-card" key={item.id}>
-      {item.imageUrl ? <img src={item.imageUrl} alt={item.name + " fabric in " + item.color} loading="lazy"/> : <div className="fabric-placeholder" aria-hidden="true">MR FOP</div>}
+      {item.imageUrl ? <img src={getFabricImageUrl(item.imageUrl)} alt={item.name + " fabric in " + item.color} loading="lazy"/> : <div className="fabric-placeholder" aria-hidden="true">MR FOP</div>}
       <div className="fabric-card-copy"><h4>{item.name}</h4><p><strong>Colour:</strong> {item.color}</p><p><strong>Texture:</strong> {item.texture}</p>{item.priceRange && <p><strong>Price:</strong> {item.priceRange}</p>}<p><strong>Availability:</strong> {String(item.availability || "available").replaceAll("_", " ")}</p>{item.suitableCategories?.length > 0 && <p><strong>Suitable for:</strong> {item.suitableCategories.join(", ")}</p>}</div>
       {admin && <div className="fabric-card-actions"><button type="button" disabled={busy} onClick={()=>edit(item)}>Edit</button>{item.active !== false && <button type="button" disabled={busy} onClick={()=>archive(item)}>Archive</button>}</div>}
     </article>)}</div> : <p className="staff-empty">{admin ? "No fabrics have been added yet." : "Our fabric gallery is being updated. Contact the team to discuss available materials."}</p>}
