@@ -52,7 +52,6 @@ function doPost(e) {
     } else if (roleResponse.getResponseCode() === 404) { if (payload.purpose === "catalogue_image") throw new Error("Only the Super Admin can upload catalogue images."); } else {
       throw new Error("Could not verify the account type. Please try again.");
     }
-    }
     var isCatalogueImage = payload.purpose === "catalogue_image";
     var allowed = isCatalogueImage ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     var mimeType = String(payload.mimeType || "");
