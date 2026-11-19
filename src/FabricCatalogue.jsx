@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
-import { uploadFileToGoogleDrive, setDriveFilePublic } from "./googleDrive.js";
+import { uploadCatalogueImageToCompanyDrive } from "./googleDrive.js";
 
 const emptyForm = { name: "", color: "", texture: "", priceRange: "", availability: "available", suitableCategories: "", imageUrl: "", active: true };
 
@@ -35,8 +35,8 @@ export default function FabricCatalogue({ admin = false, user = null, claims = {
     if (imageFile.size > 10 * 1024 * 1024) { setError("Fabric image must be 10 MB or smaller."); return; }
     setImageUploading(true); setError(""); setNotice("");
     try {
-      const uploaded = await uploadFileToGoogleDrive(imageFile, { folder: "Fabric Images", uploadedBy: user.uid, visibility: "public" });
-      await setDriveFilePublic(uploaded.fileId, true);
+      const idToken = await user.getIdToken();
+      const uploaded = await uploadCatalogueImageToCompanyDrive(imageFile, { idToken, imageFolder: "Fabric Images" });
       setForm(current => ({ ...current, imageUrl: uploaded.previewUrl || uploaded.webViewLink }));
       setImageFile(null);
       const picker = document.getElementById("mrfop-fabric-image-picker");
