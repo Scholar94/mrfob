@@ -93,5 +93,5 @@ function htmlResult(nonce, ok, file, error) {
   return HtmlService.createHtmlOutput(
     "<!doctype html><html><body><script>parent.postMessage(" +
     result + ", '*');</script></body></html>"
-  );
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
