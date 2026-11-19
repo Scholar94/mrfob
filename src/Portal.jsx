@@ -204,6 +204,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [saleQuantity, setSaleQuantity] = useState("1");
   const [saleForm, setSaleForm] = useState({ customerName: "", paymentMethod: "Cash", amountPaid: "" });
   const [editingProductId, setEditingProductId] = useState("");
+  const productFormRef = useRef(null);
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
   const [productGallerySelection, setProductGallerySelection] = useState({});
   const [productImageFiles, setProductImageFiles] = useState([]);
@@ -1918,6 +1919,11 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     finally { setBusy(false); }
   }
 
+  useEffect(() => {
+    if (!editingProductId) return;
+    productFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editingProductId]);
+
   function startProductEdit(product) {
     setEditingProductId(product.id);
     setProductForm({ name: product.name || "", sku: product.sku || "", category: product.category || "Other", description: product.description || "", price: String(product.price ?? ""), costPrice: String(product.costPrice ?? ""), stock: String(product.stock ?? 0), imageUrl: product.imageUrl || "", galleryImages: (product.galleryImages || []).join(", "), availableColors: (product.availableColors || []).join(", "), fabricOptions: (product.fabricOptions || []).join(", "), customizationOptions: (product.customizationOptions || []).join(", ") });
@@ -2607,7 +2613,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       {(claims.superAdmin || claims.staffRole === "manager") && <WebsiteMediaManager user={user} />}
       {claims.superAdmin && <section className="inventory-management">
         <div className="customer-management-heading"><div><h3>Inventory & Product Management</h3><p>Add products, monitor stock and record stock movements</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh inventory"}</button></div>
-        <form className="portal-form inventory-form" onSubmit={editingProductId ? saveProductEdit : createProduct}>
+        <form ref={productFormRef} className="portal-form inventory-form" onSubmit={editingProductId ? saveProductEdit : createProduct}>
           <h4>{editingProductId ? "Edit product details" : "Add a product"}</h4>
           <label>Product name<input required value={productForm.name} onChange={e=>setProductForm({...productForm,name:e.target.value})} placeholder="e.g. Senator fabric set"/></label>
           <label>SKU / product code<input required value={productForm.sku} onChange={e=>setProductForm({...productForm,sku:e.target.value})} placeholder="e.g. MFO-001"/></label>
