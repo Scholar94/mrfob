@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, up
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound, Menu, X, ChevronRight } from "lucide-react";
 import { auth, db } from "./firebase.js";
-import { uploadFileToGoogleDrive, uploadPaymentEvidenceToCompanyDrive, clearGoogleDriveConfigCache } from "./googleDrive.js";
+import { uploadFileToGoogleDrive, uploadPaymentEvidenceToCompanyDrive, clearGoogleDriveConfigCache, setDriveFilePublic } from "./googleDrive.js";
 import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
@@ -206,6 +206,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const [editingProductId, setEditingProductId] = useState("");
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
   const [productGallerySelection, setProductGallerySelection] = useState({});
+  const [productImageFiles, setProductImageFiles] = useState([]);
+  const [productImagesUploading, setProductImagesUploading] = useState(false);
   const [stockAdjustments, setStockAdjustments] = useState({});
 
   useEffect(() => {
@@ -1829,6 +1831,46 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     } catch (err) { setError(err.message || "Could not update your saved designs."); }
   }
 
+  async function uploadProductImages() {
+    if (!claims.superAdmin) return;
+    const files = productImageFiles;
+    if (!files.length) { setError("Choose one or more product images from your device first."); return; }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (files.some(file => !allowedTypes.includes(file.type))) { setError("Product images must be JPG, PNG or WebP files."); return; }
+    if (files.some(file => file.size > 10 * 1024 * 1024)) { setError("Each product image must be 10 MB or smaller."); return; }
+    const existingGallery = productForm.galleryImages.split(",").map(value => value.trim()).filter(Boolean);
+    const currentCount = (productForm.imageUrl.trim() ? 1 : 0) + existingGallery.length;
+    if (currentCount + files.length > 9) { setError("A product can have one main image and up to eight additional gallery images."); return; }
+    setProductImagesUploading(true); setError(""); setMessage("");
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const driveFile = await uploadFileToGoogleDrive(file, {
+          folder: "Product Images",
+          uploadedBy: user.uid,
+          visibility: "public"
+        });
+        await setDriveFilePublic(driveFile.fileId, true);
+        uploadedUrls.push(driveFile.previewUrl || driveFile.webViewLink);
+      }
+      const nextMainImage = productForm.imageUrl.trim() || uploadedUrls.shift() || "";
+      const nextGallery = [...existingGallery, ...uploadedUrls];
+      setProductForm(current => ({
+        ...current,
+        imageUrl: current.imageUrl.trim() || nextMainImage,
+        galleryImages: nextGallery.join(", ")
+      }));
+      setProductImageFiles([]);
+      const picker = document.getElementById("mrfop-product-image-picker");
+      if (picker) picker.value = "";
+      setMessage(files.length + " product image(s) uploaded to the company Google Drive and added to this product form. Save the product to publish the changes.");
+    } catch (err) {
+      setError(err.message || "Could not upload product images to Google Drive.");
+    } finally {
+      setProductImagesUploading(false);
+    }
+  }
+
   async function createProduct(e) {
     e.preventDefault();
     if (!claims.superAdmin) return;
@@ -1869,6 +1911,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       await batch.commit();
       await recordAuditEvent({ user, claims, action: "inventory_stock_adjusted", entityType: "product", entityId: productRef.id, summary: "Created " + name + " with opening stock of " + stock + " units." });
       setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
+      setProductImageFiles([]);
       setMessage("Product added to inventory successfully.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not add product."); }
@@ -1902,6 +1945,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       await updateDoc(doc(db, "products", editingProductId), { name, sku, category: productForm.category, description: productForm.description.trim(), price, costPrice, imageUrl: productForm.imageUrl.trim(), galleryImages, availableColors, fabricOptions, customizationOptions, updatedAt: serverTimestamp() });
       setEditingProductId("");
       setProductForm({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
+      setProductImageFiles([]);
       setMessage("Product details updated successfully. Stock quantity was not changed.");
       await loadProducts();
     } catch (err) { setError(err.message || "Could not update product."); }
@@ -2572,12 +2616,20 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           <label>Selling price (₦)<input type="number" min="0" step="0.01" required value={productForm.price} onChange={e=>setProductForm({...productForm,price:e.target.value})} placeholder="0.00"/></label>
           <label>Product cost price (₦)<input type="number" min="0" step="0.01" required value={productForm.costPrice} onChange={e=>setProductForm({...productForm,costPrice:e.target.value})} placeholder="What the business paid to make or buy it"/></label>
           {!editingProductId && <label>Opening stock (whole units)<input type="number" min="0" step="1" required value={productForm.stock} onChange={e=>setProductForm({...productForm,stock:e.target.value})}/></label>}{editingProductId && <p className="staff-empty">Current stock: {products.find(item=>item.id===editingProductId)?.stock ?? 0}. Use Stock in / Stock out to change inventory quantities.</p>}
+          <div className="portal-field">
+            <label htmlFor="mrfop-product-image-picker">Upload product images from your device gallery</label>
+            <input id="mrfop-product-image-picker" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={e=>setProductImageFiles(Array.from(e.target.files || []))}/>
+            <p className="portal-hint">Select up to nine images in total (one main image and up to eight gallery views). JPG, PNG or WebP; maximum 10 MB per image. Images are uploaded to the company Google Drive.</p>
+            {productImageFiles.length > 0 && <p className="portal-hint">{productImageFiles.length} image(s) selected: {productImageFiles.map(file=>file.name).join(", ")}</p>}
+            <button type="button" className="portal-submit secondary" disabled={busy || productImagesUploading || !productImageFiles.length} onClick={uploadProductImages}>{productImagesUploading ? "Uploading images to Google Drive…" : "Upload selected images"}</button>
+          </div>
           <label>Product image URL (optional)<input type="url" value={productForm.imageUrl} onChange={e=>setProductForm({...productForm,imageUrl:e.target.value})} placeholder="https://…"/></label>
           <label>Additional gallery image URLs (comma-separated, up to 8)<textarea rows="2" value={productForm.galleryImages} onChange={e=>setProductForm({...productForm,galleryImages:e.target.value})} placeholder="https://image-view-2…, https://image-view-3…"/></label>
+          {(productForm.imageUrl || productForm.galleryImages) && <div className="customer-product-thumbnails" aria-label="Selected product image previews">{[productForm.imageUrl, ...productForm.galleryImages.split(",").map(value=>value.trim())].filter(Boolean).map((url,index)=><img key={url + index} src={url} alt={"Product image preview " + (index + 1)} loading="lazy"/>)}</div>}
           <label>Available colours (comma-separated)<input value={productForm.availableColors} onChange={e=>setProductForm({...productForm,availableColors:e.target.value})} placeholder="Navy, black, wine"/></label>
           <label>Fabric options (comma-separated)<input value={productForm.fabricOptions} onChange={e=>setProductForm({...productForm,fabricOptions:e.target.value})} placeholder="Wool, cotton, linen"/></label>
           <label>Customisation options (comma-separated)<input value={productForm.customizationOptions} onChange={e=>setProductForm({...productForm,customizationOptions:e.target.value})} placeholder="Monogram, lapel style, sleeve finish"/></label>
-          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingProductId ? "Save product changes" : "Add product"}</button>{editingProductId && <button type="button" className="portal-submit secondary" disabled={busy} onClick={()=>{setEditingProductId("");setProductForm({name:"",sku:"",category:"Custom clothing",description:"",price:"",costPrice:"",stock:"0",imageUrl:"",galleryImages:"",availableColors:"",fabricOptions:"",customizationOptions:""});setError("");setMessage("Product editing cancelled.");}}>Cancel editing</button>}
+          <button className="portal-submit" disabled={busy}>{busy ? "Saving…" : editingProductId ? "Save product changes" : "Add product"}</button>{editingProductId && <button type="button" className="portal-submit secondary" disabled={busy} onClick={()=>{setEditingProductId("");setProductForm({name:"",sku:"",category:"Custom clothing",description:"",price:"",costPrice:"",stock:"0",imageUrl:"",galleryImages:"",availableColors:"",fabricOptions:"",customizationOptions:""});setProductImageFiles([]);setError("");setMessage("Product editing cancelled.");}}>Cancel editing</button>}
         </form>
         {productsLoading ? <p className="staff-empty">Loading inventory…</p> : products.length ? <div className="inventory-list">{products.map(product=><article className="inventory-card" key={product.id}>
           {product.imageUrl && <img src={product.imageUrl} alt={product.name} loading="lazy"/>}
