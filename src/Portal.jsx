@@ -1148,8 +1148,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     const appointmentDate = appointmentForm.appointmentDate;
     const appointmentTime = appointmentForm.appointmentTime;
     const parsedDate = new Date(appointmentDate + "T12:00:00");
-    const timeMatch = /^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(appointmentTime);
-    if (!appointmentDate || !/^\\d{4}-\\d{2}-\\d{2}$/.test(appointmentDate)
+    const timeMatch = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(appointmentTime);
+    if (!appointmentDate || !/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate)
       || !Number.isFinite(parsedDate.getTime()) || localDateString(parsedDate) !== appointmentDate
       || appointmentDate < localDateString()) {
       setError("Choose a valid appointment date today or later.");
