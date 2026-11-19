@@ -39,7 +39,7 @@ function doPost(e) {
     var customer = tokenData.users && tokenData.users[0];
     if (!customer || !customer.localId) throw new Error("Customer session is invalid or expired.");
 
-    // Confirm the Firebase account has no staff role. Missing role document means customer.
+    // Catalogue image uploads are restricted to the Super Admin; customer receipts remain customer-only.
     var roleResponse = UrlFetchApp.fetch(
       "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
       "/databases/(default)/documents/roles/" + encodeURIComponent(customer.localId),
@@ -48,18 +48,41 @@ function doPost(e) {
     if (roleResponse.getResponseCode() === 200) {
       var roleDocument = JSON.parse(roleResponse.getContentText());
       var role = roleDocument.fields && roleDocument.fields.role && roleDocument.fields.role.stringValue;
-      if (role && role !== "customer") throw new Error("Only customer accounts can submit transfer evidence.");
+      if (payload.purpose === "catalogue_image") { if (role !== "superAdmin") throw new Error("Only the Super Admin can upload catalogue images."); } else if (role && role !== "customer") throw new Error("Only customer accounts can submit transfer evidence.");
     } else if (roleResponse.getResponseCode() !== 404) {
       throw new Error("Could not verify the account type. Please try again.");
     }
-
-    var allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    var isCatalogueImage = payload.purpose === "catalogue_image";
+    var allowed = isCatalogueImage ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
     var mimeType = String(payload.mimeType || "");
-    if (allowed.indexOf(mimeType) < 0) throw new Error("Only JPG, PNG, WebP or PDF receipts are accepted.");
+    if (allowed.indexOf(mimeType) < 0) throw new Error(isCatalogueImage ? "Only JPG, PNG or WebP images are accepted." : "Only JPG, PNG, WebP or PDF receipts are accepted.");
     var base64 = String(payload.fileBase64 || "");
-    if (!base64 || base64.length > 21 * 1024 * 1024) throw new Error("Receipt is empty or exceeds the 15 MB limit.");
+    var limit = isCatalogueImage ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
+    if (!base64 || base64.length > Math.ceil(limit * 4 / 3) + 1000) throw new Error("The selected file is empty or exceeds the upload limit.");
     var bytes = Utilities.base64Decode(base64);
-    if (!bytes.length || bytes.length > 15 * 1024 * 1024) throw new Error("Receipt exceeds the 15 MB limit.");
+    if (!bytes.length || bytes.length > limit) throw new Error("The selected file exceeds the upload limit.");
+
+    var safeName = String(payload.fileName || (isCatalogueImage ? "catalogue-image" : "payment-evidence"))
+      .replace(/[\\\\/:*?"<>|]/g, "_").slice(0, 150);
+    var folder = DriveApp.getFolderById(folderId);
+    if (isCatalogueImage) {
+      var subfolderName = String(payload.imageFolder || "Fabric Images");
+      if (["Fabric Images", "Product Images"].indexOf(subfolderName) < 0) throw new Error("Invalid catalogue image folder.");
+      var matches = folder.getFoldersByName(subfolderName);
+      folder = matches.hasNext() ? matches.next() : folder.createFolder(subfolderName);
+    }
+    var blob = Utilities.newBlob(bytes, mimeType, safeName);
+    var file = folder.createFile(blob);
+    file.setDescription(isCatalogueImage ? "MR FOP FASHIONS catalogue image. Uploaded by Super Admin UID: " + String(customer.localId).slice(0, 128) : "MR FOP FASHIONS payment evidence. Order: " + String(payload.orderId || "").slice(0, 120) + ". Customer UID: " + String(customer.localId).slice(0, 128));
+    if (isCatalogueImage) file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return htmlResult(payload.nonce, true, {
+      fileId: file.getId(),
+      name: file.getName(),
+      mimeType: mimeType,
+      size: bytes.length,
+      webViewLink: "https://drive.google.com/file/d/" + file.getId() + "/view",
+      previewUrl: "https://drive.google.com/uc?export=view&id=" + file.getId()
+    }, "");
 
     var safeName = String(payload.fileName || "payment-evidence")
       .replace(/[\\\\/:*?"<>|]/g, "_").slice(0, 150);
