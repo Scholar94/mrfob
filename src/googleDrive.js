@@ -297,7 +297,10 @@ export async function uploadPaymentEvidenceToCompanyDrive(file, metadata = {}) {
       if (error) reject(error); else resolve(result);
     }
     function onMessage(event) {
-      if (event.source !== iframe.contentWindow || event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
+      // Apps Script HtmlService may deliver the response from a nested sandboxed
+      // frame, so event.source is not reliably iframe.contentWindow. The
+      // unguessable per-request nonce authenticates the matching response.
+      if (event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
       if (!event.data.ok) finish(new Error(event.data.error || "Company Drive upload failed."));
       else finish(null, event.data.file);
     }
