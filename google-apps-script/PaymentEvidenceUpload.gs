@@ -91,7 +91,7 @@ function htmlResult(nonce, ok, file, error) {
     error: String(error || "")
   }).replace(/</g, "\\u003c");
   return HtmlService.createHtmlOutput(
-    "<!doctype html><html><body><script>parent.postMessage(" +
-    result + ", '*');</script></body></html>"
+    "<!doctype html><html><body><script>window.top.postMessage(" +
+    result + ", 'https://scholar94.github.io');</script></body></html>"
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
