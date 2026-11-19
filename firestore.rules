@@ -242,7 +242,7 @@ service cloud.firestore {
           && request.resource.data.stage is string
           && request.resource.data.stageLabel is string
         ) || (
-          isSuperAdmin()
+          (isSuperAdmin() || isFinanceOfficer())
           && request.resource.data.type == 'payment_update'
           && request.resource.data.keys().hasOnly(['customerUid','declarationId','orderId','type','paymentStatus','title','message','createdAt','readAt'])
           && request.resource.data.customerUid is string
