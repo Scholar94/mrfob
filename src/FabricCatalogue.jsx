@@ -9,7 +9,7 @@ const emptyForm = { name: "", color: "", texture: "", priceRange: "", availabili
 function getFabricImageUrl(value) {
   const url = String(value || "").trim();
   if (!url) return "";
-  const driveId = url.match(/(?:[?&]id=|\\/d\\/)([a-zA-Z0-9_-]{10,})/);
+  const driveId = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/) || url.match(/\\/d\\/([a-zA-Z0-9_-]{10,})/);
   return driveId ? "https://drive.google.com/thumbnail?id=" + encodeURIComponent(driveId[1]) + "&sz=w1200" : url;
 }
 
