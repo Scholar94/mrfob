@@ -319,3 +319,53 @@ export async function uploadPaymentEvidenceToCompanyDrive(file, metadata = {}) {
     form.submit();
   });
 }
+
+export async function uploadCatalogueImageToCompanyDrive(file, metadata = {}) {
+  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
+  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) {
+    throw new Error("Company Drive image upload is not configured. Please contact the Super Admin.");
+  }
+  if (!metadata.idToken) throw new Error("Your Super Admin session could not be verified. Please sign in again.");
+  const nonce = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2));
+  const payload = {
+    nonce, idToken: metadata.idToken,
+    projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
+    purpose: "catalogue_image",
+    imageFolder: metadata.imageFolder === "Product Images" ? "Product Images" : "Fabric Images",
+    fileName: String(file.name || "catalogue-image").slice(0, 180),
+    mimeType: file.type || "application/octet-stream",
+    fileBase64: await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+      reader.onerror = () => reject(new Error("Could not read the selected image."));
+      reader.readAsDataURL(file);
+    })
+  };
+  if (!payload.fileBase64) throw new Error("The selected image is empty.");
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe");
+    const form = document.createElement("form");
+    const field = document.createElement("input");
+    const timer = window.setTimeout(() => finish(new Error("Company Drive image upload timed out. Please try again.")), 120000);
+    let settled = false;
+    function finish(error, result) {
+      if (settled) return;
+      settled = true; window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      form.remove(); iframe.remove();
+      if (error) reject(error); else resolve(result);
+    }
+    function onMessage(event) {
+      if (event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
+      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive image upload failed."));
+      else finish(null, event.data.file);
+    }
+    iframe.name = "mrfop-catalogue-upload-" + nonce;
+    iframe.style.display = "none";
+    form.method = "POST"; form.action = endpoint; form.target = iframe.name;
+    form.enctype = "application/x-www-form-urlencoded";
+    field.type = "hidden"; field.name = "payload"; field.value = JSON.stringify(payload);
+    form.appendChild(field); window.addEventListener("message", onMessage);
+    document.body.append(iframe, form); form.submit();
+  });
+}
