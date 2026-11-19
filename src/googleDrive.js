@@ -253,3 +253,66 @@ export async function revokeDriveFileAccessForEmail(fileIds, emailAddress) {
   }
   return { revoked, skippedInherited, filesChecked: ids.length };
 }
+
+/**
+ * Upload customer payment evidence to the company's Drive via an owner-deployed
+ * Google Apps Script web app. Customers authenticate only with their MR FOP account.
+ * The Firebase ID token is verified by the Apps Script endpoint before Drive access.
+ */
+export async function uploadPaymentEvidenceToCompanyDrive(file, metadata = {}) {
+  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
+  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) {
+    throw new Error("Company receipt upload is not configured yet. Please contact MR FOP support.");
+  }
+  if (!metadata.idToken) throw new Error("Your customer session could not be verified. Please sign in again.");
+  const nonce = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2));
+  const payload = {
+    nonce,
+    idToken: metadata.idToken,
+    projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
+    fileName: String(file.name || "payment-evidence").slice(0, 180),
+    mimeType: file.type || "application/octet-stream",
+    fileBase64: await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+      reader.onerror = () => reject(new Error("Could not read the payment evidence file."));
+      reader.readAsDataURL(file);
+    }),
+    orderId: String(metadata.orderId || "")
+  };
+  if (!payload.fileBase64) throw new Error("The payment evidence file is empty.");
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe");
+    const form = document.createElement("form");
+    const field = document.createElement("input");
+    const timer = window.setTimeout(() => finish(new Error("Company Drive upload timed out. Please try again.")), 120000);
+    let settled = false;
+    function finish(error, result) {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      form.remove();
+      iframe.remove();
+      if (error) reject(error); else resolve(result);
+    }
+    function onMessage(event) {
+      if (event.source !== iframe.contentWindow || event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
+      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive upload failed."));
+      else finish(null, event.data.file);
+    }
+    iframe.name = "mrfop-drive-upload-" + nonce;
+    iframe.style.display = "none";
+    form.method = "POST";
+    form.action = endpoint;
+    form.target = iframe.name;
+    form.enctype = "application/x-www-form-urlencoded";
+    field.type = "hidden";
+    field.name = "payload";
+    field.value = JSON.stringify(payload);
+    form.appendChild(field);
+    window.addEventListener("message", onMessage);
+    document.body.append(iframe, form);
+    form.submit();
+  });
+}
