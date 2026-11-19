@@ -58,6 +58,7 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_GOOGLE_DRIVE_CLIENT_ID: ${{ vars.VITE_GOOGLE_DRIVE_CLIENT_ID || secrets.VITE_GOOGLE_DRIVE_CLIENT_ID }}
           VITE_GOOGLE_DRIVE_FOLDER_ID: ${{ vars.VITE_GOOGLE_DRIVE_FOLDER_ID || secrets.VITE_GOOGLE_DRIVE_FOLDER_ID }}
+          VITE_GOOGLE_DRIVE_UPLOAD_URL: ${{ vars.VITE_GOOGLE_DRIVE_UPLOAD_URL }}
           VITE_ASSESSMENT_GRADING_URL: ${{ vars.VITE_ASSESSMENT_GRADING_URL || secrets.VITE_ASSESSMENT_GRADING_URL }}
         run: npm run build
       - name: Install Chromium for browser smoke tests
