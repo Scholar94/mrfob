@@ -132,7 +132,7 @@ async function uploadToCompanyDrive(file, metadata = {}) {
     nonce, idToken: metadata.idToken, projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
     purpose: metadata.purpose || "staff_upload", fileName: String(file.name || "upload").slice(0, 180),
     mimeType: file.type || "application/octet-stream", fileBase64, folder: String(metadata.folder || ""),
-    orderId: String(metadata.orderId || ""), visibility: metadata.visibility === "public" ? "public" : "private",
+    orderId: String(metadata.orderId || ""), customerEmail: String(metadata.customerEmail || ""), visibility: metadata.visibility === "public" ? "public" : "private",
     shareWithEmails: [...(Array.isArray(metadata.shareWithEmails) ? metadata.shareWithEmails : []), metadata.shareWithEmail].filter(Boolean),
     imageFolder: metadata.imageFolder === "Product Images" ? "Product Images" : "Fabric Images"
   };
