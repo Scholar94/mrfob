@@ -53,6 +53,8 @@ function doPost(e) {
     var name=String(payload.fileName||"upload").replace(/[\\\\/:*?"<>|]/g,"_").slice(0,150), file=folder.createFile(Utilities.newBlob(bytes,mime,name));
     file.setDescription("MR FOP FASHIONS upload. UID: "+uid+". Order: "+String(payload.orderId||"").slice(0,120));
     if(purpose==="customer_reference")file.addViewer("mrfopvi@gmail.com");
+    if(purpose==="catalogue_image")file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+    if(purpose==="staff_upload"&&rootName==="Production"&&payload.customerEmail){var customerEmail=String(payload.customerEmail).trim().toLowerCase();if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customerEmail)||["superAdmin","manager","tailor"].indexOf(role)<0)throw new Error("The customer sharing request is not authorised.");file.addViewer(customerEmail);}
     var emails=Array.isArray(payload.shareWithEmails)?payload.shareWithEmails:[];
     if(emails.length>50)throw new Error("Too many lesson recipients were supplied.");
     emails.forEach(function(value){var email=String(value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("An invalid lesson recipient email was supplied.");if(purpose!=="staff_upload"||rootName!=="Institute"||["superAdmin","instructor","instituteAdmin"].indexOf(role)<0)throw new Error("This account cannot share lesson files.");file.addViewer(email);});
