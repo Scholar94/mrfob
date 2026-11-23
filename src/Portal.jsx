@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, up
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { ArrowLeft, LogOut, ShieldCheck, UserRound, Users, KeyRound, Menu, X, ChevronRight } from "lucide-react";
 import { auth, db } from "./firebase.js";
-import { uploadFileToGoogleDrive, uploadPaymentEvidenceToCompanyDrive, clearGoogleDriveConfigCache, setDriveFilePublic } from "./googleDrive.js";
+import { uploadFileToGoogleDrive, uploadPaymentEvidenceToCompanyDrive, clearGoogleDriveConfigCache } from "./googleDrive.js";
 import { useAuth } from "./AuthProvider.jsx";
 import InstituteWorkspace from "./InstituteWorkspace.jsx";
 import AppointmentCalendar from "./AppointmentCalendar.jsx";
@@ -335,8 +335,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     if (!(claims.superAdmin || ["manager", "tailor"].includes(claims.staffRole))) { setError("You do not have permission to upload production photos."); return; }
     const allowedTypes = ["image/jpeg","image/png","image/webp","video/mp4","video/webm","video/quicktime"];
     if (!allowedTypes.includes(file.type)) { setError("Upload a JPG, PNG, WebP, MP4, WebM or MOV file."); return; }
-    const maxBytes = file.type.startsWith("video/") ? 100 * 1024 * 1024 : 20 * 1024 * 1024;
-    if (file.size > maxBytes) { setError(file.type.startsWith("video/") ? "Each production video must be 100 MB or smaller." : "Each production image must be 20 MB or smaller."); return; }
+    const maxBytes = 20 * 1024 * 1024;
+    if (file.size > maxBytes) { setError(file.type.startsWith("video/") ? "Each production video must be 20 MB or smaller." : "Each production image must be 20 MB or smaller."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
       const caption = (window.prompt("Add a short customer-visible note for this production photo (optional)") || "").trim().slice(0, 240);
