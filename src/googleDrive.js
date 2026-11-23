@@ -114,70 +114,52 @@ async function ensureDriveFolder(name, parentId) {
   return created.id;
 }
 
-export async function uploadFileToGoogleDrive(file, metadata = {}) {
-  const customerOwned = metadata.storageOwner === "customer";
-  const { folderId: configuredFolder } = await getDriveConfig();
-  if (!configuredFolder && !customerOwned) throw new Error("A Super Admin must save the shared Google Drive folder ID in Integration Settings.");
-  const pathParts = customerOwned ? [] : String(metadata.folder || "Uploads").split("/").filter(Boolean);
-  let parentId = customerOwned ? null : configuredFolder;
-  for (const part of pathParts) parentId = await ensureDriveFolder(part, parentId);
-  const safeName = String(file.name || "upload").replace(/[\\/\\?%*:|"<>]/g, "_").slice(-180);
-  const fileMetadata = {
-    name: safeName,
-    mimeType: file.type || "application/octet-stream",
-    ...(parentId ? { parents: [parentId] } : {}),
-    description: JSON.stringify({ app: "MR FOP FASHIONS", orderId: metadata.orderId || "", uploadedBy: metadata.uploadedBy || "" })
+async function uploadToCompanyDrive(file, metadata = {}) {
+  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
+  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) throw new Error("Company Google Drive upload is not configured. Contact the MR FOP Super Admin.");
+  if (!metadata.idToken) throw new Error("Your MR FOP session could not be verified. Please sign in again.");
+  if (!file || !file.size) throw new Error("Choose a file before uploading.");
+  const limit = metadata.purpose === "payment_evidence" || metadata.purpose === "customer_reference" ? 15 : metadata.purpose === "catalogue_image" ? 10 : 20;
+  if (file.size > limit * 1024 * 1024) throw new Error("This upload must be " + limit + " MB or smaller.");
+  const nonce = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
+  const fileBase64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+    reader.onerror = () => reject(new Error("Could not read the selected file."));
+    reader.readAsDataURL(file);
+  });
+  const payload = {
+    nonce, idToken: metadata.idToken, projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
+    purpose: metadata.purpose || "staff_upload", fileName: String(file.name || "upload").slice(0, 180),
+    mimeType: file.type || "application/octet-stream", fileBase64, folder: String(metadata.folder || ""),
+    orderId: String(metadata.orderId || ""), visibility: metadata.visibility === "public" ? "public" : "private",
+    shareWithEmails: [...(Array.isArray(metadata.shareWithEmails) ? metadata.shareWithEmails : []), metadata.shareWithEmail].filter(Boolean),
+    imageFolder: metadata.imageFolder === "Product Images" ? "Product Images" : "Fabric Images"
   };
-  const driveScope = customerOwned ? "https://www.googleapis.com/auth/drive.file" : "https://www.googleapis.com/auth/drive";
-  const token = await getDriveToken(driveScope);
-  const session = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,mimeType,size,webViewLink,thumbnailLink", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + token,
-      "Content-Type": "application/json; charset=UTF-8",
-      "X-Upload-Content-Type": file.type || "application/octet-stream",
-      "X-Upload-Content-Length": String(file.size)
-    },
-    body: JSON.stringify(fileMetadata)
-  });
-  if (!session.ok) {
-    const detail = await session.json().catch(() => ({}));
-    throw new Error(detail.error?.message || "Google Drive could not start the file upload.");
-  }
-  const uploadUrl = session.headers.get("Location");
-  if (!uploadUrl) throw new Error("Google Drive did not return a resumable upload URL.");
-  const uploadResponse = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
-    body: file
-  });
-  if (!uploadResponse.ok) {
-    const detail = await uploadResponse.json().catch(() => ({}));
-    throw new Error(detail.error?.message || "Google Drive could not finish the file upload.");
-  }
-  const uploaded = await uploadResponse.json();
-  const shareEmails = [...new Set([
-    ...(Array.isArray(metadata.shareWithEmails) ? metadata.shareWithEmails : []),
-    metadata.shareWithEmail,
-    metadata.customerEmail
-  ].map(value => String(value || "").trim().toLowerCase()).filter(value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)))];
-  if (metadata.visibility !== "public") {
-    for (const emailAddress of shareEmails) {
-      await shareDriveFileWithEmail(uploaded.id, emailAddress, driveScope);
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe"), form = document.createElement("form"), field = document.createElement("input");
+    let settled = false;
+    const timer = window.setTimeout(() => finish(new Error("Company Drive upload timed out. Please try again.")), 180000);
+    function finish(error, result) {
+      if (settled) return;
+      settled = true; window.clearTimeout(timer); window.removeEventListener("message", onMessage); form.remove(); iframe.remove();
+      if (error) reject(error); else resolve(result);
     }
-  }
-  return {
-    fileId: uploaded.id,
-    name: uploaded.name,
-    mimeType: uploaded.mimeType,
-    size: Number(uploaded.size || file.size),
-    webViewLink: uploaded.webViewLink || "https://drive.google.com/file/d/" + uploaded.id + "/view",
-    previewUrl: "https://drive.google.com/uc?export=view&id=" + uploaded.id,
-    drivePreviewUrl: "https://drive.google.com/file/d/" + uploaded.id + "/preview",
-    thumbnailLink: uploaded.thumbnailLink || ""
-  };
+    function onMessage(event) {
+      if (event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
+      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive upload failed."));
+      else finish(null, event.data.file);
+    }
+    iframe.name = "mrfop-drive-upload-" + nonce; iframe.style.display = "none";
+    form.method = "POST"; form.action = endpoint; form.target = iframe.name; form.enctype = "application/x-www-form-urlencoded";
+    field.type = "hidden"; field.name = "payload"; field.value = JSON.stringify(payload);
+    form.appendChild(field); window.addEventListener("message", onMessage); document.body.append(iframe, form); form.submit();
+  });
 }
 
+export async function uploadFileToGoogleDrive(file, metadata = {}) {
+  return uploadToCompanyDrive(file, { ...metadata, purpose: metadata.storageOwner === "customer" ? "customer_reference" : "staff_upload" });
+}
 
 export async function setDriveFilePublic(fileId, isPublic) {
   if (!fileId) throw new Error("A Google Drive file ID is required.");
@@ -260,112 +242,9 @@ export async function revokeDriveFileAccessForEmail(fileIds, emailAddress) {
  * The Firebase ID token is verified by the Apps Script endpoint before Drive access.
  */
 export async function uploadPaymentEvidenceToCompanyDrive(file, metadata = {}) {
-  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
-  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) {
-    throw new Error("Company receipt upload is not configured yet. Please contact MR FOP support.");
-  }
-  if (!metadata.idToken) throw new Error("Your customer session could not be verified. Please sign in again.");
-  const nonce = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2));
-  const payload = {
-    nonce,
-    idToken: metadata.idToken,
-    projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
-    fileName: String(file.name || "payment-evidence").slice(0, 180),
-    mimeType: file.type || "application/octet-stream",
-    fileBase64: await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
-      reader.onerror = () => reject(new Error("Could not read the payment evidence file."));
-      reader.readAsDataURL(file);
-    }),
-    orderId: String(metadata.orderId || "")
-  };
-  if (!payload.fileBase64) throw new Error("The payment evidence file is empty.");
-  return new Promise((resolve, reject) => {
-    const iframe = document.createElement("iframe");
-    const form = document.createElement("form");
-    const field = document.createElement("input");
-    const timer = window.setTimeout(() => finish(new Error("Company Drive upload timed out. Please try again.")), 120000);
-    let settled = false;
-    function finish(error, result) {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      window.removeEventListener("message", onMessage);
-      form.remove();
-      iframe.remove();
-      if (error) reject(error); else resolve(result);
-    }
-    function onMessage(event) {
-      // Apps Script HtmlService may deliver the response from a nested sandboxed
-      // frame, so event.source is not reliably iframe.contentWindow. The
-      // unguessable per-request nonce authenticates the matching response.
-      if (event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
-      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive upload failed."));
-      else finish(null, event.data.file);
-    }
-    iframe.name = "mrfop-drive-upload-" + nonce;
-    iframe.style.display = "none";
-    form.method = "POST";
-    form.action = endpoint;
-    form.target = iframe.name;
-    form.enctype = "application/x-www-form-urlencoded";
-    field.type = "hidden";
-    field.name = "payload";
-    field.value = JSON.stringify(payload);
-    form.appendChild(field);
-    window.addEventListener("message", onMessage);
-    document.body.append(iframe, form);
-    form.submit();
-  });
+  return uploadToCompanyDrive(file, { ...metadata, purpose: "payment_evidence" });
 }
 
 export async function uploadCatalogueImageToCompanyDrive(file, metadata = {}) {
-  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
-  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) {
-    throw new Error("Company Drive image upload is not configured. Please contact the Super Admin.");
-  }
-  if (!metadata.idToken) throw new Error("Your Super Admin session could not be verified. Please sign in again.");
-  const nonce = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2));
-  const payload = {
-    nonce, idToken: metadata.idToken,
-    projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""),
-    purpose: "catalogue_image",
-    imageFolder: metadata.imageFolder === "Product Images" ? "Product Images" : "Fabric Images",
-    fileName: String(file.name || "catalogue-image").slice(0, 180),
-    mimeType: file.type || "application/octet-stream",
-    fileBase64: await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
-      reader.onerror = () => reject(new Error("Could not read the selected image."));
-      reader.readAsDataURL(file);
-    })
-  };
-  if (!payload.fileBase64) throw new Error("The selected image is empty.");
-  return new Promise((resolve, reject) => {
-    const iframe = document.createElement("iframe");
-    const form = document.createElement("form");
-    const field = document.createElement("input");
-    const timer = window.setTimeout(() => finish(new Error("Company Drive image upload timed out. Please try again.")), 120000);
-    let settled = false;
-    function finish(error, result) {
-      if (settled) return;
-      settled = true; window.clearTimeout(timer);
-      window.removeEventListener("message", onMessage);
-      form.remove(); iframe.remove();
-      if (error) reject(error); else resolve(result);
-    }
-    function onMessage(event) {
-      if (event.data?.type !== "MRFOP_DRIVE_UPLOAD" || event.data?.nonce !== nonce) return;
-      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive image upload failed."));
-      else finish(null, event.data.file);
-    }
-    iframe.name = "mrfop-catalogue-upload-" + nonce;
-    iframe.style.display = "none";
-    form.method = "POST"; form.action = endpoint; form.target = iframe.name;
-    form.enctype = "application/x-www-form-urlencoded";
-    field.type = "hidden"; field.name = "payload"; field.value = JSON.stringify(payload);
-    form.appendChild(field); window.addEventListener("message", onMessage);
-    document.body.append(iframe, form); form.submit();
-  });
+  return uploadToCompanyDrive(file, { ...metadata, purpose: "catalogue_image" });
 }
