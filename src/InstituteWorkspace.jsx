@@ -587,7 +587,7 @@ export default function InstituteWorkspace() {
       if (lessonUploadFile) {
         const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
         if (!allowed.includes(lessonUploadFile.type)) throw new Error("Upload a PDF, JPG, PNG, WebP, MP4, WebM or MOV lesson file.");
-        if (lessonUploadFile.size > 100 * 1024 * 1024) throw new Error("Each Institute lesson file must be 100 MB or smaller.");
+        if (lessonUploadFile.size > 20 * 1024 * 1024) throw new Error("Each Institute lesson file must be 20 MB or smaller.");
         const studentEmails = [...new Set(allEnrollments
           .filter(en => en.courseId === lessonForm.courseId && en.paymentStatus === "paid" && en.enrollmentStatus !== "withdrawn")
           .map(en => String(en.studentEmail || "").trim().toLowerCase())
