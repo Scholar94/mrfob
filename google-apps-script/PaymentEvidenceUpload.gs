@@ -38,7 +38,7 @@ function doPost(e) {
         allowed=["image/jpeg","image/png","image/webp"];limit=10*1024*1024;rootName=payload.imageFolder==="Product Images"?"Product Images":"Fabric Images";
       }else{
         var parts=String(payload.folder||"Uploads").split("/").filter(Boolean);rootName=parts.shift()||"Uploads";
-        var roleRoots={superAdmin:["Production","Institute","Website Media","Company Theme Song","Product Images","Uploads"],manager:["Production"],tailor:["Production"],instructor:["Institute"],instituteAdmin:["Institute"]};
+        var roleRoots={superAdmin:["Production","Institute","Website Media","Company Theme Song","Product Images","Uploads"],manager:["Production"],tailor:["Production"],instructor:["Institute"],institute:["Institute"]};
         if(!roleRoots[role]||roleRoots[role].indexOf(rootName)<0)throw new Error("Your account is not permitted to upload to this area.");
         if(parts.length>4||parts.some(function(part){return !/^[A-Za-z0-9 _-]{1,80}$/.test(part)||part==="."||part==="..";}))throw new Error("Invalid upload folder.");
         allowed=["image/jpeg","image/png","image/webp","application/pdf","video/mp4","video/webm","video/quicktime","audio/mpeg","audio/mp4","audio/wav","audio/ogg"];
@@ -57,7 +57,7 @@ function doPost(e) {
     if(purpose==="staff_upload"&&rootName==="Production"&&payload.customerEmail){var customerEmail=String(payload.customerEmail).trim().toLowerCase();if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(customerEmail)||["superAdmin","manager","tailor"].indexOf(role)<0)throw new Error("The customer sharing request is not authorised.");file.addViewer(customerEmail);}
     var emails=Array.isArray(payload.shareWithEmails)?payload.shareWithEmails:[];
     if(emails.length>50)throw new Error("Too many lesson recipients were supplied.");
-    emails.forEach(function(value){var email=String(value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("An invalid lesson recipient email was supplied.");if(purpose!=="staff_upload"||rootName!=="Institute"||["superAdmin","instructor","instituteAdmin"].indexOf(role)<0)throw new Error("This account cannot share lesson files.");file.addViewer(email);});
+    emails.forEach(function(value){var email=String(value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("An invalid lesson recipient email was supplied.");if(purpose!=="staff_upload"||rootName!=="Institute"||["superAdmin","instructor","institute"].indexOf(role)<0)throw new Error("This account cannot share lesson files.");file.addViewer(email);});
     if(payload.visibility==="public"&&purpose==="staff_upload")file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
     var id=file.getId();
     return htmlResult(payload.nonce,true,{fileId:id,name:file.getName(),mimeType:mime,size:bytes.length,webViewLink:"https://drive.google.com/file/d/"+id+"/view",previewUrl:"https://drive.google.com/uc?export=view&id="+id,drivePreviewUrl:"https://drive.google.com/file/d/"+id+"/preview",thumbnailLink:""},"");
