@@ -342,7 +342,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       const caption = (window.prompt("Add a short customer-visible note for this production photo (optional)") || "").trim().slice(0, 240);
       const updateRef = doc(collection(db, "orders", order.id, "progressUpdates"));
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "production-photo";
-      const driveFile = await uploadFileToGoogleDrive(file, { folder: "Production/" + order.id, orderId: order.id, orderNumber: order.orderNumber || order.id, customerUid: order.customerUid, customerEmail: order.customerEmail || "", uploadedBy: user.uid, caption });
+      const driveFile = await uploadFileToGoogleDrive(file, { folder: "Production/" + order.id, orderId: order.id, orderNumber: order.orderNumber || order.id, customerUid: order.customerUid, customerEmail: order.customerEmail || "", uploadedBy: user.uid, caption, idToken: await user.getIdToken() });
       const photoUrl = driveFile.webViewLink || driveFile.url;
       const update = { orderId: order.id, orderNumber: order.orderNumber || order.id, customerUid: order.customerUid, stage: order.status || "received", stageLabel: productionStageLabel(order.status), caption, photoUrl, driveFileId: driveFile.fileId, driveUrl: driveFile.webViewLink || "", previewUrl: driveFile.previewUrl || "", drivePreviewUrl: driveFile.drivePreviewUrl || "", storagePath: "Google Drive/" + driveFile.fileId, fileName: safeName, contentType: file.type, size: file.size, mediaType: file.type.startsWith("video/") ? "video" : "image", uploadedByUid: user.uid, uploadedByName: user.displayName || user.email || "Production team", createdAt: serverTimestamp() };
       await setDoc(updateRef, update);
@@ -365,6 +365,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     try {
       const uploaded = await uploadFileToGoogleDrive(file, {
         storageOwner: "customer",
+        idToken: await user.getIdToken(),
         shareWithEmail: "mrfopvi@gmail.com",
         orderId: order.id,
         uploadedBy: user.uid,
@@ -1849,9 +1850,9 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         const driveFile = await uploadFileToGoogleDrive(file, {
           folder: "Product Images",
           uploadedBy: user.uid,
-          visibility: "public"
+          visibility: "public",
+          idToken: await user.getIdToken()
         });
-        await setDriveFilePublic(driveFile.fileId, true);
         uploadedUrls.push(driveFile.previewUrl || driveFile.webViewLink);
       }
       const nextMainImage = productForm.imageUrl.trim() || uploadedUrls.shift() || "";
