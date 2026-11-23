@@ -1,6 +1,6 @@
-# MR FOP FASHIONS — Company-owned payment receipt uploads
+# MR FOP FASHIONS — Company-owned Drive upload service
 
-This endpoint lets signed-in MR FOP customers submit transfer evidence directly into the company's Google Drive. Customers do not need a Google account and never receive Drive access.
+This endpoint accepts authenticated uploads from the MR FOP website and stores them in the company's Google Drive. Customers and staff choose files on the website; no Google Drive redirect or end-user Google sign-in is required. It supports receipts, customer references, catalogue images, production media, website media and Institute lesson files.
 
 ## 1. Create the Apps Script service
 
@@ -31,7 +31,7 @@ The deployment workflow injects this URL into the website build. A new successfu
 ## 3. Verify
 
 1. Sign in to the live website as a customer.
-2. Submit a transfer declaration with a JPG, PNG, WebP or PDF receipt (maximum 15 MB).
+2. Submit a transfer declaration with a JPG, PNG, WebP or PDF receipt (maximum 15 MB). No Google page should open.
 3. Confirm the declaration appears in the customer's payment declarations and Finance review queue.
 4. Confirm the file appears in the configured private company Drive folder.
 
@@ -41,4 +41,4 @@ The deployment workflow injects this URL into the website build. A new successfu
 - It checks the Firebase project audience, issuer, expiry and authenticated subject.
 - Files are created in the owner's Drive folder. No customer Drive permission or customer Gmail address is required.
 - Keep the Drive folder private. Finance should access it through the company's own Google account or its existing internal sharing.
-- The endpoint only accepts the configured Firebase project and receipt MIME types. Do not put Google passwords, OAuth client secrets, or service-account keys in the website or GitHub repository.
+- The endpoint verifies Firebase ID tokens and Firestore roles, checks customer order ownership for reference designs, restricts upload folders by role, and enforces MIME/size limits. General uploads are limited to 20 MB because the Apps Script form bridge transfers base64 data. Do not put Google passwords, OAuth client secrets, or service-account keys in the website or GitHub repository.
