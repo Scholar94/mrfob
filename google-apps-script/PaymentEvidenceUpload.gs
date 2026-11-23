@@ -1,105 +1,67 @@
 /**
- * MR FOP FASHIONS — Company-owned payment evidence upload endpoint.
- *
- * Deploy as a Web App:
- *   Execute as: Me
- *   Who has access: Anyone
- * Then set Script Properties:
- *   FIREBASE_PROJECT_ID = the Firebase project ID used by the website
- *   FIREBASE_API_KEY = the Firebase Web API key (same project as the website)
- *   DRIVE_FOLDER_ID = the private company Drive folder ID for payment receipts
- *
- * Customers do NOT need Google accounts. Their Firebase ID token is verified
- * against Firebase Secure Token before a file is written to the owner's Drive.
+ * MR FOP FASHIONS — authenticated company-owned Google Drive upload broker.
+ * Deploy as Web App: Execute as Me; access Anyone.
+ * Script Properties: FIREBASE_PROJECT_ID, FIREBASE_API_KEY, DRIVE_FOLDER_ID.
  */
 function doPost(e) {
-  var payload;
+  var payload = {};
   try {
     payload = JSON.parse((e && e.parameter && e.parameter.payload) || "{}");
-    var props = PropertiesService.getScriptProperties();
-    var projectId = props.getProperty("FIREBASE_PROJECT_ID");
-    var folderId = props.getProperty("DRIVE_FOLDER_ID");
-    if (!projectId || !folderId) throw new Error("The company upload service has not been configured.");
-    if (payload.projectId !== projectId) throw new Error("Invalid application project.");
-    if (!payload.idToken) throw new Error("Customer sign-in is required.");
-
-    var apiKey = props.getProperty("FIREBASE_API_KEY");
-    if (!apiKey) throw new Error("The company upload service has not been fully configured.");
-    var tokenCheck = UrlFetchApp.fetch(
-      "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + encodeURIComponent(apiKey),
-      {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify({ idToken: payload.idToken }),
-        muteHttpExceptions: true
+    var props=PropertiesService.getScriptProperties(), projectId=props.getProperty("FIREBASE_PROJECT_ID"), rootId=props.getProperty("DRIVE_FOLDER_ID"), apiKey=props.getProperty("FIREBASE_API_KEY");
+    if(!projectId||!rootId||!apiKey)throw new Error("The company upload service has not been fully configured.");
+    if(payload.projectId!==projectId||!payload.idToken)throw new Error("Invalid application session. Please sign in again.");
+    var check=UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key="+encodeURIComponent(apiKey),{method:"post",contentType:"application/json",payload:JSON.stringify({idToken:payload.idToken}),muteHttpExceptions:true});
+    if(check.getResponseCode()!==200)throw new Error("Your MR FOP session is invalid or expired. Please sign in again.");
+    var users=JSON.parse(check.getContentText()).users||[], account=users[0]; if(!account||!account.localId)throw new Error("Could not verify your MR FOP account.");
+    var uid=account.localId, role="customer";
+    var rr=UrlFetchApp.fetch("https://firestore.googleapis.com/v1/projects/"+encodeURIComponent(projectId)+"/databases/(default)/documents/roles/"+encodeURIComponent(uid),{headers:{Authorization:"Bearer "+payload.idToken},muteHttpExceptions:true});
+    if(rr.getResponseCode()===200){var rd=JSON.parse(rr.getContentText());role=rd.fields&&rd.fields.role&&rd.fields.role.stringValue||"customer";}else if(rr.getResponseCode()!==404)throw new Error("Could not verify your account permissions.");
+    var root=DriveApp.getFolderById(rootId), purpose=String(payload.purpose||"payment_evidence"), mime=String(payload.mimeType||""), allowed=[], limit=20*1024*1024, folder;
+    if(purpose==="payment_evidence"){
+      if(role!=="customer")throw new Error("Only customer accounts can submit transfer evidence.");
+      allowed=["image/jpeg","image/png","image/webp","application/pdf"];limit=15*1024*1024;
+      var rec=root.getFoldersByName("Payment Evidence");folder=rec.hasNext()?rec.next():root.createFolder("Payment Evidence");
+    }else if(purpose==="customer_reference"){
+      if(role!=="customer")throw new Error("Only customer accounts can upload reference designs.");
+      allowed=["image/jpeg","image/png","image/webp","application/pdf"];limit=15*1024*1024;
+      var oid=String(payload.orderId||"").trim();if(!/^[A-Za-z0-9_-]{1,128}$/.test(oid))throw new Error("A valid order is required.");
+      var or=UrlFetchApp.fetch("https://firestore.googleapis.com/v1/projects/"+encodeURIComponent(projectId)+"/databases/(default)/documents/orders/"+encodeURIComponent(oid),{headers:{Authorization:"Bearer "+payload.idToken},muteHttpExceptions:true});
+      if(or.getResponseCode()!==200)throw new Error("The selected order could not be verified.");
+      var od=JSON.parse(or.getContentText()), owner=od.fields&&od.fields.customerUid&&od.fields.customerUid.stringValue;
+      if(owner!==uid)throw new Error("You can only upload reference files to your own order.");
+      var refs=root.getFoldersByName("Customer Reference Designs"), refRoot=refs.hasNext()?refs.next():root.createFolder("Customer Reference Designs"), uidFolders=refRoot.getFoldersByName(uid);
+      folder=uidFolders.hasNext()?uidFolders.next():refRoot.createFolder(uid);
+    }else if(purpose==="catalogue_image"||purpose==="staff_upload"){
+      var rootName;
+      if(purpose==="catalogue_image"){
+        if(role!=="superAdmin")throw new Error("Only the Super Admin can upload catalogue images.");
+        allowed=["image/jpeg","image/png","image/webp"];limit=10*1024*1024;rootName=payload.imageFolder==="Product Images"?"Product Images":"Fabric Images";
+      }else{
+        var parts=String(payload.folder||"Uploads").split("/").filter(Boolean);rootName=parts.shift()||"Uploads";
+        var roleRoots={superAdmin:["Production","Institute","Website Media","Company Theme Song","Product Images","Uploads"],manager:["Production"],tailor:["Production"],instructor:["Institute"],instituteAdmin:["Institute"]};
+        if(!roleRoots[role]||roleRoots[role].indexOf(rootName)<0)throw new Error("Your account is not permitted to upload to this area.");
+        if(parts.length>4||parts.some(function(part){return !/^[A-Za-z0-9 _-]{1,80}$/.test(part)||part==="."||part==="..";}))throw new Error("Invalid upload folder.");
+        allowed=["image/jpeg","image/png","image/webp","application/pdf","video/mp4","video/webm","video/quicktime","audio/mpeg","audio/mp4","audio/wav","audio/ogg"];
+        folder=root;[rootName].concat(parts).forEach(function(name){var found=folder.getFoldersByName(name);folder=found.hasNext()?found.next():folder.createFolder(name);});
       }
-    );
-    if (tokenCheck.getResponseCode() !== 200) throw new Error("Customer session verification failed. Please sign in again.");
-    var tokenData = JSON.parse(tokenCheck.getContentText());
-    var customer = tokenData.users && tokenData.users[0];
-    if (!customer || !customer.localId) throw new Error("Customer session is invalid or expired.");
-
-    // Catalogue image uploads are restricted to the Super Admin; customer receipts remain customer-only.
-    var roleResponse = UrlFetchApp.fetch(
-      "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) +
-      "/databases/(default)/documents/roles/" + encodeURIComponent(customer.localId),
-      { headers: { Authorization: "Bearer " + payload.idToken }, muteHttpExceptions: true }
-    );
-    if (roleResponse.getResponseCode() === 200) {
-      var roleDocument = JSON.parse(roleResponse.getContentText());
-      var role = roleDocument.fields && roleDocument.fields.role && roleDocument.fields.role.stringValue;
-      if (payload.purpose === "catalogue_image") { if (role !== "superAdmin") throw new Error("Only the Super Admin can upload catalogue images."); } else if (role && role !== "customer") throw new Error("Only customer accounts can submit transfer evidence.");
-    } else if (roleResponse.getResponseCode() === 404) { if (payload.purpose === "catalogue_image") throw new Error("Only the Super Admin can upload catalogue images."); } else {
-      throw new Error("Could not verify the account type. Please try again.");
-    }
-    var isCatalogueImage = payload.purpose === "catalogue_image";
-    var allowed = isCatalogueImage ? ["image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    var mimeType = String(payload.mimeType || "");
-    if (allowed.indexOf(mimeType) < 0) throw new Error(isCatalogueImage ? "Only JPG, PNG or WebP images are accepted." : "Only JPG, PNG, WebP or PDF receipts are accepted.");
-    var base64 = String(payload.fileBase64 || "");
-    var limit = isCatalogueImage ? 10 * 1024 * 1024 : 15 * 1024 * 1024;
-    if (!base64 || base64.length > Math.ceil(limit * 4 / 3) + 1000) throw new Error("The selected file is empty or exceeds the upload limit.");
-    var bytes = Utilities.base64Decode(base64);
-    if (!bytes.length || bytes.length > limit) throw new Error("The selected file exceeds the upload limit.");
-
-    var safeName = String(payload.fileName || (isCatalogueImage ? "catalogue-image" : "payment-evidence"))
-      .replace(/[\\\\/:*?"<>|]/g, "_").slice(0, 150);
-    var folder = DriveApp.getFolderById(folderId);
-    if (isCatalogueImage) {
-      var subfolderName = String(payload.imageFolder || "Fabric Images");
-      if (["Fabric Images", "Product Images"].indexOf(subfolderName) < 0) throw new Error("Invalid catalogue image folder.");
-      var matches = folder.getFoldersByName(subfolderName);
-      folder = matches.hasNext() ? matches.next() : folder.createFolder(subfolderName);
-    }
-    var blob = Utilities.newBlob(bytes, mimeType, safeName);
-    var file = folder.createFile(blob);
-    file.setDescription(isCatalogueImage ? "MR FOP FASHIONS catalogue image. Uploaded by Super Admin UID: " + String(customer.localId).slice(0, 128) : "MR FOP FASHIONS payment evidence. Order: " + String(payload.orderId || "").slice(0, 120) + ". Customer UID: " + String(customer.localId).slice(0, 128));
-    if (isCatalogueImage) file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return htmlResult(payload.nonce, true, {
-      fileId: file.getId(),
-      name: file.getName(),
-      mimeType: mimeType,
-      size: bytes.length,
-      webViewLink: "https://drive.google.com/file/d/" + file.getId() + "/view",
-      previewUrl: "https://drive.google.com/uc?export=view&id=" + file.getId()
-    }, "");
-
-  } catch (err) {
-    return htmlResult(payload && payload.nonce, false, null,
-      err && err.message ? err.message : "Receipt upload failed.");
-  }
+      if(purpose==="catalogue_image"){var cat=root.getFoldersByName(rootName);folder=cat.hasNext()?cat.next():root.createFolder(rootName);}
+      if(payload.visibility==="public"&&role!=="superAdmin")throw new Error("Only the Super Admin can upload public media.");
+    }else throw new Error("Unsupported upload type.");
+    if(allowed.indexOf(mime)<0)throw new Error("This file type is not accepted for this upload.");
+    var b64=String(payload.fileBase64||"");if(!b64||b64.length>Math.ceil(limit*4/3)+1000)throw new Error("The selected file is empty or exceeds the upload limit.");
+    var bytes=Utilities.base64Decode(b64);if(!bytes.length||bytes.length>limit)throw new Error("The selected file exceeds the upload limit.");
+    var name=String(payload.fileName||"upload").replace(/[\\\\/:*?"<>|]/g,"_").slice(0,150), file=folder.createFile(Utilities.newBlob(bytes,mime,name));
+    file.setDescription("MR FOP FASHIONS upload. UID: "+uid+". Order: "+String(payload.orderId||"").slice(0,120));
+    if(purpose==="customer_reference")file.addViewer("mrfopvi@gmail.com");
+    var emails=Array.isArray(payload.shareWithEmails)?payload.shareWithEmails:[];
+    if(emails.length>50)throw new Error("Too many lesson recipients were supplied.");
+    emails.forEach(function(value){var email=String(value||"").trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("An invalid lesson recipient email was supplied.");if(purpose!=="staff_upload"||rootName!=="Institute"||["superAdmin","instructor","instituteAdmin"].indexOf(role)<0)throw new Error("This account cannot share lesson files.");file.addViewer(email);});
+    if(payload.visibility==="public"&&purpose==="staff_upload")file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,DriveApp.Permission.VIEW);
+    var id=file.getId();
+    return htmlResult(payload.nonce,true,{fileId:id,name:file.getName(),mimeType:mime,size:bytes.length,webViewLink:"https://drive.google.com/file/d/"+id+"/view",previewUrl:"https://drive.google.com/uc?export=view&id="+id,drivePreviewUrl:"https://drive.google.com/file/d/"+id+"/preview",thumbnailLink:""},"");
+  }catch(err){return htmlResult(payload&&payload.nonce,false,null,err&&err.message?err.message:"Company Drive upload failed.");}
 }
-
-function htmlResult(nonce, ok, file, error) {
-  var result = JSON.stringify({
-    type: "MRFOP_DRIVE_UPLOAD",
-    nonce: String(nonce || ""),
-    ok: Boolean(ok),
-    file: file || null,
-    error: String(error || "")
-  }).replace(/</g, "\\u003c");
-  return HtmlService.createHtmlOutput(
-    "<!doctype html><html><body><script>window.top.postMessage(" +
-    result + ", 'https://scholar94.github.io');</script></body></html>"
-  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+function htmlResult(nonce,ok,file,error){
+  var result=JSON.stringify({type:"MRFOP_DRIVE_UPLOAD",nonce:String(nonce||""),ok:Boolean(ok),file:file||null,error:String(error||"")}).replace(/</g,"\\u003c");
+  return HtmlService.createHtmlOutput("<!doctype html><html><body><script>window.top.postMessage("+result+", 'https://scholar94.github.io');</script></body></html>").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
