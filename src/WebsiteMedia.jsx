@@ -4,8 +4,8 @@ import { db } from "./firebase.js";
 import { setDriveFilePublic, uploadFileToGoogleDrive } from "./googleDrive.js";
 
 const MAX_IMAGE = 20 * 1024 * 1024;
-const MAX_VIDEO = 100 * 1024 * 1024;
-const MAX_AUDIO = 50 * 1024 * 1024;
+const MAX_VIDEO = 20 * 1024 * 1024;
+const MAX_AUDIO = 20 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg"];
 
 function MediaCard({ item }) {
@@ -100,7 +100,7 @@ export default function WebsiteMediaManager({ user }) {
     if (!audio && category === "Company theme song") { setError("The Company theme song category accepts audio files only."); return; }
     setBusy(true); setError(""); setNotice("");
     try {
-      const uploaded = await uploadFileToGoogleDrive(file, { folder: audio ? "Company Theme Song" : "Website Media", uploadedBy: user.uid, visibility: "public" });
+      const uploaded = await uploadFileToGoogleDrive(file, { folder: audio ? "Company Theme Song" : "Website Media", uploadedBy: user.uid, idToken: await user.getIdToken(), visibility: "private" });
       const id = await addDoc(collection(db, "siteMedia"), {
         title: title.trim(), description: description.trim(), category, mediaType: audio ? "audio" : video ? "video" : "image",
         fileName: uploaded.name, contentType: uploaded.mimeType, size: uploaded.size, driveFileId: uploaded.fileId,
@@ -141,7 +141,7 @@ export default function WebsiteMediaManager({ user }) {
       <label>Description<textarea maxLength="500" value={description} onChange={e => setDescription(e.target.value)} placeholder="A short public description"/></label>
       <label>Category<select value={category} onChange={e => setCategory(e.target.value)}><option>Collections</option><option>Fashion shows</option><option>Promotional videos</option><option>Training</option><option>Company news</option><option>Gallery</option><option>Company theme song</option></select></label>
       <label>Image, video or audio<input required type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp4,audio/wav,audio/ogg" onChange={e => setFile(e.target.files?.[0] || null)}/></label>
-      <small>Images: up to 20 MB. Videos: up to 100 MB. Audio: up to 50 MB (MP3, M4A, WAV or OGG). New uploads are private drafts until published.</small>
+      <small>Images: up to 20 MB. Videos: up to 20 MB. Audio: up to 20 MB (MP3, M4A, WAV or OGG). New uploads are private drafts until published.</small>
       <button className="portal-submit" disabled={busy}>{busy ? "Uploading…" : "Upload draft to Google Drive"}</button>
     </form>
     {error && <p role="alert" className="portal-error">{error}</p>}{notice && <p role="status" className="portal-success">{notice}</p>}
