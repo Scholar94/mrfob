@@ -99,7 +99,9 @@ assert.ok(!sitemap.includes("/customer/") && !sitemap.includes("/admin/") && !si
 assert.ok(read("public/robots.txt").includes("sitemap.xml"), "Robots file does not reference the sitemap");
 assert.ok(traceability.includes("24-section master-prompt traceability register"), "24-section traceability register is missing");
 assert.ok(read("docs/QA-TEST-PLAN.md").includes("T22"), "Final acceptance test plan is missing.");
-assert.ok(drive.includes("uploadFileToGoogleDrive"), "Google Drive upload integration is missing");
+assert.ok(drive.includes("uploadFileToGoogleDrive") && drive.includes("uploadToCompanyDrive") && drive.includes("MRFOP_DRIVE_UPLOAD"), "Company-owned background Drive upload integration is missing");
+assert.ok(!drive.slice(drive.indexOf("export async function uploadFileToGoogleDrive"), drive.indexOf("export async function setDriveFilePublic")).includes("getDriveToken("), "File uploads must not request end-user Google OAuth.");
+assert.ok(read("google-apps-script/PaymentEvidenceUpload.gs").includes("accounts:lookup") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("customer_reference") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("not permitted to upload"), "Company Drive upload broker authentication and role restrictions are missing.");
 assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"), "Firestore catch-all deny rule is missing");
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
