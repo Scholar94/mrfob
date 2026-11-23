@@ -2,22 +2,22 @@
 
 This repository uses the Google Drive API for customer reference designs, production media and Fashion Institute lesson files. Drive is a separate service: Firebase authentication does not automatically grant Drive access.
 
-## One-time Google Cloud setup
+## One-time company upload setup
 
-1. Open Google Cloud Console and select or create a project.
-2. Enable **Google Drive API** for that project.
-3. Configure the OAuth consent screen. Add the staff Google accounts that will upload media as test users while the app remains in testing mode. Complete Google's verification requirements before broad external distribution if the consent screen requests it.
-4. Create an OAuth client ID of type **Web application**.
-5. Add the exact deployed website origin (scheme + hostname only, without a path) under **Authorized JavaScript origins**. Also add the local development origin if needed.
-6. Copy the OAuth client ID. Do not put a client secret in the website.
-7. In Google Drive, create a normal My Drive folder for MR FOP FASHIONS media. Give each authorized uploader Editor access and copy the folder ID from its URL.
-8. Sign in to the deployed website with the Super Admin account and open the account workspace's **Google Drive Integration** settings. Enter the OAuth Web Client ID and shared root folder ID, then save. These identifiers are stored in the restricted Firestore `publicSettings/driveIntegration` document; they are not passwords. Never enter a Google client secret.
-9. Optionally, set `VITE_GOOGLE_DRIVE_CLIENT_ID` and `VITE_GOOGLE_DRIVE_FOLDER_ID` as GitHub Actions Variables or Secrets to supply build-time defaults. Runtime Super Admin settings are used when those environment values are absent.
+The website sends uploads to an owner-operated Google Apps Script broker in the background. Customers and staff select files directly on MR FOP; they do not sign in to Google, open Drive, or leave the website during upload.
+
+1. Sign in to the Google account that owns the company's Drive folder and create a private root folder for MR FOP FASHIONS.
+2. Open https://script.google.com/home and create a project. Replace its code with `google-apps-script/PaymentEvidenceUpload.gs` from this repository.
+3. In Script Properties, set `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, and `DRIVE_FOLDER_ID`.
+4. Deploy as a Web App with **Execute as: Me** and **Who has access: Anyone**. Authorise Drive and external-request access as the company owner.
+5. Save the deployed `/exec` URL as the GitHub Actions repository variable `VITE_GOOGLE_DRIVE_UPLOAD_URL`, then run a new website deployment.
+
+The script verifies Firebase ID tokens and reads the caller's Firestore role before creating files. It uses the company account's Drive access; no Drive OAuth client ID is needed for file uploads.
 
 ## Upload and access behaviour
 
 - Staff production photos/videos are uploaded into the configured shared folder under `Production/<order-id>`.
-- Customer reference designs are uploaded by the customer into that customer's Drive, then shared with the MR FOP FASHIONS contact account configured in the portal.
+- Customer reference designs are uploaded into the company Drive under a UID-specific folder and shared with the MR FOP FASHIONS contact account.
 - Fashion Institute lesson files are uploaded under `Institute/Courses/<course-id>/Lessons`.
 - Institute lesson uploads are shared as Drive reader permissions with email addresses on current paid enrolments. When a new student's payment is verified, the app attempts to grant that student reader access to existing lesson files for that course.
 - Lesson links are not intentionally made public. A student's Google account must match the email address to which the Drive file was shared.
@@ -26,7 +26,7 @@ This repository uses the Google Drive API for customer reference designs, produc
 ## Important security and operating limits
 
 - The staff member performing an upload or new-student media grant must sign in to Google and have permission to upload/share in the configured Drive folder.
-- The app requests Drive OAuth access at the time a staff member performs a Drive action. Browser popup restrictions, OAuth consent configuration, account policy and Drive quotas can prevent the operation.
+- File uploads use the company upload broker without Google sign-in or Drive pop-ups. Publishing/unpublishing website media and lesson-permission recovery actions still use existing Drive permission controls and may require an authorised Drive session.
 - Drive permissions are access controls, not DRM. They do not guarantee prevention of screen recording, screenshots, copying with external tools or redistribution by an authorized viewer.
 - On an Institute withdrawal, the application first disables Firestore course access and releases the intake place, then attempts to remove the student's direct Drive permissions from lesson files for that course (including unpublished lesson records). This is a best-effort external operation: if Drive authorization or the API fails, use the Super Admin revoke control to retry. Inherited permissions cannot be removed at the child file and require review of the parent folder or shared-drive permissions. Refunds and other payment reversals do not automatically withdraw a learner; Finance/Institute staff must follow the approved access decision and verify Drive permissions.
 - Existing links from external providers remain external links; this integration does not migrate them into Drive.
@@ -36,7 +36,7 @@ This repository uses the Google Drive API for customer reference designs, produc
 ## Verification checklist
 
 1. Confirm the Super Admin Drive Integration settings contain the OAuth Web Client ID and shared folder ID (or verify the optional GitHub Actions defaults are present).
-2. Sign in with an authorized staff account and upload a small PDF lesson to a test course.
+2. Sign in with an authorized staff account and upload a small PDF lesson to a test course. Confirm the upload completes in the background without a Google redirect.
 3. Confirm the file appears in the expected Drive folder and is not set to public/anyone access.
 4. Confirm the test paid student's Google account has Reader permission.
 5. Sign in as that student and open the lesson resource.
