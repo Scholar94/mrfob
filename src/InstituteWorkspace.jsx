@@ -595,6 +595,7 @@ export default function InstituteWorkspace() {
         const uploaded = await uploadFileToGoogleDrive(lessonUploadFile, {
           folder: "Institute/Courses/" + lessonForm.courseId + "/Lessons",
           uploadedBy: user.uid,
+          idToken: await user.getIdToken(),
           shareWithEmails: studentEmails
         });
         driveFileId = uploaded.fileId;
