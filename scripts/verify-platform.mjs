@@ -33,7 +33,7 @@ const ruleStructure = (() => {
   for (let i = 0; i < rules.length; i++) {
     const ch = rules[i], next = rules[i + 1];
     if (lineComment) {
-      if (ch === "\\n") lineComment = false;
+      if (ch === "\n") lineComment = false;
       continue;
     }
     if (blockComment) {
