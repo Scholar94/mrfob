@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "./firebase.js";
-import { setDriveFilePublic, uploadFileToGoogleDrive } from "./googleDrive.js";
+import { setCompanyDriveFilePublic, uploadFileToGoogleDrive } from "./googleDrive.js";
 
 const MAX_IMAGE = 20 * 1024 * 1024;
 const MAX_VIDEO = 20 * 1024 * 1024;
@@ -116,7 +116,7 @@ export default function WebsiteMediaManager({ user }) {
   async function publish(item) {
     setBusy(true); setError(""); setNotice("");
     try {
-      await setDriveFilePublic(item.driveFileId, !item.published);
+      await setCompanyDriveFilePublic(item.driveFileId, !item.published, user);
       await updateDoc(doc(db, "siteMedia", item.id), { published: !item.published, updatedAt: serverTimestamp() });
       await refresh();
       setNotice(item.published ? "Media unpublished. Public Drive access has been revoked." : "Media published and available to all website visitors.");
@@ -127,7 +127,7 @@ export default function WebsiteMediaManager({ user }) {
     if (!window.confirm("Remove this website media item? This also revokes public Drive access.")) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      await setDriveFilePublic(item.driveFileId, false);
+      await setCompanyDriveFilePublic(item.driveFileId, false, user);
       await deleteDoc(doc(db, "siteMedia", item.id));
       await refresh(); setNotice("Media removed from the website and public access revoked. The Drive file remains in the admin folder.");
     } catch (err) { setError(err.message || "Could not remove media."); }
