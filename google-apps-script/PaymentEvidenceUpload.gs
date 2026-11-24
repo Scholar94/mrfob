@@ -7,6 +7,7 @@ function doPost(e) {
   var payload = {};
   try {
     payload = JSON.parse((e && e.parameter && e.parameter.payload) || "{}");
+    if (payload.action === "trash_drive_files") return handleTrashDriveFiles(payload);
     var props=PropertiesService.getScriptProperties(), projectId=props.getProperty("FIREBASE_PROJECT_ID"), rootId=props.getProperty("DRIVE_FOLDER_ID"), apiKey=props.getProperty("FIREBASE_API_KEY");
     if(!projectId||!rootId||!apiKey)throw new Error("The company upload service has not been fully configured.");
     if(payload.projectId!==projectId||!payload.idToken)throw new Error("Invalid application session. Please sign in again.");
@@ -63,6 +64,79 @@ function doPost(e) {
     return htmlResult(payload.nonce,true,{fileId:id,name:file.getName(),mimeType:mime,size:bytes.length,webViewLink:"https://drive.google.com/file/d/"+id+"/view",previewUrl:"https://drive.google.com/uc?export=view&id="+id,drivePreviewUrl:"https://drive.google.com/file/d/"+id+"/preview",thumbnailLink:""},"");
   }catch(err){return htmlResult(payload&&payload.nonce,false,null,err&&err.message?err.message:"Company Drive upload failed.");}
 }
+
+/**
+ * Moves company-owned files to Drive Trash. This is deliberately reversible.
+ * The caller must be a Super Admin and every file must be inside the configured
+ * MR FOP root folder. A file ID alone never grants permission to trash a file.
+ */
+function handleTrashDriveFiles(payload) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var projectId = props.getProperty("FIREBASE_PROJECT_ID");
+    var rootId = props.getProperty("DRIVE_FOLDER_ID");
+    var apiKey = props.getProperty("FIREBASE_API_KEY");
+    if (!projectId || !rootId || !apiKey) throw new Error("The company Drive service has not been fully configured.");
+    if (payload.projectId !== projectId || !payload.idToken) throw new Error("Invalid application session. Please sign in again.");
+    var check = UrlFetchApp.fetch("https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=" + encodeURIComponent(apiKey), {
+      method: "post", contentType: "application/json", payload: JSON.stringify({idToken: payload.idToken}), muteHttpExceptions: true
+    });
+    if (check.getResponseCode() !== 200) throw new Error("Your MR FOP session is invalid or expired. Please sign in again.");
+    var accounts = JSON.parse(check.getContentText()).users || [];
+    var account = accounts[0];
+    if (!account || !account.localId) throw new Error("Could not verify your MR FOP account.");
+    var roleResponse = UrlFetchApp.fetch("https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(projectId) + "/databases/(default)/documents/roles/" + encodeURIComponent(account.localId), {
+      headers: {Authorization: "Bearer " + payload.idToken}, muteHttpExceptions: true
+    });
+    if (roleResponse.getResponseCode() !== 200) throw new Error("Could not verify your administrator permissions.");
+    var roleDoc = JSON.parse(roleResponse.getContentText());
+    var role = roleDoc.fields && roleDoc.fields.role && roleDoc.fields.role.stringValue;
+    if (role !== "superAdmin") throw new Error("Only the MR FOP Super Admin can move company Drive files to Trash.");
+    var ids = Array.isArray(payload.fileIds) ? payload.fileIds : [];
+    if (!ids.length || ids.length > 50) throw new Error("Select between 1 and 50 company files.");
+    var root = DriveApp.getFolderById(rootId);
+    var moved = [], skipped = [];
+    ids.forEach(function(rawId) {
+      var id = String(rawId || "").trim();
+      if (!/^[A-Za-z0-9_-]{10,200}$/.test(id)) throw new Error("An invalid Google Drive file ID was supplied.");
+      var file = DriveApp.getFileById(id);
+      if (file.isTrashed()) { skipped.push({fileId:id, reason:"already_trashed"}); return; }
+      if (!isCompanyDriveFile_(file, root.getId(), 0)) throw new Error("A selected file is outside the configured MR FOP company folder. No external file was changed.");
+      file.setTrashed(true);
+      moved.push({fileId:id, name:file.getName()});
+    });
+    return actionHtmlResult(payload.nonce, true, {moved:moved, skipped:skipped}, "");
+  } catch (err) {
+    return actionHtmlResult(payload && payload.nonce, false, null, err && err.message ? err.message : "Company Drive file action failed.");
+  }
+}
+
+function isCompanyDriveFile_(file, rootId, depth) {
+  if (depth > 12) return false;
+  var parents = file.getParents();
+  while (parents.hasNext()) {
+    var parent = parents.next();
+    if (parent.getId() === rootId) return true;
+    if (isCompanyDriveFolderWithinRoot_(parent, rootId, depth + 1)) return true;
+  }
+  return false;
+}
+
+function isCompanyDriveFolderWithinRoot_(folder, rootId, depth) {
+  if (depth > 12) return false;
+  if (folder.getId() === rootId) return true;
+  var parents = folder.getParents();
+  while (parents.hasNext()) {
+    if (isCompanyDriveFolderWithinRoot_(parents.next(), rootId, depth + 1)) return true;
+  }
+  return false;
+}
+
+function actionHtmlResult(nonce, ok, data, error) {
+  var result = JSON.stringify({type:"MRFOP_DRIVE_ACTION", nonce:String(nonce || ""), ok:Boolean(ok), data:data || null, error:String(error || "")}).replace(/</g, "\\u003c");
+  return HtmlService.createHtmlOutput("<!doctype html><html><body><script>window.top.postMessage(" + result + ", 'https://scholar94.github.io');</script></body></html>").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function htmlResult(nonce,ok,file,error){
   var result=JSON.stringify({type:"MRFOP_DRIVE_UPLOAD",nonce:String(nonce||""),ok:Boolean(ok),file:file||null,error:String(error||"")}).replace(/</g,"\\u003c");
   return HtmlService.createHtmlOutput("<!doctype html><html><body><script>window.top.postMessage("+result+", 'https://scholar94.github.io');</script></body></html>").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
