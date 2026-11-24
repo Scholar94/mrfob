@@ -144,7 +144,7 @@ export default function SystemControlCentre({ user, claims }) {
         deletedByEmail: user.email || "",
         deletedAt: serverTimestamp()
       });
-      batch.delete(doc(db, pending.originalPath || pending.documentPath || (pending.collectionName + "/" + pending.id)));
+      batch.delete(doc(db, pending.originalPath || pending.documentPath || pending.__documentPath || (pending.collectionName + "/" + pending.id)));
       await batch.commit();
       await recordAuditEvent({ user, claims, action: "system_record_deleted", entityType: "systemRecord", entityId: pending.id, summary: "Moved " + pending.collectionName + " record to the Recycle Bin." });
       setRows(current => current.filter(item => item.id !== pending.id));
@@ -192,7 +192,7 @@ export default function SystemControlCentre({ user, claims }) {
         <button type="button" onClick={() => loadRecords(true)} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
       </div>
       <div className="system-control-list-heading"><strong>{collectionLabel}</strong><span>{filteredRows.length} shown · maximum 100 per page</span></div>
-      {loading && !rows.length ? <p className="system-control-empty">Loading records…</p> : filteredRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Record ID</th><th>Details</th><th>Action</th></tr></thead><tbody>{filteredRows.map(item => <tr key={item.id}><td><strong>{safeText(recordTitle(item)) || "Untitled record"}</strong></td><td><code>{item.id}</code></td><td><span>{Object.entries(item).filter(([key]) => key !== "id").slice(0,4).map(([key,value]) => key + ": " + safeText(value).slice(0,100)).join(" · ")}</span></td><td><button type="button" className="system-control-delete" onClick={() => { setPending({ ...item, collectionName: selectedCollection }); setConfirmation(""); }}>Move to Recycle Bin</button></td></tr>)}</tbody></table></div> : <p className="system-control-empty">No records found in this category.</p>}
+      {loading && !rows.length ? <p className="system-control-empty">Loading records…</p> : filteredRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Record ID</th><th>Details</th><th>Action</th></tr></thead><tbody>{filteredRows.map(item => <tr key={item.id}><td><strong>{safeText(recordTitle(item)) || "Untitled record"}</strong></td><td><code>{item.id}</code></td><td><span>{Object.entries(item).filter(([key]) => key !== "id").slice(0,4).map(([key,value]) => key + ": " + safeText(value).slice(0,100)).join(" · ")}</span></td><td><button type="button" className="system-control-delete" onClick={() => { setPending({ ...item, collectionName: selectedCollection, documentPath: item.__documentPath }); setConfirmation(""); }}>Move to Recycle Bin</button></td></tr>)}</tbody></table></div> : <p className="system-control-empty">No records found in this category.</p>}
       {hasMore && <button type="button" className="system-control-more" onClick={() => loadRecords(false)} disabled={loading}>Load next 100 records</button>}
     </> : <>
       <div className="system-control-list-heading"><strong>Recoverable deleted records</strong><button type="button" onClick={() => loadRecycleBin(true)} disabled={loading}>Refresh Recycle Bin</button></div>
