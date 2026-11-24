@@ -31,6 +31,7 @@ try {
     await setDoc(doc(db, "users", "customer-b"), {
       uid: "customer-b", displayName: "Test Customer B", email: "customer-b@example.com", accountType: "customer"
     });
+    await setDoc(doc(db, "notifications", "admin-delete-test"), { customerUid: "customer-a", title: "Admin deletion test", createdAt: now });
     await setDoc(doc(db, "orders", "order-a"), {
       customerUid: "customer-a", customerName: "Test Customer A", customerEmail: "customer-a@example.com",
       orderNumber: "MFF-SEC-001", item: "Test garment", quantity: 1, status: "received",
@@ -179,6 +180,15 @@ try {
   });
 
   // Customer ownership, staff assignment and role documents must be enforced by Firestore.
+  // Super Admin may manage business records but cannot remove identity controls or immutable ledgers.
+  await assertSucceeds(getDoc(doc(superAdmin, "notifications", "admin-delete-test")));
+  await assertFails(deleteDoc(doc(customerA, "notifications", "admin-delete-test")));
+  await assertSucceeds(deleteDoc(doc(superAdmin, "notifications", "admin-delete-test")));
+  await assertFails(deleteDoc(doc(superAdmin, "roles", "admin-a")));
+  await assertFails(deleteDoc(doc(superAdmin, "users", "admin-a")));
+  await assertFails(deleteDoc(doc(superAdmin, "auditLogs", "admin-audit-protected")));
+  await assertFails(deleteDoc(doc(superAdmin, "publicSettings", "driveIntegration")));
+
   await assertSucceeds(getDoc(doc(customerA, "users", "customer-a")));
   await assertFails(getDoc(doc(customerB, "users", "customer-a")));
   await assertFails(getDoc(doc(customerA, "roles", "customer-b")));
