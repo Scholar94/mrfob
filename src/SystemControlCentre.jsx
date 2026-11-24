@@ -20,7 +20,6 @@ const MANAGEABLE_COLLECTIONS = [
   ["sales", "Sales and receipts"],
   ["reviews", "Customer reviews"],
   ["products", "Products"],
-  ["inventoryMovements", "Inventory movements"],
   ["measurements", "Measurement records"],
   ["trainingEnquiries", "Training enquiries"],
   ["instituteCourses", "Institute courses"],
@@ -45,7 +44,6 @@ const MANAGEABLE_COLLECTIONS = [
   ["instituteInstructorAssignments", "Instructor assignments"],
   ["siteMedia", "Website media records"],
   ["customerBenefits", "Customer benefits"],
-  ["loyaltyTransactions", "Loyalty transactions"],
   ["publicFAQs", "Website FAQs"],
   ["corporateRequests", "Corporate requests"],
   ["referralClaims", "Referral claims"],
@@ -228,6 +226,6 @@ export default function SystemControlCentre({ user, claims }) {
       <input autoComplete="off" value={purgeConfirmation} onChange={e => setPurgeConfirmation(e.target.value)} placeholder="Type PERMANENTLY DELETE"/>
       <div><button type="button" onClick={() => { setPendingPurge(null); setPurgeConfirmation(""); }}>Cancel</button><button type="button" className="system-control-delete" disabled={purgeConfirmation !== "PERMANENTLY DELETE" || !!working} onClick={() => permanentlyDelete(pendingPurge)}>{working ? "Processing…" : "Permanently delete"}</button></div>
     </div></div>}
-    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs and core Drive integration settings are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Order event history, production updates and customer reference records are included. Physical Google Drive file deletion is not yet connected to this console.</p>
+    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs, core Drive integration settings and immutable financial/loyalty ledgers are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Order event history, production updates and customer reference records are included. Physical Google Drive file deletion is not yet connected to this console.</p>
   </section>;
 }
