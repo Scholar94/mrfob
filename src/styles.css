@@ -1064,3 +1064,6 @@ button:disabled{cursor:not-allowed}
 .system-control-modal button:disabled{opacity:.5;cursor:not-allowed}
 .system-control-footnote{margin:18px 0 0;padding-top:13px;border-top:1px solid #eee5da;color:#827775;font-size:10px;line-height:1.7}
 @media(max-width:700px){.system-control-centre{padding:18px 13px;margin:22px 0}.system-control-heading{display:block}.system-control-secure{display:inline-block;margin-top:12px}.system-control-toolbar{grid-template-columns:1fr}.system-control-list-heading{align-items:flex-start;flex-direction:column}.system-control-tabs{overflow:auto}.system-control-tabs button{white-space:nowrap}}
+
+.system-control-row-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.system-control-row-actions button{white-space:normal;line-height:1.35}
