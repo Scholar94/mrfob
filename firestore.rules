@@ -1420,7 +1420,9 @@ service cloud.firestore {
         && topLevelCollection != 'roles'
         && topLevelCollection != 'auditLogs'
         && topLevelCollection != 'publicSettings'
-        && topLevelCollection != 'users';
+        && topLevelCollection != 'users'
+        && topLevelCollection != 'inventoryMovements'
+        && topLevelCollection != 'loyaltyTransactions';
     }
     match /{document=**} { allow read, write: if false; }
   }
