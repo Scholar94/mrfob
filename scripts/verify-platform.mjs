@@ -28,16 +28,26 @@ const pkg = JSON.parse(read("package.json"));
 
 const ruleStructure = (() => {
   const stack = [];
-  let quote = null, escaped = false;
+  let quote = null, escaped = false, lineComment = false, blockComment = false;
   const pairs = { "(": ")", "{": "}", "[": "]" };
   for (let i = 0; i < rules.length; i++) {
-    const ch = rules[i];
+    const ch = rules[i], next = rules[i + 1];
+    if (lineComment) {
+      if (ch === "\\n") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (ch === "*" && next === "/") { blockComment = false; i++; }
+      continue;
+    }
     if (quote) {
       if (escaped) escaped = false;
       else if (ch.charCodeAt(0) === 92) escaped = true;
       else if (ch === quote) quote = null;
       continue;
     }
+    if (ch === "/" && next === "/") { lineComment = true; i++; continue; }
+    if (ch === "/" && next === "*") { blockComment = true; i++; continue; }
     if (ch === "'" || ch === '"') { quote = ch; continue; }
     if (ch in pairs) stack.push({ ch, index: i });
     else if (Object.values(pairs).includes(ch)) {
@@ -47,6 +57,7 @@ const ruleStructure = (() => {
     }
   }
   assert.equal(quote, null, "Unclosed string literal in firestore.rules");
+  assert.equal(blockComment, false, "Unclosed comment in firestore.rules");
   assert.equal(stack.length, 0, "Unclosed bracket or block in firestore.rules");
   return true;
 })();
