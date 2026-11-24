@@ -273,7 +273,7 @@ export async function trashCompanyDriveFiles(fileIds, user) {
       if (error) reject(error); else resolve(result);
     }
     function onMessage(event) {
-      if (event.origin !== "https://script.googleusercontent.com" && event.origin !== "https://script.google.com") return;
+      if (event.origin !== "https://script.google.com" && !event.origin.endsWith(".googleusercontent.com")) return;
       if (event.data?.type !== "MRFOP_DRIVE_ACTION" || event.data?.nonce !== nonce) return;
       if (!event.data.ok) finish(new Error(event.data.error || "Company Drive file action failed."));
       else finish(null, event.data.data);
