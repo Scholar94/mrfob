@@ -54,3 +54,27 @@ The Institute student learning progress register provides two Super Admin-only a
 
 Use revocation after an independently confirmed access decision. Withdrawal triggers a best-effort revocation attempt; if it fails, retry it from the Super Admin control. Refunds/payment reversals do not themselves revoke course access or change enrolment status. Recheck the student's enrolment and Drive permissions after every access change. A fresh Google Drive authorization may be required.
 
+
+
+## Super Admin Drive file cleanup
+
+The Apps Script broker also provides a restricted Drive Trash action for files linked to archived platform records. It uses the same /exec deployment URL as uploads; no separate Google OAuth popup is required for this action.
+
+1. Open the existing Apps Script project and replace its code with the latest complete google-apps-script/PaymentEvidenceUpload.gs from the repository.
+2. Save the project and create a new Web App deployment version (or edit the existing deployment to use the new version). Keep Execute as: Me and Who has access: Anyone. The existing Script Properties remain FIREBASE_PROJECT_ID, FIREBASE_API_KEY and DRIVE_FOLDER_ID.
+3. Keep the deployed /exec URL in the GitHub Actions variable VITE_GOOGLE_DRIVE_UPLOAD_URL. If the deployment URL changes, update that variable and redeploy the website.
+4. Sign in to the website as a Super Admin. Archive a test record that contains a known company Drive file ID, then open the Recycle Bin and choose Move linked files to Drive Trash.
+5. Confirm the file appears in the owner's Google Drive Trash. Confirm a customer/staff account cannot invoke the action and that a file outside the configured MR FOP root folder is rejected.
+6. Restore the archived record separately if needed. Restoring the Firestore record does not automatically restore its Drive file; restore that file from Google Drive Trash separately.
+
+The broker verifies the Firebase ID token, checks the Firestore role is exactly superAdmin, validates all selected file IDs before changing any file, and verifies every file is a descendant of the configured company root folder. It moves files to Trash (recoverable), not permanent deletion. A maximum of 50 linked files may be processed per request. Files that have only an external URL and no recognizable Google Drive file ID are not automatically processed.
+
+## Deploying Firestore security rules
+
+The System Control Centre uses the updated Firestore rules in the repository. Deploy them to the correct Firebase project from a trusted terminal where the Firebase CLI is authenticated as a project administrator:
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project YOUR_FIREBASE_PROJECT_ID
+```
+
+Replace YOUR_FIREBASE_PROJECT_ID with the exact project ID used by the MR FOP website. Review the Firebase CLI target before confirming deployment. This command requires an authorised Firebase CLI session; do not put service-account keys, API keys or passwords in the repository. After deployment, run the Firestore Emulator tests and perform the Super Admin/non-admin acceptance checks in docs/QA-TEST-PLAN.md.
