@@ -43,7 +43,7 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.accountType == resource.data.accountType
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'phone', 'address', 'updatedAt']));
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() && userId != request.auth.uid;
     }
 
     match /orders/{orderId} {
@@ -1415,12 +1415,13 @@ service cloud.firestore {
 
     // Super Admin system-wide data authority. Keep identity roles, audit history, integration settings,
     // and the signed-in administrator's own profile outside this broad rule.
-    match /{document=**} {
+    match /{topLevelCollection}/{nestedDocument=**} {
       allow read, create, update, delete: if isSuperAdmin()
-        && document.split('/')[0] != 'roles'
-        && document.split('/')[0] != 'auditLogs'
-        && document.split('/')[0] != 'publicSettings'
-        && document != 'users/' + request.auth.uid;
+        && topLevelCollection != 'roles'
+        && topLevelCollection != 'auditLogs'
+        && topLevelCollection != 'publicSettings'
+        && topLevelCollection != 'users';
     }
+    match /{document=**} { allow read, write: if false; }
   }
 }
