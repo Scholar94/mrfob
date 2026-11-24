@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, collectionGroup, deleteDoc, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, writeBatch } from "firebase/firestore";
+import { collection, collectionGroup, deleteDoc, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
+import { trashCompanyDriveFiles } from "./googleDrive.js";
 
 const MANAGEABLE_COLLECTIONS = [
   ["users", "Customer profiles"],
@@ -52,6 +53,30 @@ const MANAGEABLE_COLLECTIONS = [
   ["newsletterSubscribers", "Newsletter subscribers"]
 ];
 
+
+const DRIVE_ID_KEYS = new Set(["driveFileId", "fileId", "evidenceFileId", "referenceFileId"]);
+const DRIVE_URL_KEYS = new Set(["driveUrl", "webViewLink", "previewUrl", "drivePreviewUrl", "evidenceDriveUrl", "photoUrl", "imageUrl", "url"]);
+function collectLinkedDriveFileIds(value) {
+  const found = new Set();
+  const visited = new WeakSet();
+  function visit(node, key = "") {
+    if (node === null || node === undefined) return;
+    if (typeof node === "string") {
+      if (DRIVE_ID_KEYS.has(key) && /^[A-Za-z0-9_-]{10,200}$/.test(node.trim())) found.add(node.trim());
+      if (DRIVE_URL_KEYS.has(key) && /^https:\/\/drive\.google\.com\//i.test(node)) {
+        const match = node.match(/\/file\/d\/([A-Za-z0-9_-]{10,200})|[?&]id=([A-Za-z0-9_-]{10,200})/);
+        if (match) found.add(match[1] || match[2]);
+      }
+      return;
+    }
+    if (typeof node !== "object" || visited.has(node)) return;
+    visited.add(node);
+    if (Array.isArray(node)) node.forEach(item => visit(item, key));
+    else Object.entries(node).forEach(([childKey, child]) => visit(child, childKey));
+  }
+  visit(value);
+  return [...found].slice(0, 50);
+}
 const PAGE_SIZE = 100;
 const safeText = value => {
   if (value === null || value === undefined) return "";
@@ -76,6 +101,7 @@ export default function SystemControlCentre({ user, claims }) {
   const [pending, setPending] = useState(null);
   const [confirmation, setConfirmation] = useState("");
   const [pendingPurge, setPendingPurge] = useState(null);
+  const [trashingArchiveId, setTrashingArchiveId] = useState("");
   const [purgeConfirmation, setPurgeConfirmation] = useState("");
   const [binRows, setBinRows] = useState([]);
   const [binLastDoc, setBinLastDoc] = useState(null);
@@ -172,6 +198,31 @@ export default function SystemControlCentre({ user, claims }) {
     finally { setWorking(""); }
   }
 
+  async function trashArchivedDriveFiles(item) {
+    if (!claims?.superAdmin || !item?.id || !item?.recordData) return;
+    const fileIds = collectLinkedDriveFileIds(item.recordData);
+    if (!fileIds.length) { setError("No linked Google Drive file IDs were found in this archived record."); return; }
+    setTrashingArchiveId(item.id); setError(""); setNotice("");
+    try {
+      const result = await trashCompanyDriveFiles(fileIds, user);
+      await updateDoc(doc(db, "adminRecycleBin", item.id), {
+        driveTrashStatus: "processed",
+        driveFilesMovedToTrash: result?.moved?.length || 0,
+        driveFilesAlreadyTrashed: result?.skipped?.length || 0,
+        driveTrashProcessedAt: serverTimestamp(),
+        driveTrashProcessedBy: user.uid
+      });
+      await recordAuditEvent({
+        user, claims, action: "system_record_drive_files_trashed", entityType: "systemRecord",
+        entityId: item.originalId || item.id,
+        summary: "Moved " + (result?.moved?.length || 0) + " linked company Drive file(s) to Trash."
+      });
+      setBinRows(current => current.map(row => row.id === item.id ? { ...row, driveTrashStatus: "processed" } : row));
+      setNotice((result?.moved?.length || 0) + " linked file(s) moved to Google Drive Trash. " + (result?.skipped?.length || 0) + " were already in Trash.");
+    } catch (e) { setError(e.message || "Could not move linked files to Google Drive Trash."); }
+    finally { setTrashingArchiveId(""); }
+  }
+
   async function permanentlyDelete(item) {
     if (!claims?.superAdmin || !item?.id || purgeConfirmation !== "PERMANENTLY DELETE") return;
     setWorking(item.id); setError(""); setNotice("");
@@ -209,7 +260,7 @@ export default function SystemControlCentre({ user, claims }) {
       {hasMore && <button type="button" className="system-control-more" onClick={() => loadRecords(false)} disabled={loading}>Load next 100 records</button>}
     </> : <>
       <div className="system-control-list-heading"><strong>Recoverable deleted records</strong><button type="button" onClick={() => loadRecycleBin(true)} disabled={loading}>Refresh Recycle Bin</button></div>
-      {binRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Category</th><th>Deleted</th><th>Action</th></tr></thead><tbody>{binRows.map(item => <tr key={item.id}><td><strong>{safeText(item.recordTitle) || item.originalId}</strong><small>{item.originalId}</small></td><td>{item.collectionName}</td><td>{safeText(item.deletedAt)}</td><td><div className="system-control-row-actions"><button type="button" onClick={() => restoreRecord(item)} disabled={!!working}>Restore</button><button type="button" className="system-control-delete" onClick={() => { setPendingPurge(item); setPurgeConfirmation(""); }}>Delete permanently</button></div></td></tr>)}</tbody></table></div> : <p className="system-control-empty">The Recycle Bin is empty.</p>}
+      {binRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Category</th><th>Deleted</th><th>Action</th></tr></thead><tbody>{binRows.map(item => <tr key={item.id}><td><strong>{safeText(item.recordTitle) || item.originalId}</strong><small>{item.originalId}</small></td><td>{item.collectionName}</td><td>{safeText(item.deletedAt)}</td><td><div className="system-control-row-actions">{collectLinkedDriveFileIds(item.recordData).length > 0 && <button type="button" onClick={() => trashArchivedDriveFiles(item)} disabled={!!trashingArchiveId || !!working}>{trashingArchiveId === item.id ? "Moving files…" : item.driveTrashStatus === "processed" ? "Retry Drive cleanup" : "Move linked files to Drive Trash"}</button>}<button type="button" onClick={() => restoreRecord(item)} disabled={!!working || !!trashingArchiveId}>Restore</button><button type="button" className="system-control-delete" onClick={() => { setPendingPurge(item); setPurgeConfirmation(""); }}>Delete permanently</button></div></td></tr>)}</tbody></table></div> : <p className="system-control-empty">The Recycle Bin is empty.</p>}
       {binHasMore && <button type="button" className="system-control-more" onClick={() => loadRecycleBin(false)} disabled={loading}>Load next 100 records</button>}
     </>}
     {pending && <div className="system-control-modal-backdrop" role="presentation"><div className="system-control-modal" role="dialog" aria-modal="true" aria-labelledby="system-delete-title">
@@ -226,6 +277,6 @@ export default function SystemControlCentre({ user, claims }) {
       <input autoComplete="off" value={purgeConfirmation} onChange={e => setPurgeConfirmation(e.target.value)} placeholder="Type PERMANENTLY DELETE"/>
       <div><button type="button" onClick={() => { setPendingPurge(null); setPurgeConfirmation(""); }}>Cancel</button><button type="button" className="system-control-delete" disabled={purgeConfirmation !== "PERMANENTLY DELETE" || !!working} onClick={() => permanentlyDelete(pendingPurge)}>{working ? "Processing…" : "Permanently delete"}</button></div>
     </div></div>}
-    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs, core Drive integration settings and immutable financial/loyalty ledgers are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Order event history, production updates and customer reference records are included. Physical Google Drive file deletion is not yet connected to this console.</p>
+    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs, core Drive integration settings and immutable financial/loyalty ledgers are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Order event history, production updates and customer reference records are included. Linked Google Drive files can be moved to the company Drive Trash from the Recycle Bin after a record is archived. Product image links without Drive file identifiers are not automatically changed.</p>
   </section>;
 }
