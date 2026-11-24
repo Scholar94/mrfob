@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, deleteDoc, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, writeBatch } from "firebase/firestore";
+import { collection, collectionGroup, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
 
 const MANAGEABLE_COLLECTIONS = [
   ["users", "Customer profiles"],
   ["orders", "Orders and production"],
+  ["group:events", "Order event history"],
+  ["group:progressUpdates", "Production progress updates"],
+  ["group:referenceDesigns", "Customer reference records"],
   ["appointments", "Appointments"],
   ["appointmentSlots", "Appointment slots"],
   ["notifications", "Notifications"],
@@ -89,10 +92,10 @@ export default function SystemControlCentre({ user, claims }) {
     if (!claims?.superAdmin) return;
     setLoading(true); setError(""); setNotice("");
     try {
-      const base = collection(db, selectedCollection);
+      const base = selectedCollection.startsWith("group:") ? collectionGroup(db, selectedCollection.slice(6)) : collection(db, selectedCollection);
       const pageQuery = reset || !lastDoc ? query(base, limit(PAGE_SIZE)) : query(base, startAfter(lastDoc), limit(PAGE_SIZE));
       const snap = await getDocs(pageQuery);
-      const mapped = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const mapped = snap.docs.map(d => ({ id: d.id, ...d.data(), __documentPath: d.ref.path }));
       setRows(current => reset ? mapped : [...current, ...mapped]);
       setLastDoc(snap.docs.at(-1) || null);
       setHasMore(snap.docs.length === PAGE_SIZE);
@@ -133,14 +136,15 @@ export default function SystemControlCentre({ user, claims }) {
       const batch = writeBatch(db);
       batch.set(doc(db, "adminRecycleBin", archiveId), {
         collectionName: pending.collectionName,
+        originalPath: pending.documentPath || pending.__documentPath || (pending.collectionName + "/" + pending.id),
         originalId: pending.id,
         recordTitle: recordTitle(pending),
-        recordData: Object.fromEntries(Object.entries(pending).filter(([key]) => key !== "id")),
+        recordData: Object.fromEntries(Object.entries(pending).filter(([key]) => !["id", "collectionName", "documentPath", "__documentPath"].includes(key))),
         deletedByUid: user.uid,
         deletedByEmail: user.email || "",
         deletedAt: serverTimestamp()
       });
-      batch.delete(doc(db, pending.collectionName, pending.id));
+      batch.delete(doc(db, pending.originalPath || pending.documentPath || (pending.collectionName + "/" + pending.id)));
       await batch.commit();
       await recordAuditEvent({ user, claims, action: "system_record_deleted", entityType: "systemRecord", entityId: pending.id, summary: "Moved " + pending.collectionName + " record to the Recycle Bin." });
       setRows(current => current.filter(item => item.id !== pending.id));
@@ -151,14 +155,14 @@ export default function SystemControlCentre({ user, claims }) {
   }
 
   async function restoreRecord(item) {
-    if (!claims?.superAdmin || !item?.collectionName || !item?.originalId || !item?.recordData) return;
+    if (!claims?.superAdmin || !item?.collectionName || !item?.originalId || !item?.recordData || !item?.originalPath) return;
     if (MANAGEABLE_COLLECTIONS.every(([name]) => name !== item.collectionName)) {
       setError("This record type is not eligible for restoration from this screen."); return;
     }
     setWorking(item.id); setError(""); setNotice("");
     try {
       const batch = writeBatch(db);
-      batch.set(doc(db, item.collectionName, item.originalId), item.recordData);
+      batch.set(doc(db, item.originalPath), item.recordData);
       batch.delete(doc(db, "adminRecycleBin", item.id));
       await batch.commit();
       await recordAuditEvent({ user, claims, action: "system_record_restored", entityType: "systemRecord", entityId: item.originalId, summary: "Restored " + item.collectionName + " record from the Recycle Bin." });
