@@ -91,36 +91,40 @@ The integration was deployed successfully in commit `6deadba8b59dd90baa7bb7298c9
 - [24-section master-prompt traceability](docs/MASTER-PROMPT-TRACEABILITY.md)
 - [22-case acceptance test plan](docs/QA-TEST-PLAN.md)
 
-Google Drive OAuth Client ID and shared folder ID can be saved by the Super Admin in the account workspace's **Google Drive Integration** section. Optional GitHub Actions variables/secrets can supply build-time defaults. Do not enter a Google client secret in the website.
+The owner-operated Google Apps Script upload broker saves customer and staff uploads directly into the company's Drive without asking uploaders to sign in to Google or leaving MR FOP. Configure its deployed `/exec` URL as the GitHub Actions variable `VITE_GOOGLE_DRIVE_UPLOAD_URL`. The Super Admin's **Google Drive Integration** settings (OAuth Web Client ID and folder ID) are retained only for separate Drive permission-management actions such as publishing public media or granting/revoking lesson access. Never enter a Google client secret in the website.
 
 ## Phase scope
 Phase 1: public brand website and Pages deployment.
 Phase 2 foundation: Firebase-ready customer registration/sign-in, profile creation, role-aware account portal, Super Admin staff assignment interface and Firestore security rules.
 
-Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment, Google Drive document and media uploads are implemented through the Drive API, subject to the owner completing the OAuth client, shared-folder and GitHub Actions variable setup described below. Live upload and access workflows still require verification.
+Firebase must be configured and its rules deployed before account registration or sign-in can work. Customer orders, measurement records, payments, training enrolment and media uploads use Firebase plus the company-owned Google Apps Script upload broker. The owner must configure the broker's Script Properties, deploy it as a web app, and set `VITE_GOOGLE_DRIVE_UPLOAD_URL` before redeploying the site. Live upload and access workflows still require verification.
 
 ## Free-tier note
 No billing account has been connected or paid service enabled by this code. Firebase Authentication and Firestore have no-cost usage allowances; monitor quotas in Firebase Console. GitHub Pages remains the free public hosting option.
 
 
 ## Production progress photos and videos
-- Authorized Super Admin, Manager and Tailor accounts can upload JPG, PNG, WebP, MP4, WebM and MOV files to the shared Google Drive folder.
-- Images are limited to 20 MB and videos to 100 MB per file. Resumable Drive uploads are used for larger media.
+- Authorized Super Admin, Manager and Tailor accounts can upload JPG, PNG, WebP, MP4, WebM and MOV files from inside MR FOP. The owner-operated Apps Script broker saves them to the company's Drive; uploaders do not need a Google account or Google sign-in popup.
+- Production uploads are limited to 20 MB per file. Payment evidence and customer reference files are limited to 15 MB; catalogue images are limited to 10 MB. The current broker uses a single request (not resumable uploads).
 - Each upload records the order, production stage, uploader, timestamp, caption, Drive file ID, file type and size in `orders/{orderId}/progressUpdates`.
 - Customers receive an in-app notification when a production media update is published. Private Drive files must be shared with the customer's Google account for access.
 - Firebase Storage is not used. Firestore stores metadata and Drive references only.
 
 ## Google Drive file storage setup
-1. In Google Cloud Console, enable the Google Drive API for the project used by the app's OAuth client. Enabling this API does not require billing.
-2. Configure the OAuth consent screen and add the staff Google accounts as test users while the app remains in testing mode.
-3. Create an OAuth 2.0 Web application client ID. Add `https://scholar94.github.io` as an authorized JavaScript origin.
-4. Create a shared folder in the owner's Google Drive for MR FOP FASHIONS uploads. Share it with staff Google accounts as Editors.
-5. Add these GitHub Actions repository **Variables** (Settings → Secrets and variables → Actions → Variables):
-   - `VITE_GOOGLE_DRIVE_CLIENT_ID` — OAuth web client ID.
-   - `VITE_GOOGLE_DRIVE_FOLDER_ID` — ID of the shared Drive folder.
-6. Redeploy the GitHub Pages site. On first upload, staff authorize Google Drive access. Files are uploaded directly to the shared folder.
 
-All uploaders must sign in with a Google account that has Editor access to the shared folder. Customer viewing of private media requires sharing the individual file with the customer's Google account. Google Drive storage quotas and file-size limits apply; no paid Google Cloud billing is required for this Drive API integration.
+### One-time company upload broker setup
+1. Sign in to the Google account that owns the company's Drive and create a private root folder for MR FOP FASHIONS.
+2. Open `https://script.google.com/home`, create a standalone Apps Script project, and copy the source from `google-apps-script/PaymentEvidenceUpload.gs` into its script file.
+3. In Apps Script **Project Settings → Script Properties**, set `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY` and `DRIVE_FOLDER_ID`.
+4. Deploy as a **Web app**, choose **Execute as: Me** and **Who has access: Anyone**, authorize the requested Drive and external-request scopes, and copy the deployed URL ending in `/exec`.
+5. Add that URL as the GitHub Actions repository **Variable** `VITE_GOOGLE_DRIVE_UPLOAD_URL` (Settings → Secrets and variables → Actions → Variables), then redeploy the GitHub Pages site.
+
+The broker verifies the user's Firebase ID token and Firestore role before writing into the owner's Drive. The website sends the selected file in a hidden iframe and receives the result by `postMessage`; the user stays on MR FOP. No Google OAuth client ID, shared-folder editor access or Google sign-in is required from the person uploading.
+
+### Separate Drive permission-management setup
+Some administrative actions (for example, publishing/unpublishing public media and retrying/revoking student lesson permissions) still use the Google Drive API directly. For those actions only, enable the Drive API, configure the OAuth consent screen and web client ID, add `https://scholar94.github.io` as an authorized JavaScript origin, and save the OAuth Web Client ID and Drive folder ID in Super Admin **Google Drive Integration** settings. Do not enter a Google client secret in the website. These permission actions are separate from file uploading and may show a Google authorization prompt.
+
+Customer viewing of private media still depends on the appropriate file permission or sharing workflow. Google Drive storage quotas and Apps Script execution/request limits apply; no paid Google Cloud billing is required for the Drive upload broker.
 
 
 ## Public website media publishing
