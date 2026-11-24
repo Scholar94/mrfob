@@ -1025,3 +1025,42 @@ button:disabled{cursor:not-allowed}
 
 
 .welcome-experience-content h2 span{display:block;margin-top:10px;color:#eadbce;font:700 clamp(9px,1.6vw,13px)/1.5 'DM Sans',sans-serif;letter-spacing:clamp(2px,.55vw,5px)}
+
+/* Super Admin System Control Centre */
+.system-control-centre{margin:34px 0;padding:28px;background:#fffdf9;border:1px solid #e4d9c8;border-radius:14px;box-shadow:0 8px 28px #2b17200a;color:#302329}
+.system-control-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+.system-control-eyebrow{font-size:9px;letter-spacing:2px;font-weight:800;color:#987442}
+.system-control-heading h2{font:500 clamp(27px,3vw,38px)/1.15 'Playfair Display';margin:8px 0;color:#32151f}
+.system-control-heading p{font-size:12px;color:#756b68;margin:0;line-height:1.7}
+.system-control-secure{white-space:nowrap;border:1px solid #d7c7a8;border-radius:30px;padding:8px 12px;font-size:10px;color:#68502d}
+.system-control-secure span{color:#54805a;margin-right:5px}
+.system-control-tabs{display:flex;gap:8px;border-bottom:1px solid #e8dfd2;margin-bottom:20px}
+.system-control-tabs button,.system-control-list-heading button,.system-control-toolbar button,.system-control-more{border:1px solid #d9cbb8;background:#fff;color:#39252b;padding:10px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.system-control-tabs button.active{background:#32151f;color:#f5e6c7;border-color:#32151f}
+.system-control-toolbar{display:grid;grid-template-columns:minmax(190px,1fr) minmax(190px,1.4fr) auto;gap:12px;align-items:end;margin:18px 0}
+.system-control-toolbar label{display:grid;gap:6px;font-size:10px;font-weight:700;color:#65585b}
+.system-control-toolbar input,.system-control-toolbar select,.system-control-modal input{width:100%;min-width:0;border:1px solid #d9cfc2;border-radius:6px;padding:11px;background:#fff;font:inherit;font-size:12px;color:#302329}
+.system-control-list-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 10px;font-size:12px;color:#4b3a3e}
+.system-control-list-heading span{font-size:10px;color:#817676}
+.system-control-table-wrap{overflow:auto;border:1px solid #e8dfd2;border-radius:8px}
+.system-control-table{width:100%;border-collapse:collapse;min-width:720px}
+.system-control-table th{background:#f3eee6;color:#5a454a;text-align:left;font-size:10px;padding:12px}
+.system-control-table td{padding:12px;border-bottom:1px solid #eee8df;font-size:11px;vertical-align:top;max-width:320px}
+.system-control-table td span{display:block;max-width:320px;color:#74696a;line-height:1.6;overflow-wrap:anywhere}
+.system-control-table td code,.system-control-table td small{display:block;color:#867b77;font-size:9px;overflow-wrap:anywhere}
+.system-control-table td button{border:1px solid #d6c8b7;background:#fff;padding:8px 10px;border-radius:5px;font-size:10px;cursor:pointer}
+.system-control-table td .system-control-delete,.system-control-delete{border-color:#a64c4c;background:#fff7f6;color:#913d3d}
+.system-control-empty{padding:22px;text-align:center;color:#7c7170;font-size:12px}
+.system-control-more{margin-top:14px}
+.system-control-error,.system-control-notice{padding:11px 13px;border-radius:6px;font-size:11px;line-height:1.6}
+.system-control-error{background:#fff0ef;color:#963f3b}
+.system-control-notice{background:#edf5ed;color:#3d6b43}
+.system-control-modal-backdrop{position:fixed;z-index:10000;inset:0;background:#1d1010a8;display:grid;place-items:center;padding:18px}
+.system-control-modal{width:min(480px,100%);background:#fffdf9;border-radius:12px;padding:24px;box-shadow:0 20px 70px #0005}
+.system-control-modal h3{font:500 24px 'Playfair Display';color:#32151f;margin:0 0 12px}
+.system-control-modal p{font-size:12px;line-height:1.7;color:#62575a}
+.system-control-modal>div{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.system-control-modal button{border:1px solid #d8cbbb;border-radius:5px;padding:10px 14px;background:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.system-control-modal button:disabled{opacity:.5;cursor:not-allowed}
+.system-control-footnote{margin:18px 0 0;padding-top:13px;border-top:1px solid #eee5da;color:#827775;font-size:10px;line-height:1.7}
+@media(max-width:700px){.system-control-centre{padding:18px 13px;margin:22px 0}.system-control-heading{display:block}.system-control-secure{display:inline-block;margin-top:12px}.system-control-toolbar{grid-template-columns:1fr}.system-control-list-heading{align-items:flex-start;flex-direction:column}.system-control-tabs{overflow:auto}.system-control-tabs button{white-space:nowrap}}
