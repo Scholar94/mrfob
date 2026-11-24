@@ -248,3 +248,40 @@ export async function uploadPaymentEvidenceToCompanyDrive(file, metadata = {}) {
 export async function uploadCatalogueImageToCompanyDrive(file, metadata = {}) {
   return uploadToCompanyDrive(file, { ...metadata, purpose: "catalogue_image" });
 }
+
+/**
+ * Move company-owned Drive files to the owner's Trash using the authenticated
+ * Apps Script broker. This does not open Google sign-in for the customer/staff.
+ */
+export async function trashCompanyDriveFiles(fileIds, user) {
+  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
+  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) {
+    throw new Error("Company Google Drive management is not configured. Contact the MR FOP Super Admin.");
+  }
+  if (!user || typeof user.getIdToken !== "function") throw new Error("Your MR FOP session could not be verified. Please sign in again.");
+  const ids = [...new Set((Array.isArray(fileIds) ? fileIds : [fileIds]).map(value => String(value || "").trim()).filter(Boolean))];
+  if (!ids.length || ids.length > 50) throw new Error("Select between 1 and 50 linked company files.");
+  const nonce = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
+  const payload = { action: "trash_drive_files", nonce, idToken: await user.getIdToken(), projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""), fileIds: ids };
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe"), form = document.createElement("form"), field = document.createElement("input");
+    let settled = false;
+    const timer = window.setTimeout(() => finish(new Error("Company Drive file action timed out. Please retry.")), 120000);
+    function finish(error, result) {
+      if (settled) return;
+      settled = true; window.clearTimeout(timer); window.removeEventListener("message", onMessage); form.remove(); iframe.remove();
+      if (error) reject(error); else resolve(result);
+    }
+    function onMessage(event) {
+      if (event.origin !== "https://script.googleusercontent.com" && event.origin !== "https://script.google.com") return;
+      if (event.data?.type !== "MRFOP_DRIVE_ACTION" || event.data?.nonce !== nonce) return;
+      if (!event.data.ok) finish(new Error(event.data.error || "Company Drive file action failed."));
+      else finish(null, event.data.data);
+    }
+    iframe.name = "mrfop-drive-action-" + nonce; iframe.style.display = "none";
+    form.method = "POST"; form.action = endpoint; form.target = iframe.name; form.enctype = "application/x-www-form-urlencoded";
+    field.type = "hidden"; field.name = "payload"; field.value = JSON.stringify(payload);
+    form.appendChild(field); window.addEventListener("message", onMessage); document.body.append(iframe, form); form.submit();
+  });
+}
+
