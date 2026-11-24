@@ -1413,10 +1413,11 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // Super Admin system-wide data authority. Keep identity roles, audit history, integration settings,
-    // and the signed-in administrator's own profile outside this broad rule.
+    // Super Admin may delete ordinary business records system-wide, but must not
+    // bypass each collection's validation or read-privacy rules for other operations.
+    // Sensitive identity, integration, and immutable ledger collections remain protected.
     match /{topLevelCollection}/{nestedDocument=**} {
-      allow read, create, update, delete: if isSuperAdmin()
+      allow delete: if isSuperAdmin()
         && topLevelCollection != 'roles'
         && topLevelCollection != 'auditLogs'
         && topLevelCollection != 'publicSettings'
