@@ -25,8 +25,8 @@ The script verifies Firebase ID tokens and reads the caller's Firestore role bef
 
 ## Important security and operating limits
 
-- The staff member performing an upload or new-student media grant must sign in to Google and have permission to upload/share in the configured Drive folder.
-- File uploads use the company upload broker without Google sign-in or Drive pop-ups. Publishing/unpublishing website media and lesson-permission recovery actions still use existing Drive permission controls and may require an authorised Drive session.
+- File uploads use the company-owned Apps Script broker. Customers and staff authenticate only with their MR FOP account; they do not need Google Drive access, a Google account or a Google sign-in popup to upload.
+- The company owner authorizes the broker once when deploying it as **Execute as: Me**. Separate administrative permission actions (publishing/unpublishing media and granting/revoking lesson access) still use the Drive API and may require an authorized Google Drive session.
 - Drive permissions are access controls, not DRM. They do not guarantee prevention of screen recording, screenshots, copying with external tools or redistribution by an authorized viewer.
 - On an Institute withdrawal, the application first disables Firestore course access and releases the intake place, then attempts to remove the student's direct Drive permissions from lesson files for that course (including unpublished lesson records). This is a best-effort external operation: if Drive authorization or the API fails, use the Super Admin revoke control to retry. Inherited permissions cannot be removed at the child file and require review of the parent folder or shared-drive permissions. Refunds and other payment reversals do not automatically withdraw a learner; Finance/Institute staff must follow the approved access decision and verify Drive permissions.
 - Existing links from external providers remain external links; this integration does not migrate them into Drive.
@@ -35,14 +35,14 @@ The script verifies Firebase ID tokens and reads the caller's Firestore role bef
 
 ## Verification checklist
 
-1. Confirm the Super Admin Drive Integration settings contain the OAuth Web Client ID and shared folder ID (or verify the optional GitHub Actions defaults are present).
-2. Sign in with an authorized staff account and upload a small PDF lesson to a test course. Confirm the upload completes in the background without a Google redirect.
+1. Confirm the Apps Script broker is deployed as **Execute as: Me** / **Anyone**, its Script Properties contain `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY` and `DRIVE_FOLDER_ID`, and the GitHub Actions variable `VITE_GOOGLE_DRIVE_UPLOAD_URL` contains the deployed `/exec` URL.
+2. Sign in to MR FOP with a test account and upload a small PDF lesson to a test course. Confirm the upload completes in the background without a Google sign-in popup or leaving the website.
 3. Confirm the file appears in the expected Drive folder and is not set to public/anyone access.
 4. Confirm the test paid student's Google account has Reader permission.
 5. Sign in as that student and open the lesson resource.
 6. Verify a non-enrolled account cannot access the Drive file.
 7. Verify a newly paid test student receives access when the payment verification action is run.
-8. Check the browser console, the saved Super Admin integration settings and Drive permissions if any step fails.
+8. Check the browser console, Apps Script Executions, Script Properties, the configured upload URL and Drive permissions if any step fails.
 
 
 ## Super Admin lesson-access recovery controls
