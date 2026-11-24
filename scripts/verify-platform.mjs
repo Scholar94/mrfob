@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "docs/PRODUCTION-OPERATIONS.md", ".github/dependabot.yml", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
@@ -15,6 +15,7 @@ for (const file of requiredFiles) assert.ok(fs.existsSync(file), `Missing requir
 
 const app = read("src/App.jsx");
 const portal = read("src/Portal.jsx");
+const systemControl = read("src/SystemControlCentre.jsx");
 const rules = read("firestore.rules");
 const drive = read("src/googleDrive.js");
 const institute = read("src/InstituteWorkspace.jsx");
@@ -106,6 +107,11 @@ assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
+assert.ok(portal.includes("SystemControlCentre") && systemControl.includes("Recycle Bin"), "Super Admin System Control Centre is not mounted.");
+assert.ok(systemControl.includes("PERMANENTLY DELETE") && systemControl.includes("adminRecycleBin"), "Protected recoverable deletion workflow is missing.");
+assert.ok(systemControl.includes("collectionGroup") && systemControl.includes("progressUpdates") && systemControl.includes("referenceDesigns"), "Order subcollection administration is incomplete.");
+assert.ok(rules.includes("topLevelCollection != 'roles'") && rules.includes("topLevelCollection != 'auditLogs'") && rules.includes("topLevelCollection != 'inventoryMovements'"), "Super Admin wildcard permissions must preserve protected identity and immutable ledger records.");
+
 assert.ok(institute.includes("withdrawEnrollment") && institute.includes("revokeDriveFileAccessForEmail"), "Institute withdrawal and Drive revocation workflow is missing");
 assert.ok(rules.includes("enrollmentStatus") && rules.includes("institute_enrollment_withdrawn"), "Withdrawn enrolments are not blocked by Firestore access rules");
 assert.ok(rules.includes("hasPaidEnrollmentForStudent(request.resource.data.courseId, request.resource.data.studentUid)") && rules.includes("hasPaidEnrollmentForStudent(resource.data.courseId, resource.data.studentUid)"), "Withdrawn learners can still receive attendance, completion approval or certificates.");
