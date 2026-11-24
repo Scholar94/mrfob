@@ -285,3 +285,30 @@ export async function trashCompanyDriveFiles(fileIds, user) {
   });
 }
 
+
+
+/** Publish/unpublish website media through the company-owned Apps Script broker.
+ * This keeps Drive OAuth and Google consent screens out of the Super Admin workflow.
+ */
+export async function setCompanyDriveFilePublic(fileId, isPublic, user) {
+  const endpoint = String(import.meta.env.VITE_GOOGLE_DRIVE_UPLOAD_URL || "").trim();
+  if (!endpoint || !/^https:\/\/script\.google\.com\/macros\/s\//.test(endpoint)) throw new Error("Company Google Drive management is not configured. Contact the Super Admin.");
+  if (!fileId || !user || typeof user.getIdToken !== "function") throw new Error("The media item or MR FOP session could not be verified.");
+  const nonce = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
+  const payload = { action: "set_media_visibility", nonce, idToken: await user.getIdToken(), projectId: String(import.meta.env.VITE_FIREBASE_PROJECT_ID || ""), fileId: String(fileId), isPublic: Boolean(isPublic) };
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement("iframe"), form = document.createElement("form"), field = document.createElement("input");
+    let settled = false;
+    const timer = window.setTimeout(() => finish(new Error("Publishing action timed out. Please retry.")), 120000);
+    function finish(error, result) { if (settled) return; settled = true; window.clearTimeout(timer); window.removeEventListener("message", onMessage); form.remove(); iframe.remove(); if (error) reject(error); else resolve(result); }
+    function onMessage(event) {
+      if (event.origin !== "https://script.google.com" && !event.origin.endsWith(".googleusercontent.com")) return;
+      if (event.data?.type !== "MRFOP_DRIVE_ACTION" || event.data?.nonce !== nonce) return;
+      if (!event.data.ok) finish(new Error(event.data.error || "Could not change media publishing status.")); else finish(null, event.data.data);
+    }
+    iframe.name = "mrfop-drive-publish-" + nonce; iframe.style.display = "none";
+    form.method = "POST"; form.action = endpoint; form.target = iframe.name; form.enctype = "application/x-www-form-urlencoded";
+    field.type = "hidden"; field.name = "payload"; field.value = JSON.stringify(payload);
+    form.appendChild(field); window.addEventListener("message", onMessage); document.body.append(iframe, form); form.submit();
+  });
+}
