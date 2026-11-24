@@ -103,6 +103,10 @@ assert.ok(read("docs/QA-TEST-PLAN.md").includes("T22"), "Final acceptance test p
 assert.ok(drive.includes("uploadFileToGoogleDrive") && drive.includes("uploadToCompanyDrive") && drive.includes("MRFOP_DRIVE_UPLOAD"), "Company-owned background Drive upload integration is missing");
 assert.ok(!drive.slice(drive.indexOf("export async function uploadFileToGoogleDrive"), drive.indexOf("export async function setDriveFilePublic")).includes("getDriveToken("), "File uploads must not request end-user Google OAuth.");
 assert.ok(read("google-apps-script/PaymentEvidenceUpload.gs").includes("accounts:lookup") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("customer_reference") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("not permitted to upload"), "Company Drive upload broker authentication and role restrictions are missing.");
+assert.ok(read("google-apps-script/PaymentEvidenceUpload.gs").includes("handleTrashDriveFiles") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("isCompanyDriveFile_") && read("google-apps-script/PaymentEvidenceUpload.gs").includes("file.setTrashed(true)"), "Authenticated company Drive trash endpoint is missing.");
+assert.ok(drive.includes("trashCompanyDriveFiles") && drive.includes("MRFOP_DRIVE_ACTION"), "Company Drive trash client action is missing.");
+assert.ok(systemControl.includes("trashArchivedDriveFiles") && systemControl.includes("collectLinkedDriveFileIds"), "Recycle Bin linked Drive file cleanup is missing.");
+assert.ok(rules.includes("system_record_drive_files_trashed"), "Drive file cleanup audit permission is missing.");
 assert.ok(rules.includes("match /{document=**} { allow read, write: if false; }"), "Firestore catch-all deny rule is missing");
 assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log rules are missing");
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
