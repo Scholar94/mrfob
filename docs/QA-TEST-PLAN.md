@@ -74,3 +74,23 @@ The deployment workflow runs a Chromium browser smoke test, scripts/verify-platf
 - Verify the default attendance date and minimum selectable preferred completion date match the calendar date displayed by the device, including shortly after local midnight.
 - Change the device timezone in a test environment and repeat. Date-only business fields must remain date-only and must not shift to the previous/next day because of UTC conversion.
 - CI source guardrails now ensure the Institute and corporate request forms use local calendar date helpers rather than `toISOString().slice(0,10)`. This static check complements, but does not replace, device testing.
+
+
+## Super Admin System Control Centre — acceptance tests
+
+The System Control Centre is mounted only for authenticated Super Admin claims. Verify these cases in a staging or controlled production account before routine use:
+
+- [ ] Super Admin can browse each configured business-information category and load additional pages.
+- [ ] Super Admin can search visible records and move a selected record to the Recycle Bin after typing DELETE.
+- [ ] A moved record disappears from its active collection and appears in the Recycle Bin with its original path and deletion metadata.
+- [ ] Super Admin can restore a record and confirm it returns to its original collection or supported order subcollection.
+- [ ] Permanent deletion requires typing PERMANENTLY DELETE and removes only the selected Recycle Bin entry.
+- [ ] Non-Super Admin users cannot read or mutate adminRecycleBin or use the broad Super Admin data-management permissions.
+- [ ] The current Super Admin cannot delete their own user profile; role documents and audit logs remain protected.
+- [ ] Inventory movement and loyalty transaction ledgers remain immutable.
+- [ ] Deleting a user profile is not represented as deleting/disabling that user's Firebase Authentication account.
+- [ ] Physical Google Drive files are not considered deleted by removing a Firestore metadata record; Drive file deletion requires its separate owner-authorized broker workflow.
+- [ ] Confirm order events, progress updates and customer reference records are included through collection-group views.
+- [ ] Deploy the updated Firestore rules to the Firebase project, then verify the rules emulator suite and the deployed application before enabling routine administration.
+
+**Release note:** Source changes alone do not publish Firestore security rules. The rules must be deployed to the correct Firebase project separately. Production acceptance remains pending until the deployment and all checks above have been completed.
