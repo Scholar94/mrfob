@@ -94,3 +94,16 @@ The System Control Centre is mounted only for authenticated Super Admin claims. 
 - [ ] Deploy the updated Firestore rules to the Firebase project, then verify the rules emulator suite and the deployed application before enabling routine administration.
 
 **Release note:** Source changes alone do not publish Firestore security rules. The rules must be deployed to the correct Firebase project separately. Production acceptance remains pending until the deployment and all checks above have been completed.
+
+
+### Google Drive Trash integration — additional acceptance tests
+
+- [ ] Redeploy the latest Apps Script broker source as a new Web App version using the existing owner execution and Anyone endpoint settings.
+- [ ] Verify the Apps Script project still has the correct FIREBASE_PROJECT_ID, FIREBASE_API_KEY and DRIVE_FOLDER_ID Script Properties.
+- [ ] As Super Admin, archive a test record with a linked Drive file ID and use Move linked files to Drive Trash.
+- [ ] Confirm the matching file is in Google Drive Trash and the Recycle Bin record records the cleanup result.
+- [ ] Confirm customer and staff sessions are rejected by the broker even if they manually submit the endpoint action.
+- [ ] Confirm a file outside the configured company root folder is rejected and no selected files are moved.
+- [ ] Confirm a file already in Trash is safely reported as already trashed.
+- [ ] Confirm a restored Firestore record does not falsely imply its Drive file was restored.
+- [ ] Deploy Firestore rules to the exact production Firebase project and run the rules emulator tests before enabling the console for live administration.
