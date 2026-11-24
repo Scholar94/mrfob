@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, collectionGroup, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, writeBatch } from "firebase/firestore";
+import { collection, collectionGroup, deleteDoc, doc, getDocs, limit, query, serverTimestamp, setDoc, startAfter, writeBatch } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
 
@@ -77,6 +77,8 @@ export default function SystemControlCentre({ user, claims }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(null);
   const [confirmation, setConfirmation] = useState("");
+  const [pendingPurge, setPendingPurge] = useState(null);
+  const [purgeConfirmation, setPurgeConfirmation] = useState("");
   const [binRows, setBinRows] = useState([]);
   const [binLastDoc, setBinLastDoc] = useState(null);
   const [binHasMore, setBinHasMore] = useState(false);
@@ -172,6 +174,19 @@ export default function SystemControlCentre({ user, claims }) {
     finally { setWorking(""); }
   }
 
+  async function permanentlyDelete(item) {
+    if (!claims?.superAdmin || !item?.id || purgeConfirmation !== "PERMANENTLY DELETE") return;
+    setWorking(item.id); setError(""); setNotice("");
+    try {
+      await deleteDoc(doc(db, "adminRecycleBin", item.id));
+      await recordAuditEvent({ user, claims, action: "system_record_permanently_deleted", entityType: "systemRecord", entityId: item.originalId || item.id, summary: "Permanently deleted a Recycle Bin copy from " + item.collectionName + "." });
+      setBinRows(current => current.filter(row => row.id !== item.id));
+      setPendingPurge(null); setPurgeConfirmation("");
+      setNotice("The archived record was permanently deleted. It can no longer be restored.");
+    } catch (e) { setError(e.message || "The archived record could not be permanently deleted."); }
+    finally { setWorking(""); }
+  }
+
   if (!claims?.superAdmin) return null;
 
   return <section className="system-control-centre">
@@ -196,7 +211,7 @@ export default function SystemControlCentre({ user, claims }) {
       {hasMore && <button type="button" className="system-control-more" onClick={() => loadRecords(false)} disabled={loading}>Load next 100 records</button>}
     </> : <>
       <div className="system-control-list-heading"><strong>Recoverable deleted records</strong><button type="button" onClick={() => loadRecycleBin(true)} disabled={loading}>Refresh Recycle Bin</button></div>
-      {binRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Category</th><th>Deleted</th><th>Action</th></tr></thead><tbody>{binRows.map(item => <tr key={item.id}><td><strong>{safeText(item.recordTitle) || item.originalId}</strong><small>{item.originalId}</small></td><td>{item.collectionName}</td><td>{safeText(item.deletedAt)}</td><td><button type="button" onClick={() => restoreRecord(item)} disabled={!!working}>Restore</button></td></tr>)}</tbody></table></div> : <p className="system-control-empty">The Recycle Bin is empty.</p>}
+      {binRows.length ? <div className="system-control-table-wrap"><table className="system-control-table"><thead><tr><th>Record</th><th>Category</th><th>Deleted</th><th>Action</th></tr></thead><tbody>{binRows.map(item => <tr key={item.id}><td><strong>{safeText(item.recordTitle) || item.originalId}</strong><small>{item.originalId}</small></td><td>{item.collectionName}</td><td>{safeText(item.deletedAt)}</td><td><div className="system-control-row-actions"><button type="button" onClick={() => restoreRecord(item)} disabled={!!working}>Restore</button><button type="button" className="system-control-delete" onClick={() => { setPendingPurge(item); setPurgeConfirmation(""); }}>Delete permanently</button></div></td></tr>)}</tbody></table></div> : <p className="system-control-empty">The Recycle Bin is empty.</p>}
       {binHasMore && <button type="button" className="system-control-more" onClick={() => loadRecycleBin(false)} disabled={loading}>Load next 100 records</button>}
     </>}
     {pending && <div className="system-control-modal-backdrop" role="presentation"><div className="system-control-modal" role="dialog" aria-modal="true" aria-labelledby="system-delete-title">
@@ -206,6 +221,13 @@ export default function SystemControlCentre({ user, claims }) {
       <input autoComplete="off" value={confirmation} onChange={e => setConfirmation(e.target.value)} placeholder="Type DELETE"/>
       <div><button type="button" onClick={() => { setPending(null); setConfirmation(""); }}>Cancel</button><button type="button" className="system-control-delete" disabled={confirmation !== "DELETE" || !!working} onClick={confirmDelete}>{working ? "Processing…" : "Confirm move"}</button></div>
     </div></div>}
-    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs and core Drive integration settings are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Files in Google Drive and nested subcollections require their dedicated management workflows.</p>
+    {pendingPurge && <div className="system-control-modal-backdrop" role="presentation"><div className="system-control-modal" role="dialog" aria-modal="true" aria-labelledby="system-purge-title">
+      <h3 id="system-purge-title">Permanently delete archived information</h3>
+      <p>This will permanently remove <strong>{safeText(pendingPurge.recordTitle) || pendingPurge.originalId}</strong> from the Recycle Bin. This action cannot be undone.</p>
+      <p>Type <strong>PERMANENTLY DELETE</strong> to continue.</p>
+      <input autoComplete="off" value={purgeConfirmation} onChange={e => setPurgeConfirmation(e.target.value)} placeholder="Type PERMANENTLY DELETE"/>
+      <div><button type="button" onClick={() => { setPendingPurge(null); setPurgeConfirmation(""); }}>Cancel</button><button type="button" className="system-control-delete" disabled={purgeConfirmation !== "PERMANENTLY DELETE" || !!working} onClick={() => permanentlyDelete(pendingPurge)}>{working ? "Processing…" : "Permanently delete"}</button></div>
+    </div></div>}
+    <p className="system-control-footnote">Security: this console is visible only to Super Admin accounts. Staff roles, audit logs and core Drive integration settings are protected from deletion here. User profile deletion does not disable the separate Firebase Authentication login. Order event history, production updates and customer reference records are included. Physical Google Drive file deletion is not yet connected to this console.</p>
   </section>;
 }
