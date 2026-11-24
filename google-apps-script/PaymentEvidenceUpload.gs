@@ -95,15 +95,18 @@ function handleTrashDriveFiles(payload) {
     var ids = Array.isArray(payload.fileIds) ? payload.fileIds : [];
     if (!ids.length || ids.length > 50) throw new Error("Select between 1 and 50 company files.");
     var root = DriveApp.getFolderById(rootId);
-    var moved = [], skipped = [];
+    var moved = [], skipped = [], candidates = [];
     ids.forEach(function(rawId) {
       var id = String(rawId || "").trim();
       if (!/^[A-Za-z0-9_-]{10,200}$/.test(id)) throw new Error("An invalid Google Drive file ID was supplied.");
       var file = DriveApp.getFileById(id);
       if (file.isTrashed()) { skipped.push({fileId:id, reason:"already_trashed"}); return; }
-      if (!isCompanyDriveFile_(file, root.getId(), 0)) throw new Error("A selected file is outside the configured MR FOP company folder. No external file was changed.");
+      if (!isCompanyDriveFile_(file, root.getId(), 0)) throw new Error("A selected file is outside the configured MR FOP company folder. No files were changed.");
+      candidates.push(file);
+    });
+    candidates.forEach(function(file) {
       file.setTrashed(true);
-      moved.push({fileId:id, name:file.getName()});
+      moved.push({fileId:file.getId(), name:file.getName()});
     });
     return actionHtmlResult(payload.nonce, true, {moved:moved, skipped:skipped}, "");
   } catch (err) {
