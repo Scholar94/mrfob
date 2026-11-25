@@ -1087,3 +1087,46 @@ button:disabled{cursor:not-allowed}
 
 .system-control-row-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .system-control-row-actions button{white-space:normal;line-height:1.35}
+
+
+/* Phase 1–11 additive operations centre */
+.operations-insights{margin:22px 0;padding:18px;border:1px solid #e5d9c9;border-radius:14px;background:#fff}
+.operations-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.operations-kpi-grid article{display:grid;gap:5px;padding:13px;border:1px solid #eadfce;border-radius:10px;background:#fbf8f3}
+.operations-kpi-grid article.is-attention{border-color:#d8b9a5;background:#fff8f3}
+.operations-kpi-grid span,.operations-kpi-grid small{font-size:11px;color:#6e6060}
+.operations-kpi-grid strong{font-size:25px;color:#4a202c}
+.operations-panel,.operations-export-panel{margin-top:14px;padding:15px;border:1px solid #e9dfd3;border-radius:10px;background:#fff}
+.operations-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.operations-panel-heading h4,.operations-export-panel h4{margin:0;color:#4a202c}
+.operations-panel-heading p,.operations-export-panel p{margin:4px 0 10px;font-size:11px;line-height:1.55;color:#76696a}
+.operations-panel-heading>span{padding:5px 8px;border-radius:20px;background:#f6efe5;color:#67404a;font-size:10px;font-weight:800}
+.operations-stage-list{display:grid;gap:10px;margin-top:12px}
+.operations-stage-list>div{display:grid;grid-template-columns:minmax(110px,1fr) 2fr 28px;align-items:center;gap:10px;font-size:11px;text-transform:capitalize}
+.operations-stage-list>div>div{height:8px;overflow:hidden;border-radius:20px;background:#f0e9df}
+.operations-stage-list i{display:block;height:100%;border-radius:20px;background:#8d5d48}
+.operations-exception-list{margin-top:14px;padding:12px;border-left:3px solid #a65b45;background:#fff8f3}
+.operations-exception-list p{margin:7px 0;font-size:11px}
+.operations-search{display:grid;gap:6px;margin:14px 0;font-size:11px;font-weight:700}
+.operations-search input,.operations-export-controls select{min-height:39px;padding:8px;border:1px solid #d8cabb;border-radius:7px;background:#fff}
+.operations-order-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:9px 0;border-top:1px solid #eee6dc;font-size:11px}
+.operations-order-row small{color:#76696a;text-transform:capitalize}
+.operations-clash{display:grid;gap:5px;margin-top:10px;padding:11px;border:1px solid #e5d4c8;border-radius:8px;background:#fffaf6}
+.operations-clash span,.operations-clash small{font-size:11px;color:#716263}
+.operations-disclaimer{margin:12px 0 0;padding:10px;border-left:3px solid #b18b51;background:#fbf8f3;font-size:11px;line-height:1.55;color:#675d58}
+.operations-export-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.operations-export-controls label{display:grid;gap:5px;font-size:11px;font-weight:700}
+.operations-export-controls button,.operations-print-button{min-height:38px;padding:8px 12px;border:1px solid #6b3444;border-radius:7px;background:#6b3444;color:#fff;font-size:11px;font-weight:800;cursor:pointer}
+.operations-print-button{margin-top:10px;background:#fff;color:#6b3444}
+.appointment-conflict-review{margin:12px 0;padding:12px;border:1px solid #dfc7b7;border-left:4px solid #a65b45;border-radius:8px;background:#fff8f3}
+.appointment-conflict-review>strong{color:#743d35;font-size:12px}
+.appointment-conflict-review>p{font-size:11px;line-height:1.55;color:#6e6060}
+.appointment-conflict-review>div{display:grid;gap:4px;padding:9px 0;border-top:1px solid #eadbd0}
+.appointment-conflict-review span,.appointment-conflict-review small{font-size:11px;color:#716263}
+.measurement-field-details{margin:12px 0;padding:10px 12px;border:1px solid #e4d8c9;border-radius:8px;background:#fff}
+.measurement-field-details summary{cursor:pointer;color:#5b2b3c;font-size:12px;font-weight:800}
+.measurement-field-details ol{display:grid;gap:8px;padding-left:20px}
+.measurement-field-details li{font-size:11px;line-height:1.55;color:#655b5b}
+.measurement-field-details strong{color:#4a202c}
+@media(max-width:560px){.operations-insights{padding:13px}.operations-order-row{grid-template-columns:1fr 1fr}.operations-order-row small{grid-column:1/-1}.operations-stage-list>div{grid-template-columns:100px 1fr 22px}.operations-export-controls{align-items:stretch;flex-direction:column}.operations-export-controls label{width:100%}.operations-export-controls select{width:100%}}
+@media print{.operations-insights{break-inside:avoid;border:0}.operations-export-controls,.operations-print-button{display:none!important}}
