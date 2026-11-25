@@ -4,6 +4,8 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
   const [activeImage, setActiveImage] = useState("");
   const closeRef = useRef(null);
   const returnFocusRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const images = [...new Set([product?.imageUrl, ...(product?.galleryImages || [])].filter(value => typeof value === "string" && /^https:\/\//i.test(value)))].slice(0, 9);
 
   useEffect(() => {
@@ -11,7 +13,7 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
     returnFocusRef.current = document.activeElement;
     closeRef.current?.focus();
     function onKeyDown(event) {
-      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
       if (event.key === "Tab") {
         const dialog = document.getElementById("product-detail-dialog");
         const focusable = Array.from(dialog?.querySelectorAll('button:not([disabled]),a[href]') || []);
@@ -25,7 +27,7 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
       document.removeEventListener("keydown", onKeyDown);
       if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
     };
-  }, [product, onClose]);
+  }, [product?.id]);
 
   useEffect(() => { setActiveImage(images[0] || ""); }, [product?.id]);
 
