@@ -465,11 +465,12 @@ try {
   await assertFails(getDoc(doc(customerB, "appointments", "appointment-a")));
   // New slot locks are readable for availability checks but contain no customer UID.
   await assertSucceeds(getDoc(doc(customerB, "appointmentSlots", "2026-11-20_10:00")));
-  const legacyPrivateSlot = doc(superAdmin, "appointmentSlots", "legacy-private-slot");
-  await assertSucceeds(setDoc(legacyPrivateSlot, {
-    appointmentId: "legacy-appointment", customerUid: "customer-a",
-    appointmentDate: "2026-11-19", appointmentTime: "09:00", updatedAt: now
-  }));
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "appointmentSlots", "legacy-private-slot"), {
+      appointmentId: "legacy-appointment", customerUid: "customer-a",
+      appointmentDate: "2026-11-19", appointmentTime: "09:00", updatedAt: now
+    });
+  });
   await assertSucceeds(getDoc(doc(customerA, "appointmentSlots", "legacy-private-slot")));
   await assertFails(getDoc(doc(customerB, "appointmentSlots", "legacy-private-slot")));
   await assertSucceeds(getDoc(doc(superAdmin, "appointmentSlots", "legacy-private-slot")));
