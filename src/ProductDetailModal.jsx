@@ -31,6 +31,11 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
 
   useEffect(() => { setActiveImage(images[0] || ""); }, [product?.id]);
 
+  function requestDesign() {
+    returnFocusRef.current = null;
+    onRequest(product);
+  }
+
   if (!product) return null;
   const available = Number(product.stock || 0) > 0;
   return <div className="product-detail-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
@@ -52,7 +57,7 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
           {product.customizationOptions?.length > 0 && <div><b>Customisation options</b><p>{product.customizationOptions.join(", ")}</p></div>}
           <p className="product-detail-disclaimer">Catalogue details and stock are indicative and may change. The team will confirm availability, final specifications, price and delivery arrangements in your quotation before an order is accepted.</p>
           <div className="product-detail-actions">
-            <button type="button" className="portal-submit" onClick={()=>onRequest(product)}>Request this design</button>
+            <button type="button" className="portal-submit" onClick={requestDesign}>Request this design</button>
             <button type="button" className="portal-submit secondary" onClick={()=>onToggleFavourite(product)}>{favourite ? "♥ Remove saved design" : "♡ Save design"}</button>
           </div>
         </div>
