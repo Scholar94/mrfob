@@ -131,6 +131,11 @@ export default function OperationsInsights({
         ["Declaration reference","Order reference","Amount declared (NGN)","Status","Transfer date","Created date"],
         ...paymentDeclarations.map(item => [item.id,item.orderNumber || item.orderId,item.amount,item.status,item.transferDate,localDate(item.createdAt)])
       ]);
+    } else if (reportType === "reconciliation") {
+      downloadCsv("mrfop-payment-reconciliation.csv", [
+        ["Exception type","Record reference","Order reference","Review detail"],
+        ...paymentExceptions.map(item => [item.type,item.reference,item.order,item.detail])
+      ]);
     }
   }
 
@@ -177,7 +182,7 @@ export default function OperationsInsights({
     </div>}
     {isSuperAdmin && <div className="operations-export-panel">
       <div><h4>Operational data export</h4><p>Export selected records without changing the source data. Customer names and contact details are intentionally excluded.</p></div>
-      <div className="operations-export-controls"><label>Report<select value={reportType} onChange={event=>setReportType(event.target.value)}><option value="orders">Orders and production</option><option value="appointments">Appointments</option><option value="measurements">Measurement verification</option><option value="payments">Payment declarations</option><option value="reconciliation">Payment reconciliation exceptions</option></select></label><button type="button" onClick={exportReport}>Download CSV</button></div>
+      <div className="operations-export-controls"><label>Report<select value={reportType} onChange={event=>setReportType(event.target.value)}><option value="orders">Orders and production</option><option value="appointments">Appointments</option><option value="measurements">Measurement verification</option><option value="payments">Payment declarations</option><option value="reconciliation">Payment reconciliation exceptions</option><option value="reconciliation">Payment reconciliation exceptions</option></select></label><button type="button" onClick={exportReport}>Download CSV</button></div>
       <button type="button" className="operations-print-button" onClick={()=>window.print()}>Print this operations summary</button>
     </div>}
   </section>;
