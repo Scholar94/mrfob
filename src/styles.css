@@ -1158,3 +1158,12 @@ button:disabled{cursor:not-allowed}
 .payment-reconciliation-list article strong{font-size:13px;color:#6f391f}
 .payment-reconciliation-list article span{font-size:12px;font-weight:700;color:#3d2930}
 .payment-reconciliation-list article small{font-size:11px;line-height:1.5;color:#786b65;overflow-wrap:anywhere}
+
+/* Customer-controlled personal data export */
+
+.privacy-export-panel{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:16px 0 20px;padding:16px 18px;border:1px solid #e4d9ca;border-radius:12px;background:#faf7f1}
+.privacy-export-panel>div{min-width:0}
+.privacy-export-panel strong{display:block;color:#32151f;font-size:14px}
+.privacy-export-panel p{margin:6px 0 0;color:#74665e;font-size:12px;line-height:1.65}
+.privacy-export-panel button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:620px){.privacy-export-panel{align-items:stretch;flex-direction:column}.privacy-export-panel button{width:100%}}
