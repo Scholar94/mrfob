@@ -53,6 +53,60 @@ const guides = {
   }
 };
 
+
+const measurementFieldTips = {
+  neck:["Neck circumference","Place the tape around the base of the neck where the collar sits. Keep one finger of ease if the designer requests it."],
+  shoulder:["Shoulder width","Measure straight from one shoulder point to the other across the back. Do not follow the curve of the arm."],
+  chest:["Chest circumference","Wrap the tape around the fullest chest, under the arms and level across the back. Breathe normally."],
+  bust:["Bust circumference","Measure around the fullest bust point with the tape level. Do not compress the bust."],
+  underBust:["Underbust","Measure immediately below the bust, keeping the tape horizontal and comfortably snug."],
+  waist:["Natural waist","Measure around the natural waist crease. Do not pull the stomach in or tighten the tape."],
+  upperWaist:["Upper waist","Measure at the exact upper-waist position agreed with the designer; record this separately from natural waist."],
+  abdomen:["Abdomen","Measure around the fullest abdomen with the tape level. Stand relaxed and breathe normally."],
+  hip:["Full hip / seat","Measure around the fullest hip and seat, keeping the tape parallel to the floor."],
+  shoulderToBust:["Shoulder to bust point","Measure from the agreed shoulder/neck reference point down to the bust apex."],
+  bustPoint:["Bust point height","Measure vertically from the agreed shoulder reference to the bust apex; keep posture natural."],
+  bustSeparation:["Bust separation","Measure horizontally between bust apex points. Do not measure around the body."],
+  frontWaistLength:["Front waist length","Measure from the shoulder reference over the bust to the natural waist."],
+  backWaistLength:["Back waist length","Measure from the prominent neck-base point down the centre back to the waist."],
+  sleeve:["Sleeve length","Measure from the shoulder point over a slightly bent elbow to the agreed cuff or wrist point."],
+  upperArm:["Upper arm","Measure around the fullest upper arm with the arm relaxed. Do not flex the muscle."],
+  bicep:["Bicep circumference","Measure around the fullest bicep with the arm relaxed and hanging naturally."],
+  elbow:["Elbow","Measure around the elbow at the agreed bend position, usually with the elbow slightly flexed."],
+  wrist:["Wrist","Measure around the wrist bone where the cuff should finish. Confirm desired cuff ease separately."],
+  armhole:["Armhole","Follow the armhole path around the shoulder joint. Keep the tape close without pulling it tight."],
+  shirtLength:["Shirt / inner top length","Measure from the agreed high-shoulder or neck reference down to the required hem."],
+  jacketLength:["Jacket length","Measure from the agreed neck/shoulder reference down the body to the intended jacket hem."],
+  blouseLength:["Blouse length","Measure from the agreed shoulder or neckline point to the intended blouse hem."],
+  dressLength:["Dress length","Measure from the agreed shoulder/neckline point to the hem. Confirm footwear and hem preference."],
+  skirtLength:["Skirt length","Measure from the intended waistband position down to the required skirt hem."],
+  waistToHip:["Waist to hip","Measure vertically from the waistband/natural waist level to the fullest hip level."],
+  thigh:["Thigh circumference","Measure around the fullest part of one upper thigh, keeping the tape level."],
+  knee:["Knee circumference","Measure around the knee at the agreed trouser fit point, with the leg relaxed."],
+  inseam:["Inseam","Measure from the crotch junction down the inside leg to the intended hem."],
+  outseam:["Outseam","Measure from the top of the waistband down the outside leg to the intended hem."],
+  crotch:["Crotch depth / rise","Use the designer's agreed seated or standing method; keep the tape path consistent and record the method."],
+  frontRise:["Front rise","Measure from the crotch seam up to the top of the front waistband."],
+  backRise:["Back rise","Measure from the crotch seam up to the top of the back waistband."],
+  ankle:["Ankle opening","Measure around the intended trouser hem opening, or record the flat finished opening if requested."],
+  acrossBack:["Across back","Measure horizontally between the back armhole points, not around the torso."],
+  length:["Garment length","Measure from the agreed starting reference to the required finished hem."],
+  trouserWaist:["Trouser waist","Measure at the exact level where the waistband will sit; this may differ from natural waist."],
+  trouserHip:["Trouser hip","Measure around the fullest seat/hip level while wearing the intended undergarment." ]
+};
+const measurementFieldSets = {
+  "General body profile":["chest","waist","abdomen","hip","shoulder","neck","upperArm","wrist"],
+  "Men’s shirt":["neck","shoulder","chest","waist","abdomen","sleeve","upperArm","bicep","wrist","armhole","shirtLength","acrossBack"],
+  "Trousers":["trouserWaist","trouserHip","thigh","knee","inseam","outseam","crotch","frontRise","backRise","ankle"],
+  "Dress / Gown":["bust","underBust","upperWaist","waist","hip","shoulder","shoulderToBust","bustPoint","bustSeparation","frontWaistLength","backWaistLength","sleeve","upperArm","elbow","wrist","armhole","dressLength"],
+  "Skirt":["waist","upperWaist","hip","waistToHip","skirtLength"],
+  "Jacket":["neck","chest","waist","abdomen","hip","shoulder","acrossBack","sleeve","upperArm","bicep","wrist","armhole","jacketLength"],
+  "Blouse":["bust","underBust","waist","hip","shoulder","shoulderToBust","bustSeparation","frontWaistLength","backWaistLength","sleeve","upperArm","elbow","wrist","armhole","blouseLength"],
+  "Agbada":["neck","shoulder","chest","waist","abdomen","hip","sleeve","upperArm","wrist","shirtLength","acrossBack"],
+  "Senator wear":["neck","shoulder","chest","waist","abdomen","hip","sleeve","upperArm","wrist","shirtLength","acrossBack","trouserWaist","trouserHip","thigh","inseam","outseam","crotch","ankle"],
+  "Bridal / Special occasion":["bust","underBust","upperWaist","waist","hip","shoulder","shoulderToBust","bustSeparation","frontWaistLength","backWaistLength","sleeve","upperArm","elbow","wrist","armhole","dressLength"]
+};
+
 function TapeLines({ type }) {
   if (type === "Trousers" || type === "Skirt") {
     return <g className="measurement-tape-lines">
@@ -74,6 +128,7 @@ function TapeLines({ type }) {
 export default function MeasurementGuide({ garmentType = "General body profile" }) {
   const guide = guides[garmentType] || guides["General body profile"];
   const lower = garmentType === "Trousers" || garmentType === "Skirt";
+  const fieldDetails = (measurementFieldSets[garmentType] || measurementFieldSets["General body profile"]).map(key => measurementFieldTips[key]).filter(Boolean);
   return <aside className="measurement-guide" aria-label={guide.title + " measurement guide"}>
     <div className="measurement-guide-art">
       <svg viewBox="0 0 230 250" role="img" aria-labelledby="garmentGuideTitle garmentGuideDesc">
@@ -93,6 +148,7 @@ export default function MeasurementGuide({ garmentType = "General body profile" 
       <p>Use a flexible tape, keep it level and comfortably snug, and stand naturally. The drawing is a placement aid, not a body-shape or sizing standard.</p>
       <ul>{guide.steps.map((step,index)=><li key={index}>{step}</li>)}</ul>
       <div className="measurement-guide-focus"><b>Key points in this profile:</b> {guide.focus.join(" · ")}</div>
+      <details className="measurement-field-details"><summary>Step-by-step instructions for every field in this profile</summary><ol>{fieldDetails.map(([label,tip])=><li key={label}><strong>{label}:</strong> {tip}</li>)}</ol></details>
       <small>Have another person help where possible. Confirm all measurements, ease and exact garment reference points with an MR FOP designer before cutting or production.</small>
     </div>
   </aside>;
