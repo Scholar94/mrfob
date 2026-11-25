@@ -21,6 +21,7 @@ import RefundManagement from "./RefundManagement.jsx";
 import { recordAuditEvent } from "./auditLog.js";
 import SystemControlCentre from "./SystemControlCentre.jsx";
 import OperationsInsights from "./OperationsInsights.jsx";
+import SupportConversation from "./SupportConversation.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -2473,6 +2474,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           <div className="support-ticket-heading"><div><strong>{ticket.subject}</strong><span>{ticket.customerName || ticket.customerEmail || "Customer"} · {ticket.category}</span></div><span className={"support-ticket-status status-"+(ticket.status||"open")}>{String(ticket.status||"open").replaceAll("_"," ")}</span></div>
           <p>{ticket.message}</p>
           {ticket.staffReply && <div className="support-ticket-reply"><strong>MR FOP team response</strong><p>{ticket.staffReply}</p></div>}
+          <SupportConversation ticket={ticket} user={user} canManageSupport={canManageSupport}/>
           {canManageSupport && <div className="support-ticket-actions"><label>Status<select value={ticket.status||"open"} disabled={busy} onChange={e=>updateSupportStatus(ticket,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="closed">Closed</option></select></label><button type="button" disabled={busy} onClick={()=>replyToSupportTicket(ticket)}>{ticket.staffReply ? "Update reply" : "Reply to customer"}</button></div>}
           <small>Reference: {ticket.id}</small>
         </article>)}</div> : <p className="staff-empty">{canManageSupport ? (supportTickets.length ? "No requests match the current search or status filter." : "No customer support requests have been received.") : "You have not sent a support request yet."}</p>}
