@@ -34,7 +34,7 @@ export default function AppointmentCalendar({ appointments = [] }) {
   const potentialConflicts = useMemo(() => {
     const groups = new Map();
     appointments.filter(item => !["cancelled","completed","rejected"].includes(item.status || "pending")).forEach(item => {
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(item.appointmentDate || "") || !item.appointmentTime) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(item.appointmentDate || "") || !item.appointmentTime) return;
       const assigned = item.assignedDesignerUid || "unassigned";
       const key = [item.appointmentDate, item.appointmentTime, assigned].join("|");
       if (!groups.has(key)) groups.set(key, []);
