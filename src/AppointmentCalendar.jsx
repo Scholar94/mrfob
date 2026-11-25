@@ -31,6 +31,17 @@ export default function AppointmentCalendar({ appointments = [] }) {
   }, [appointments]);
 
   const visibleAppointments = appointmentsByDate[selectedDate] || [];
+  const potentialConflicts = useMemo(() => {
+    const groups = new Map();
+    appointments.filter(item => !["cancelled","completed","rejected"].includes(item.status || "pending")).forEach(item => {
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(item.appointmentDate || "") || !item.appointmentTime) return;
+      const assigned = item.assignedDesignerUid || "unassigned";
+      const key = [item.appointmentDate, item.appointmentTime, assigned].join("|");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    });
+    return [...groups.values()].filter(group => group.length > 1);
+  }, [appointments]);
   const monthAppointments = appointments.filter(item => {
     const [y, m] = String(item.appointmentDate || "").split("-").map(Number);
     return y === year && m === month + 1;
@@ -67,6 +78,11 @@ export default function AppointmentCalendar({ appointments = [] }) {
       })}
     </div>
     <div className="appointment-calendar-summary"><strong>{monthAppointments.length} booking{monthAppointments.length === 1 ? "" : "s"}</strong><span>in {monthLabel}</span></div>
+    {potentialConflicts.length > 0 && <aside className="appointment-conflict-review" role="status">
+      <strong>{potentialConflicts.length} possible same-slot conflict{potentialConflicts.length===1?"":"s"} to review</strong>
+      <p>These bookings share an exact date, start time and assigned designer (or are both unassigned). This check does not know appointment duration and does not automatically cancel or change any booking.</p>
+      {potentialConflicts.slice(0,5).map(group=><div key={group.map(item=>item.id).join("-")}><b>{group[0].appointmentDate} · {group[0].appointmentTime}</b><span>{group[0].assignedDesignerName || "Designer not assigned"} · {group.length} bookings</span>{group.map(item=><small key={item.id}>{item.service || "Appointment"} — {item.customerName || item.customerEmail || "Customer"}</small>)}</div>)}
+    </aside>}
     <div className="appointment-calendar-day-list">
       <h5>{new Date(year, month, Number(selectedDate.slice(8, 10)) || 1).toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" })}</h5>
       {visibleAppointments.length ? visibleAppointments.map(item => <article className="appointment-calendar-item" key={item.id}>
