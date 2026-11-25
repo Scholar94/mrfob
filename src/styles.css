@@ -1167,3 +1167,32 @@ button:disabled{cursor:not-allowed}
 .privacy-export-panel p{margin:6px 0 0;color:#74665e;font-size:12px;line-height:1.65}
 .privacy-export-panel button{flex:0 0 auto;white-space:nowrap}
 @media(max-width:620px){.privacy-export-panel{align-items:stretch;flex-direction:column}.privacy-export-panel button{width:100%}}
+
+/* Accessible customer product detail modal */
+
+.product-detail-backdrop{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:18px;background:rgba(20,12,15,.78);backdrop-filter:blur(5px)}
+.product-detail-dialog{position:relative;width:min(1040px,100%);max-height:min(90vh,900px);overflow:auto;padding:clamp(20px,3vw,34px);border-radius:16px;background:#f8f4ee;color:#32151f;box-shadow:0 24px 90px #10080b80}
+.product-detail-close{position:absolute;z-index:2;right:14px;top:12px;width:40px;height:40px;border:1px solid #d9cfc4;border-radius:50%;background:#fff;color:#32151f;font-size:27px;line-height:1;cursor:pointer}
+.product-detail-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr);gap:clamp(20px,4vw,42px);align-items:start}
+.product-detail-gallery{min-width:0}
+.product-detail-main-image,.product-detail-no-image{display:block;width:100%;height:min(62vh,620px);min-height:260px;object-fit:contain;border-radius:10px;background:#eee8df}
+.product-detail-no-image{display:grid;place-items:center;color:#7b6e64}
+.product-detail-thumbnails{display:flex;gap:8px;overflow-x:auto;padding:10px 0}
+.product-detail-thumbnails button{flex:0 0 68px;width:68px;height:68px;padding:3px;border:1px solid #d9cfc4;border-radius:7px;background:white}
+.product-detail-thumbnails button.active{border:2px solid #9d7b43}
+.product-detail-thumbnails img{width:100%;height:100%;object-fit:cover}
+.product-detail-copy{display:grid;gap:12px;padding:10px 0}
+.product-detail-category{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:#8a6c3d}
+.product-detail-copy h2{margin:0;padding-right:36px;font:500 clamp(28px,4vw,42px)/1.12 'Playfair Display',serif}
+.product-detail-copy>p{margin:0;color:#665952;font-size:13px;line-height:1.7}
+.product-detail-price{font-size:23px;color:#32151f}
+.product-detail-stock{font-size:12px;font-weight:700}
+.product-detail-stock.in-stock{color:#2f7043}
+.product-detail-stock.out-stock{color:#9a3b32}
+.product-detail-copy>div>b{font-size:12px;color:#4d3c36}
+.product-detail-copy>div>p{margin:4px 0;color:#665952;font-size:13px;line-height:1.6}
+.product-detail-copy .product-detail-disclaimer{padding:12px;border-left:3px solid #b99652;background:#eee7db;font-size:11px}
+.product-detail-actions{display:flex;flex-wrap:wrap;gap:9px}
+.product-detail-actions button{flex:1 1 170px}
+@media(max-width:760px){.product-detail-layout{grid-template-columns:1fr}.product-detail-main-image,.product-detail-no-image{height:42vh;min-height:220px}.product-detail-dialog{max-height:94vh;padding:18px}.product-detail-copy h2{font-size:30px}}
+@media(prefers-reduced-motion:reduce){.product-detail-backdrop{backdrop-filter:none}}
