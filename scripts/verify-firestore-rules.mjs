@@ -12,6 +12,8 @@ const customerA = env.authenticatedContext("customer-a", { email: "customer-a@ex
 const customerB = env.authenticatedContext("customer-b", { email: "customer-b@example.com" }).firestore();
 const finance = env.authenticatedContext("finance-a", { email: "finance@example.com" }).firestore();
 const manager = env.authenticatedContext("manager-a", { email: "manager@example.com" }).firestore();
+const sales = env.authenticatedContext("sales-a", { email: "sales@example.com" }).firestore();
+const institute = env.authenticatedContext("institute-a", { email: "institute@example.com" }).firestore();
 const tailorA = env.authenticatedContext("tailor-a", { email: "tailor-a@example.com" }).firestore();
 const tailorB = env.authenticatedContext("tailor-b", { email: "tailor-b@example.com" }).firestore();
 const superAdmin = env.authenticatedContext("admin-a", { email: "admin@example.com" }).firestore();
@@ -22,8 +24,8 @@ try {
     const db = context.firestore();
     for (const [uid, role] of [
       ["customer-a", "customer"], ["customer-b", "customer"],
-      ["finance-a", "finance"], ["manager-a", "manager"],
-      ["tailor-a", "tailor"], ["tailor-b", "tailor"], ["admin-a", "superAdmin"]
+      ["finance-a", "finance"], ["manager-a", "manager"], ["sales-a", "sales"],
+      ["institute-a", "institute"], ["tailor-a", "tailor"], ["tailor-b", "tailor"], ["admin-a", "superAdmin"]
     ]) await setDoc(doc(db, "roles", uid), { role });
     await setDoc(doc(db, "users", "customer-a"), {
       uid: "customer-a", displayName: "Test Customer A", email: "customer-a@example.com", accountType: "customer"
@@ -592,6 +594,25 @@ try {
   await assertSucceeds(setDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "staff-message"), {
     senderUid: "manager-a", senderRole: "staff", senderName: "MR FOP team",
     body: "Thank you. We are reviewing your request.", createdAt: now
+  }));
+
+  // Every designated staff role may support customers; Finance and anonymous sessions are excluded.
+  for (const [staffDb, uid, label] of [
+    [sales, "sales-a", "Sales team"],
+    [tailorA, "tailor-a", "Tailor team"],
+    [institute, "institute-a", "Institute team"]
+  ]) {
+    await assertSucceeds(getDoc(doc(staffDb, "supportTickets", "support-thread-a", "messages", "customer-message")));
+    await assertSucceeds(setDoc(doc(staffDb, "supportTickets", "support-thread-a", "messages", `staff-${uid}`), {
+      senderUid: uid, senderRole: "staff", senderName: label,
+      body: "This authorised staff role can respond to a support ticket.", createdAt: now
+    }));
+  }
+  await assertFails(getDoc(doc(finance, "supportTickets", "support-thread-a", "messages", "customer-message")));
+  await assertFails(getDoc(doc(anonymous, "supportTickets", "support-thread-a", "messages", "customer-message")));
+  await assertFails(setDoc(doc(finance, "supportTickets", "support-thread-a", "messages", "finance-message"), {
+    senderUid: "finance-a", senderRole: "staff", senderName: "Finance",
+    body: "Finance is not included in the support staff role set.", createdAt: now
   }));
 
   await assertSucceeds(getDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "customer-message")));
