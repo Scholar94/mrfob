@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/OperationsInsights.jsx", "src/SupportConversation.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/OperationsInsights.jsx", "src/SupportConversation.jsx", "src/ProductDetailModal.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "docs/PRODUCTION-OPERATIONS.md", ".github/dependabot.yml", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
@@ -160,6 +160,8 @@ assert.ok(rules.includes("match /fabrics/{fabricId}") && rules.includes("match /
 assert.ok(portal.includes("transaction.delete(oldSlotRefs[index])") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)") && portal.includes("legacyAppointmentSlotId"), "Appointment alternative slot release/reservation and legacy migration are not transactional");
 assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && read("src/styles.css").includes(".fabric-grid"), "Responsive style/fabric UI styles are missing");
 
+assert.ok(portal.includes("<ProductDetailModal") && portal.includes("function requestCatalogueDesign"), "Customer product details and catalogue-to-order handoff are missing.");
+assert.ok(read("src/ProductDetailModal.jsx").includes('role="dialog"') && read("src/ProductDetailModal.jsx").includes("aria-modal=\"true\"") && read("src/ProductDetailModal.jsx").includes("aria-labelledby"), "Product detail dialog must be accessible and labelled.");
 assert.ok(privacyCenter.includes("async function exportPersonalData()") && privacyCenter.includes("where(ownerField, \"==\", user.uid)"), "Customer self-service data export must query only records owned by the signed-in user.");
 assert.ok(privacyCenter.includes('"instituteAssessmentSubmissions"') && privacyCenter.includes('"paymentDeclarations"') && privacyCenter.includes('"corporateRequests"'), "Personal data export must include relevant Institute, payment and corporate enquiry records.");
 assert.ok(privacyCenter.includes('collection(db, "orders", order.id, subcollection)') && privacyCenter.includes('collection(db, "supportTickets", ticket.id, "messages")'), "Personal data export must include owned order subrecords and private support messages.");
