@@ -576,6 +576,30 @@ try {
     throw new Error("Institute withdrawal did not update application status and intake capacity.");
   }
 
+  // Support conversation messages are private to the ticket owner and authorised staff, and append-only.
+  await assertSucceeds(setDoc(doc(customerA, "supportTickets", "support-thread-a"), {
+    customerUid: "customer-a", customerName: "Test Customer A", customerEmail: "customer-a@example.com",
+    category: "Order enquiry", subject: "Test support conversation",
+    message: "Please help me with my order.", status: "open", staffReply: "",
+    createdAt: now, updatedAt: now
+  }));
+  await assertSucceeds(setDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "customer-message"), {
+    senderUid: "customer-a", senderRole: "customer", senderName: "Test Customer A",
+    body: "I would like an update, please.", createdAt: now
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "customer-message")));
+  await assertFails(getDoc(doc(customerB, "supportTickets", "support-thread-a", "messages", "customer-message")));
+  await assertSucceeds(setDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "staff-message"), {
+    senderUid: "manager-a", senderRole: "staff", senderName: "MR FOP team",
+    body: "Thank you. We are reviewing your request.", createdAt: now
+  }));
+  await assertFails(setDoc(doc(customerB, "supportTickets", "support-thread-a", "messages", "intruder-message"), {
+    senderUid: "customer-b", senderRole: "customer", senderName: "Other customer",
+    body: "This must not be allowed.", createdAt: now
+  }));
+  await assertFails(updateDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "customer-message"), { body: "Changed history" }));
+  await assertFails(deleteDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "customer-message")));
+
   // Referral rules compile and preserve owner-only visibility.
   await assertSucceeds(setDoc(doc(customerA, "referralClaims", "referral-a"), {
     customerUid: "customer-a", referrerEmail: "customer-a@example.com",
@@ -615,7 +639,7 @@ try {
     createdAt: now, updatedAt: now
   }));
   await assertFails(getDoc(doc(customerA, "unlistedPrivateCollection", "record")));
-  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock, movement-to-stock consistency, immutable inventory ledger and atomic POS sale/stock/movement writes, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
+  console.log("Firestore Emulator rules checks passed: cross-customer profile/order/payment privacy, self-role escalation denial, assigned-tailor isolation, non-negative inventory stock, movement-to-stock consistency, immutable inventory ledger and atomic POS sale/stock/movement writes, POS/expense role permissions, refund lifecycle, appointment ownership and slot reservation, Institute schedule lock privacy and withdrawal, newsletter consent and subscriber privacy, private append-only support conversations, Drive configuration, referral ownership, fabric visibility, product gallery writes and deny-by-default.");
 } finally {
   await env.cleanup();
 }
