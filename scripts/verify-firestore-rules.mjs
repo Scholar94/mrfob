@@ -474,6 +474,13 @@ try {
   await assertSucceeds(getDoc(doc(customerA, "appointmentSlots", "legacy-private-slot")));
   await assertFails(getDoc(doc(customerB, "appointmentSlots", "legacy-private-slot")));
   await assertSucceeds(getDoc(doc(superAdmin, "appointmentSlots", "legacy-private-slot")));
+  // Super Admin migration replaces the legacy document without its customer UID.
+  await assertSucceeds(setDoc(doc(superAdmin, "appointmentSlots", "legacy-private-slot"), {
+    appointmentId: "legacy-appointment", appointmentDate: "2026-11-19",
+    appointmentTime: "09:00", updatedAt: now
+  }));
+  const migratedSlot = await getDoc(doc(customerB, "appointmentSlots", "legacy-private-slot"));
+  if (migratedSlot.data()?.customerUid !== undefined) throw new Error("Migrated appointment slot still contains a customer UID.");
   await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-21_11:00"), {
     appointmentId: "appointment-a",
     appointmentDate: "2026-11-21", appointmentTime: "11:00", updatedAt: now
