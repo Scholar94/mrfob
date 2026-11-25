@@ -98,3 +98,18 @@ Further source development should be driven by reproducible defects or a confirm
 
 
 - **Local calendar date handling (16 November 2026):** Institute attendance dates, intake application-close filtering, announcement expiry validation and corporate-order preferred completion date minimums now use local calendar date components rather than UTC ISO date slicing. Static platform guardrails and the manual QA plan now cover this regression. This prevents date-only business inputs from shifting around midnight in time zones behind UTC.
+
+
+## Implementation addendum — phases 1–11 incremental work
+
+**Branch:** `feature/complete-master-prompt-phases-1-11`
+
+The following changes are additive and intentionally reuse existing Firestore records and portal workflows:
+
+- **Catalogue-to-order handoff:** Customer product cards now offer a "Request this design" action. It pre-fills the existing custom-order form with the selected product, mapped clothing category and available first fabric/colour options. It does not create an order or promise stock availability, price or delivery.
+- **Measurement field reference:** Every currently supported garment profile now has an expandable field-by-field tape-placement reference. It supplements the existing diagrams and guidance; it does not replace designer verification.
+- **Appointment review:** The appointment calendar and Operations Centre identify potential exact date/time/designer collisions among non-cancelled bookings. This is a review aid only: it does not calculate appointment duration or mutate reservations.
+- **Business Operations & Quality Centre:** A read-only, role-aware view summarises active/overdue production work, appointment review groups, measurement verification backlog and finance declarations awaiting review. Super Admin can export selected operational CSV reports without customer contact details. It does not write to business records or treat payment evidence as proof of cleared funds.
+- **Preservation:** No existing Firestore collections, document schemas, authentication flows, security rules, Google Drive integration or payment workflows were changed by this addendum.
+
+The changes are source-implemented on the feature branch. They must pass the repository build, browser smoke tests, source guardrails and Firestore Emulator suite before merge. The new manual acceptance cases T24–T26 are not yet run. This addendum does not mark phases 1–11 or the master prompt as complete.
