@@ -6,7 +6,11 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
   const returnFocusRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const images = [...new Set([product?.imageUrl, ...(product?.galleryImages || [])].filter(value => typeof value === "string" && /^https:\/\//i.test(value)))].slice(0, 9);
+  const galleryImages = Array.isArray(product?.galleryImages) ? product.galleryImages : [];
+  const colors = Array.isArray(product?.availableColors) ? product.availableColors : [];
+  const fabrics = Array.isArray(product?.fabricOptions) ? product.fabricOptions : [];
+  const customisations = Array.isArray(product?.customizationOptions) ? product.customizationOptions : [];
+  const images = [...new Set([product?.imageUrl, ...galleryImages].filter(value => typeof value === "string" && /^https:\/\//i.test(value)))].slice(0, 9);
 
   useEffect(() => {
     if (!product) return undefined;
@@ -52,9 +56,9 @@ export default function ProductDetailModal({ product, onClose, onRequest, favour
           <p>{product.description || "Contact the MR FOP team for product details and customisation guidance."}</p>
           <strong className="product-detail-price">₦{Number(product.price || 0).toLocaleString("en-NG")}</strong>
           <span className={available ? "product-detail-stock in-stock" : "product-detail-stock out-stock"}>{available ? "Currently listed as in stock" : "Currently listed as out of stock"}</span>
-          {product.availableColors?.length > 0 && <div><b>Available colours</b><p>{product.availableColors.join(", ")}</p></div>}
-          {product.fabricOptions?.length > 0 && <div><b>Fabric options</b><p>{product.fabricOptions.join(", ")}</p></div>}
-          {product.customizationOptions?.length > 0 && <div><b>Customisation options</b><p>{product.customizationOptions.join(", ")}</p></div>}
+          {colors.length > 0 && <div><b>Available colours</b><p>{colors.join(", ")}</p></div>}
+          {fabrics.length > 0 && <div><b>Fabric options</b><p>{fabrics.join(", ")}</p></div>}
+          {customisations.length > 0 && <div><b>Customisation options</b><p>{customisations.join(", ")}</p></div>}
           <p className="product-detail-disclaimer">Catalogue details and stock are indicative and may change. The team will confirm availability, final specifications, price and delivery arrangements in your quotation before an order is accepted.</p>
           <div className="product-detail-actions">
             <button type="button" className="portal-submit" onClick={requestDesign}>Request this design</button>
