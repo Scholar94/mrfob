@@ -22,6 +22,7 @@ import { recordAuditEvent } from "./auditLog.js";
 import SystemControlCentre from "./SystemControlCentre.jsx";
 import OperationsInsights from "./OperationsInsights.jsx";
 import SupportConversation from "./SupportConversation.jsx";
+import ProductDetailModal from "./ProductDetailModal.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -210,6 +211,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const productFormRef = useRef(null);
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
   const [productGallerySelection, setProductGallerySelection] = useState({});
+  const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [productImageFiles, setProductImageFiles] = useState([]);
   const [productImagesUploading, setProductImagesUploading] = useState(false);
   const [stockAdjustments, setStockAdjustments] = useState({});
@@ -1818,6 +1820,27 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     finally { setProductsLoading(false); }
   }
 
+  function requestCatalogueDesign(product) {
+    if (!product?.id) return;
+    const categoryText = String(product.category || "").toLowerCase();
+    const orderCategory = categoryText.includes("bridal") || categoryText.includes("wedding") ? "Bridal and occasion wear"
+      : categoryText.includes("women") || categoryText.includes("dress") ? "Women’s clothing"
+      : categoryText.includes("traditional") || categoryText.includes("agbada") || categoryText.includes("senator") ? "Traditional Nigerian attire"
+      : categoryText.includes("corporate") || categoryText.includes("uniform") || categoryText.includes("industrial") ? "Corporate or institutional uniforms"
+      : "Men’s clothing";
+    setCustomerOrderForm(current => ({
+      ...current,
+      category: orderCategory,
+      item: String(product.name || "").slice(0, 120),
+      fabric: product.fabricOptions?.[0] || current.fabric,
+      colour: product.availableColors?.[0] || current.colour,
+      instructions: [current.instructions, "Catalogue design reference: " + product.name + " (catalogue ID: " + product.id + "). Please confirm current availability, final price and customisation before accepting the order."].filter(Boolean).join("\n").slice(0, 1500)
+    }));
+    setSelectedProductDetail(null);
+    document.getElementById("customer-order-request")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setMessage("The selected catalogue design has been added to your custom order request. Review the details and submit when ready.");
+  }
+
   async function toggleProductFavourite(product) {
     if (!user || claims.staffRole || claims.superAdmin || !product?.id) return;
     setError(""); setMessage("");
@@ -2653,9 +2676,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         <div className="customer-management-heading"><div><h3>Product Catalogue</h3><p>Browse products and current availability</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh catalogue"}</button></div>
         {productsLoading ? <p className="staff-empty">Loading products…</p> : products.filter(product=>product.active !== false).length ? <div className="inventory-list">{products.filter(product=>product.active !== false).map(product=><article className="inventory-card customer-product-card" key={product.id}>
           {(() => { const images = [...new Set([product.imageUrl, ...(product.galleryImages || [])].filter(Boolean))].slice(0, 9); const selectedImage = productGallerySelection[product.id] || images[0]; return <div className="customer-product-gallery">{selectedImage && <img className="customer-product-main-image" src={selectedImage} alt={product.name + " design view"} loading="lazy"/>}{images.length > 1 && <div className="customer-product-thumbnails" aria-label={product.name + " image views"}>{images.map((url,index)=><button type="button" key={url} className={selectedImage === url ? "active" : ""} onClick={()=>setProductGallerySelection(current=>({...current,[product.id]:url}))} aria-label={"Show image view " + (index+1)} aria-pressed={selectedImage === url}><img src={url} alt="" loading="lazy"/></button>)}</div>}</div>; })()}
-          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p>{product.availableColors?.length > 0 && <p><strong>Colours:</strong> {product.availableColors.join(", ")}</p>}{product.fabricOptions?.length > 0 && <p><strong>Fabric options:</strong> {product.fabricOptions.join(", ")}</p>}{product.customizationOptions?.length > 0 && <p><strong>Customisation:</strong> {product.customizationOptions.join(", ")}</p>}<b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button><button type="button" className="portal-submit" onClick={()=>{const categoryText=String(product.category||"").toLowerCase();const orderCategory=categoryText.includes("bridal")||categoryText.includes("wedding")?"Bridal and occasion wear":categoryText.includes("women")||categoryText.includes("dress")?"Women’s clothing":categoryText.includes("traditional")||categoryText.includes("agbada")||categoryText.includes("senator")?"Traditional Nigerian attire":categoryText.includes("corporate")||categoryText.includes("uniform")||categoryText.includes("industrial")?"Corporate or institutional uniforms":"Men’s clothing";setCustomerOrderForm(current=>({...current,category:orderCategory,item:String(product.name||"").slice(0,120),fabric:product.fabricOptions?.[0]||current.fabric,colour:product.availableColors?.[0]||current.colour,instructions:[current.instructions,"Catalogue design reference: "+product.name+" (catalogue ID: "+product.id+"). Please confirm current availability, final price and customisation before accepting the order."].filter(Boolean).join("\n").slice(0,1500)}));document.getElementById("customer-order-request")?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("The selected catalogue design has been added to your custom order request. Review the details and submit when ready.");}}>Request this design</button></div>
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p>{product.availableColors?.length > 0 && <p><strong>Colours:</strong> {product.availableColors.join(", ")}</p>}{product.fabricOptions?.length > 0 && <p><strong>Fabric options:</strong> {product.fabricOptions.join(", ")}</p>}{product.customizationOptions?.length > 0 && <p><strong>Customisation:</strong> {product.customizationOptions.join(", ")}</p>}<b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>setSelectedProductDetail(product)}>View full details</button><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button><button type="button" className="portal-submit" onClick={()=>requestCatalogueDesign(product)}>Request this design</button></div>
         </article>)}</div> : <p className="staff-empty">Our product catalogue is being updated. Please check again soon.</p>}
       </section>}
+      <ProductDetailModal product={selectedProductDetail} onClose={()=>setSelectedProductDetail(null)} onRequest={requestCatalogueDesign} favourite={!!selectedProductDetail && favouriteProductIds.includes(selectedProductDetail.id)} onToggleFavourite={toggleProductFavourite}/>
       {(claims.superAdmin || claims.staffRole === "manager") && <section className="customer-management"><div className="customer-management-heading"><div><h3>Customer review moderation</h3><p>Only reviews linked to delivered orders can be submitted; publication requires approval.</p></div><button type="button" onClick={loadReviewModeration}>Refresh reviews</button></div>{moderationReviews.length ? <div className="appointment-list">{moderationReviews.map(review=><article className="appointment-card" key={review.id}><strong>{review.customerName || "Customer"} · {review.rating}/5</strong><p>Order: {review.orderId}</p><p>{review.comment}</p><div className="row-actions"><button type="button" disabled={busy} onClick={()=>moderateReview(review,"approved")}>Approve for publication</button><button type="button" disabled={busy} onClick={()=>moderateReview(review,"rejected")}>Reject</button></div></article>)}</div> : <p className="staff-empty">No pending reviews are loaded. Use Refresh reviews to check the queue.</p>}</section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Management</h3><p>View and update registered customer profiles</p></div><button type="button" onClick={loadCustomers} disabled={customerLoading}>{customerLoading ? "Loading…" : "Refresh customers"}</button></div>
