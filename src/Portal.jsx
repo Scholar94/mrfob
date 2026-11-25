@@ -1378,13 +1378,8 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       for (let offset = 0; offset < legacySlots.length; offset += 450) {
         const migrationBatch = writeBatch(db);
         legacySlots.slice(offset, offset + 450).forEach(slot => {
-          const data = slot.data();
-          migrationBatch.set(slot.ref, {
-            appointmentId: data.appointmentId,
-            appointmentDate: data.appointmentDate,
-            appointmentTime: data.appointmentTime,
-            updatedAt: data.updatedAt || serverTimestamp()
-          });
+          const { customerUid: legacyCustomerUid, ...safeSlotData } = slot.data();
+          migrationBatch.set(slot.ref, safeSlotData);
         });
         await migrationBatch.commit();
       }
