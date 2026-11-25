@@ -474,8 +474,12 @@ try {
   await assertSucceeds(getDoc(doc(customerA, "appointmentSlots", "legacy-private-slot")));
   await assertFails(getDoc(doc(customerB, "appointmentSlots", "legacy-private-slot")));
   await assertSucceeds(getDoc(doc(superAdmin, "appointmentSlots", "legacy-private-slot")));
-  await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-20_10:00"), {
-    appointmentId: "appointment-a", customerUid: "customer-a",
+  await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-21_11:00"), {
+    appointmentId: "appointment-a",
+    appointmentDate: "2026-11-21", appointmentTime: "11:00", updatedAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "appointmentSlots", "wrong-slot-id"), {
+    appointmentId: "appointment-a",
     appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
   }));
   // Accepting an alternative must atomically reserve its exact slot; a direct
