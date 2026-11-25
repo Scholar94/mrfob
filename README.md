@@ -89,7 +89,7 @@ The integration was deployed successfully in commit `6deadba8b59dd90baa7bb7298c9
 - [Optional Apps Script objective grader](docs/google-apps-script/README.md)
 - [Free-tier usage and limitations](docs/FREE-TIER-GUIDE.md)
 - [24-section master-prompt traceability](docs/MASTER-PROMPT-TRACEABILITY.md)
-- [27-case acceptance test plan](docs/QA-TEST-PLAN.md)
+- [28-case acceptance test plan](docs/QA-TEST-PLAN.md)
 
 The owner-operated Google Apps Script upload broker saves customer and staff uploads directly into the company's Drive without asking uploaders to sign in to Google or leaving MR FOP. Configure its deployed `/exec` URL as the GitHub Actions variable `VITE_GOOGLE_DRIVE_UPLOAD_URL`. The Super Admin's **Google Drive Integration** settings (OAuth Web Client ID and folder ID) are retained only for separate Drive permission-management actions such as publishing public media or granting/revoking lesson access. Never enter a Google client secret in the website.
 
@@ -208,7 +208,7 @@ The homepage uses its built-in FAQ list as a fallback. Super Admin and Fashion M
 
 ## Final acceptance testing
 
-A 27-case role-based acceptance test plan is maintained in docs/QA-TEST-PLAN.md. It is intentionally marked not run until the owner has configured the production Firebase project, published current Firestore rules, configured Drive/Apps Script and prepared separate test accounts. Passing the GitHub Actions build and static source checks does not count as passing the acceptance plan.
+A 28-case role-based acceptance test plan is maintained in docs/QA-TEST-PLAN.md. It is intentionally marked not run until the owner has configured the production Firebase project, published current Firestore rules, configured Drive/Apps Script and prepared separate test accounts. Passing the GitHub Actions build and static source checks does not count as passing the acceptance plan.
 
 
 ## Product gallery and customisation

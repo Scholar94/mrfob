@@ -27,7 +27,7 @@ function downloadCsv(filename, rows) {
 }
 
 export default function OperationsInsights({
-  claims = {}, orders = [], appointments = [], measurements = [], paymentDeclarations = [],
+  claims = {}, orders = [], appointments = [], measurements = [], paymentDeclarations = [], payments = [],
   customers = [], products = [], sales = [], expenses = []
 }) {
   const [reportType, setReportType] = useState("orders");
@@ -65,6 +65,45 @@ export default function OperationsInsights({
 
   const pendingMeasurements = useMemo(() => measurements.filter(item => item.verificationStatus !== "verified"), [measurements]);
   const pendingTransfers = useMemo(() => paymentDeclarations.filter(item => ["submitted","pending","under_review"].includes(item.status)), [paymentDeclarations]);
+  const paymentExceptions = useMemo(() => {
+    const exceptions = [];
+    const referenceGroups = new Map();
+    const paymentTotals = new Map();
+    payments.forEach(payment => {
+      const orderId = String(payment.orderId || "");
+      if (!orderId || !Number.isFinite(Number(payment.amount)) || Number(payment.amount) <= 0) {
+        exceptions.push({ type: "Invalid ledger entry", reference: payment.id, order: orderId || "Missing order ID", detail: "Payment record has a missing order link or non-positive amount." });
+      }
+      if (orderId) paymentTotals.set(orderId, (paymentTotals.get(orderId) || 0) + Number(payment.amount || 0));
+      const reference = String(payment.reference || "").trim().toLowerCase();
+      if (reference) {
+        if (!referenceGroups.has(reference)) referenceGroups.set(reference, []);
+        referenceGroups.get(reference).push(payment);
+      }
+    });
+    referenceGroups.forEach(group => {
+      if (group.length > 1) group.forEach(payment => exceptions.push({
+        type: "Repeated transaction reference", reference: payment.id, order: payment.orderNumber || payment.orderId || "Unknown order",
+        detail: "The same reference appears on " + group.length + " payment records. Confirm against the bank statement."
+      }));
+    });
+    paymentDeclarations.filter(item => item.status === "verified" && !payments.some(payment => payment.declarationId === item.id)).forEach(item => exceptions.push({
+      type: "Verified declaration without ledger entry", reference: item.id, order: item.orderNumber || item.orderId || "Unknown order",
+      detail: "Declaration is marked verified but no linked payment ledger entry was found."
+    }));
+    if (isSuperAdmin) {
+      orders.forEach(order => {
+        if (typeof order.amountPaid !== "number") return;
+        const ledgerTotal = paymentTotals.get(order.id) || 0;
+        if (Math.abs(ledgerTotal - order.amountPaid) > 0.01) exceptions.push({
+          type: "Order and ledger total differ", reference: order.id, order: order.orderNumber || order.id,
+          detail: "Order amountPaid is " + money(order.amountPaid) + "; payment ledger totals " + money(ledgerTotal) + ". Review legacy or missing entries."
+        });
+      });
+    }
+    return exceptions;
+  }, [payments, paymentDeclarations, orders, isSuperAdmin]);
+
   const filteredOrders = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return activeOrders.filter(item => !needle || [item.orderNumber,item.item,item.status,item.assignedDesignerName].some(value => String(value || "").toLowerCase().includes(needle)));
@@ -91,6 +130,11 @@ export default function OperationsInsights({
       downloadCsv("mrfop-payment-review.csv", [
         ["Declaration reference","Order reference","Amount declared (NGN)","Status","Transfer date","Created date"],
         ...paymentDeclarations.map(item => [item.id,item.orderNumber || item.orderId,item.amount,item.status,item.transferDate,localDate(item.createdAt)])
+      ]);
+    } else if (reportType === "reconciliation") {
+      downloadCsv("mrfop-payment-reconciliation.csv", [
+        ["Exception type","Record reference","Order reference","Review detail"],
+        ...paymentExceptions.map(item => [item.type,item.reference,item.order,item.detail])
       ]);
     }
   }
@@ -131,9 +175,14 @@ export default function OperationsInsights({
       <p className="operations-disclaimer">This is a review queue only. Uploaded receipts and customer declarations do not independently establish that funds have cleared.</p>
     </div>}
 
+    {isFinance && <div className="operations-panel payment-reconciliation-panel">
+      <div className="operations-panel-heading"><div><h4>Payment reconciliation checks</h4><p>Read-only exception checks across the loaded payment ledger and transfer declarations</p></div><span>{paymentExceptions.length} exceptions</span></div>
+      {paymentExceptions.length ? <div className="payment-reconciliation-list">{paymentExceptions.slice(0,20).map((item,index)=><article key={item.type+"-"+item.reference+"-"+index}><strong>{item.type}</strong><span>{item.order}</span><small>{item.detail}</small><small>Record: {item.reference}</small></article>)}</div> : <p className="staff-empty">No exceptions were found in the records currently loaded. This does not independently verify bank settlement or guarantee that all historical entries are present.</p>}
+      <p className="operations-disclaimer">These checks flag records for human review. They do not reverse payments, change order balances, or confirm funds with a bank.</p>
+    </div>}
     {isSuperAdmin && <div className="operations-export-panel">
       <div><h4>Operational data export</h4><p>Export selected records without changing the source data. Customer names and contact details are intentionally excluded.</p></div>
-      <div className="operations-export-controls"><label>Report<select value={reportType} onChange={event=>setReportType(event.target.value)}><option value="orders">Orders and production</option><option value="appointments">Appointments</option><option value="measurements">Measurement verification</option><option value="payments">Payment declarations</option></select></label><button type="button" onClick={exportReport}>Download CSV</button></div>
+      <div className="operations-export-controls"><label>Report<select value={reportType} onChange={event=>setReportType(event.target.value)}><option value="orders">Orders and production</option><option value="appointments">Appointments</option><option value="measurements">Measurement verification</option><option value="payments">Payment declarations</option><option value="reconciliation">Payment reconciliation exceptions</option><option value="reconciliation">Payment reconciliation exceptions</option></select></label><button type="button" onClick={exportReport}>Download CSV</button></div>
       <button type="button" className="operations-print-button" onClick={()=>window.print()}>Print this operations summary</button>
     </div>}
   </section>;

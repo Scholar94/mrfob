@@ -120,3 +120,11 @@ The following changes are additive and intentionally reuse existing Firestore re
 - **Preservation:** No existing Firestore collections, document schemas, authentication flows, security rules, Google Drive integration or payment workflows were changed by this addendum.
 
 The changes were merged into `main` in PR [#12](https://github.com/Scholar94/mrfob/pull/12). The corrective commit `c860acb12468641187c5bca9c046c2c630a1d2ec` passed production build, Chromium smoke tests, platform source guardrails, Firestore Emulator tests, artifact upload and GitHub Pages deployment in workflow [#989](https://github.com/Scholar94/mrfob/actions/runs/45661027496). Manual acceptance cases T24–T26 remain not run. This addendum does not mark phases 1–11 or the master prompt as complete.
+
+
+## Payment reconciliation enhancement — 25 November 2026
+
+- Added read-only Finance and Super Admin checks for repeated transaction references, invalid/missing order links, verified declarations without a linked payment ledger entry, and (where the Super Admin order dataset is loaded) differences between order amountPaid and the payment ledger total.
+- The reconciliation view uses the role-scoped payment and declaration arrays already loaded by the portal. It does not approve declarations, contact banks, update balances, reverse payments or write Firestore records.
+- Super Admin can export the exception list as a CSV. CSV values use the existing spreadsheet-formula sanitisation.
+- Automated source guardrails check that the payment arrays are passed to the reconciliation centre and the exception checks are present. Manual scenario T28 remains not run.
