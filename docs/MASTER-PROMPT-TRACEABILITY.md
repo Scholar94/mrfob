@@ -150,3 +150,11 @@ The changes were merged into `main` in PR [#12](https://github.com/Scholar94/mrf
 - Added an accessible, keyboard-dismissable product detail dialog to the existing customer catalogue, with the full available gallery, product description, displayed price, stock label, colours, fabrics and customisation options.
 - The existing catalogue-to-order handoff is now a named reusable action shared by product cards and the detail dialog. It pre-fills the existing request form and does not create an order or represent stock, final pricing or delivery as confirmed.
 - No product schema or inventory workflow was changed. Source guardrails cover dialog mounting and accessible labelling. Owner-operated acceptance test T32 remains not run.
+
+
+## Appointment slot privacy hardening — 25 November 2026
+
+- New appointment slot-lock documents no longer store customer UIDs. The slot ID is now validated against the exact appointment date/time, and the matching appointment must be confirmed in the same atomic write.
+- Existing legacy slot documents that still contain a customer UID are readable only by their owner and authorised staff until migrated. The Super Admin's existing slot reconciliation action now also removes that identifier from legacy slot documents in bounded batches while preserving the appointment ID, date, time and lock record.
+- Customers can still read the new UID-free slot records to determine whether a requested time is occupied; appointment documents themselves remain owner/role protected. If a customer encounters a legacy private lock while accepting a proposal, the UI returns a safe "time may already be reserved" message.
+- Firestore Emulator tests cover UID-free slot creation/read, legacy slot privacy, deterministic slot IDs, cross-customer booking denial and duplicate-slot rejection. Owner-operated acceptance test T33 remains not run against the live Firebase project.
