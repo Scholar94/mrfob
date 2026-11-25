@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/OperationsInsights.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "docs/PRODUCTION-OPERATIONS.md", ".github/dependabot.yml", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
@@ -20,6 +20,9 @@ const rules = read("firestore.rules");
 const drive = read("src/googleDrive.js");
 const institute = read("src/InstituteWorkspace.jsx");
 const corporate = read("src/CorporateOrderRequests.jsx");
+const operations = read("src/OperationsInsights.jsx");
+const measurementGuide = read("src/MeasurementGuide.jsx");
+const appointmentCalendar = read("src/AppointmentCalendar.jsx");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
@@ -123,6 +126,12 @@ assert.ok(rules.includes("match /auditLogs/{auditId}"), "Append-only audit log r
 assert.ok(rules.includes("match /publicFAQs/{faqId}") && portal.includes("FAQManager"), "Public FAQ management is missing");
 assert.ok(portal.includes("AuditLogViewer"), "Super Admin audit viewer is not mounted");
 assert.ok(portal.includes("SystemControlCentre") && systemControl.includes("Recycle Bin"), "Super Admin System Control Centre is not mounted.");
+assert.ok(portal.includes("OperationsInsights") && portal.includes("<OperationsInsights"), "Role-aware Operations Centre is not mounted in the account portal.");
+assert.ok(operations.includes("appointmentClashes") && operations.includes("pendingMeasurements") && operations.includes("pendingTransfers"), "Operations Centre is missing key read-only exception checks.");
+assert.ok(operations.includes("if (!isSuperAdmin) return;") && operations.includes("downloadCsv"), "Operational CSV exports must remain Super Admin-only.");
+assert.ok(portal.includes("Request this design") && portal.includes("customer-order-request"), "Catalogue-to-custom-order prefill action is missing.");
+assert.ok(measurementGuide.includes("measurementFieldTips") && measurementGuide.includes("measurement-field-details"), "Field-by-field measurement guidance is missing.");
+assert.ok(appointmentCalendar.includes("potentialConflicts") && appointmentCalendar.includes("appointment-conflict-review"), "Appointment same-slot review warning is missing.");
 assert.ok(systemControl.includes("PERMANENTLY DELETE") && systemControl.includes("adminRecycleBin"), "Protected recoverable deletion workflow is missing.");
 assert.ok(systemControl.includes("collectionGroup") && systemControl.includes("progressUpdates") && systemControl.includes("referenceDesigns"), "Order subcollection administration is incomplete.");
 assert.ok(rules.includes("topLevelCollection != 'roles'") && rules.includes("topLevelCollection != 'auditLogs'") && rules.includes("topLevelCollection != 'inventoryMovements'"), "Super Admin wildcard permissions must preserve protected identity and immutable ledger records.");
