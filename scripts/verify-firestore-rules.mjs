@@ -457,12 +457,22 @@ try {
     status: "confirmed", updatedAt: now
   });
   confirmedBooking.set(doc(superAdmin, "appointmentSlots", "2026-11-20_10:00"), {
-    appointmentId: "appointment-a", customerUid: "customer-a",
+    appointmentId: "appointment-a",
     appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
   });
   await assertSucceeds(confirmedBooking.commit());
   await assertSucceeds(getDoc(doc(customerA, "appointments", "appointment-a")));
   await assertFails(getDoc(doc(customerB, "appointments", "appointment-a")));
+  // New slot locks are readable for availability checks but contain no customer UID.
+  await assertSucceeds(getDoc(doc(customerB, "appointmentSlots", "2026-11-20_10:00")));
+  const legacyPrivateSlot = doc(superAdmin, "appointmentSlots", "legacy-private-slot");
+  await assertSucceeds(setDoc(legacyPrivateSlot, {
+    appointmentId: "legacy-appointment", customerUid: "customer-a",
+    appointmentDate: "2026-11-19", appointmentTime: "09:00", updatedAt: now
+  }));
+  await assertSucceeds(getDoc(doc(customerA, "appointmentSlots", "legacy-private-slot")));
+  await assertFails(getDoc(doc(customerB, "appointmentSlots", "legacy-private-slot")));
+  await assertSucceeds(getDoc(doc(superAdmin, "appointmentSlots", "legacy-private-slot")));
   await assertFails(setDoc(doc(customerB, "appointmentSlots", "2026-11-20_10:00"), {
     appointmentId: "appointment-a", customerUid: "customer-a",
     appointmentDate: "2026-11-20", appointmentTime: "10:00", updatedAt: now
@@ -479,7 +489,7 @@ try {
     appointmentTime: "14:00", updatedAt: now
   });
   acceptedAlternative.set(doc(customerA, "appointmentSlots", "2026-11-22_14:00"), {
-    appointmentId: "appointment-alternative", customerUid: "customer-a",
+    appointmentId: "appointment-alternative",
     appointmentDate: "2026-11-22", appointmentTime: "14:00", updatedAt: now
   });
   await assertSucceeds(acceptedAlternative.commit());
@@ -489,7 +499,7 @@ try {
     appointmentTime: "14:00", updatedAt: now
   });
   duplicateSlotAttempt.set(doc(customerA, "appointmentSlots", "2026-11-22_14:00"), {
-    appointmentId: "appointment-duplicate-slot", customerUid: "customer-a",
+    appointmentId: "appointment-duplicate-slot",
     appointmentDate: "2026-11-22", appointmentTime: "14:00", updatedAt: now
   });
   await assertFails(duplicateSlotAttempt.commit());
