@@ -135,7 +135,7 @@ assert.ok(portal.includes("Request this design") && portal.includes("customer-or
 assert.ok(measurementGuide.includes("measurementFieldTips") && measurementGuide.includes("measurement-field-details"), "Field-by-field measurement guidance is missing.");
 assert.ok(rules.includes("!('customerUid' in resource.data)") || rules.includes("!('customerUid' in resource.data)"), "Legacy appointment slot customer identifiers must be private.");
 assert.ok(rules.includes("slotId == request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime"), "Appointment slot locks must use deterministic date/time IDs.");
-assert.ok(portal.includes("legacySlots = slotSnapshot.docs.filter") && portal.includes("...safeSlotData") && portal.includes("Reconcile & secure slots"), "Super Admin legacy appointment slot privacy migration is missing.");
+assert.ok(portal.includes("legacySlots = slotSnapshot.docs.filter") && portal.includes("delete safeSlotData.customerUid") && portal.includes("migrationBatch.set(slot.ref, safeSlotData)") && portal.includes("Reconcile & secure slots"), "Super Admin legacy appointment slot privacy migration is missing.");
 assert.ok(appointmentCalendar.includes("potentialConflicts") && appointmentCalendar.includes("appointment-conflict-review"), "Appointment same-slot review warning is missing.");
 assert.ok(portal.includes("<SupportConversation ticket=") && supportConversation.includes("onSnapshot") && supportConversation.includes("addDoc"), "Private multi-message support conversations are not mounted.");
 assert.ok(rules.includes("supportTickets/{ticketId}/messages/{messageId}") && rules.includes("allow update, delete: if false;"), "Support conversation messages must be private and append-only.");
