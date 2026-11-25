@@ -136,3 +136,10 @@ The changes were merged into `main` in PR [#12](https://github.com/Scholar94/mrf
 - Finance and Super Admin can review the exceptions; Super Admin can export the exception list to CSV. Existing CSV formula-injection safeguards are retained.
 - These checks do not contact banks, verify settlement, approve declarations, change balances or mutate payment records. Legacy records and declarations without a linked ledger entry require human review.
 - Owner-operated acceptance test T28 remains not run. The feature is not a substitute for bank reconciliation, a statutory accounting ledger or an external audit.
+
+
+## Customer personal-data export — 25 November 2026
+
+- Added a customer-controlled JSON export to the existing Privacy & Personal Data area. It retrieves only records filtered by the signed-in UID and includes core account, order, production-event/media metadata, appointment, measurement, payment, refund, notification, support conversation, review, referral, corporate enquiry, loyalty, privacy request and Institute learner records where the relevant data exists and current Firestore rules permit access.
+- Nested order events, production media metadata, reference design metadata and support conversation messages are included. The export does not download the underlying Google Drive files, and it records datasets that could not be retrieved instead of silently presenting an incomplete export as complete.
+- No Firestore schema or security rules were changed. Source guardrails verify owner-filtered queries and inclusion of important related records. Owner-operated acceptance case T31 remains not run and must be checked with two separate customer accounts.
