@@ -33,10 +33,10 @@ export default function OperationsInsights({
   const [reportType, setReportType] = useState("orders");
   const [search, setSearch] = useState("");
   const isSuperAdmin = !!claims.superAdmin;
-  const isManager = isSuperAdmin || claims.staffRole === "manager";
+  const isManager = isSuperAdmin || ["manager","sales"].includes(claims.staffRole);
   const isDesigner = claims.staffRole === "tailor";
   const isFinance = isSuperAdmin || claims.staffRole === "finance";
-  const canView = isSuperAdmin || ["manager","tailor","finance"].includes(claims.staffRole);
+  const canView = isSuperAdmin || ["manager","sales","tailor","finance"].includes(claims.staffRole);
   const today = localDate();
 
   const activeOrders = useMemo(() => orders.filter(order => !CLOSED_STAGES.has(order.status || "received")), [orders]);
