@@ -8,7 +8,7 @@ const localDate = (value = new Date()) => {
   return [date.getFullYear(), String(date.getMonth()+1).padStart(2,"0"), String(date.getDate()).padStart(2,"0")].join("-");
 };
 const money = value => "₦" + Number(value || 0).toLocaleString("en-NG", { maximumFractionDigits: 2 });
-const safe = value => { const text = String(value ?? "").replace(/[\\r\\n]+/g, " ").trim(); return /^[=+\\-@\\t]/.test(text) ? "'"+text : text; };
+const safe = value => { const text = String(value ?? "").replace(/[\r\n]+/g, " ").trim(); return /^[=+\-@\t]/.test(text) ? "'"+text : text; };
 
 function downloadCsv(filename, rows) {
   const csv = rows.map(row => row.map(value => {
