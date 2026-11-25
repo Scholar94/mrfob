@@ -360,6 +360,27 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    match /supportTickets/{ticketId}/messages/{messageId} {
+      function ticketOwner() {
+        return signedIn()
+          && get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.customerUid == request.auth.uid;
+      }
+      allow read: if ticketOwner() || isSuperAdmin() || isStaff();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['senderUid','senderRole','senderName','body','createdAt'])
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.senderName is string
+        && request.resource.data.senderName.size() <= 120
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1
+        && request.resource.data.body.size() <= 2000
+        && request.resource.data.createdAt is timestamp
+        && ((ticketOwner() && request.resource.data.senderRole == 'customer')
+          || ((!ticketOwner()) && (isSuperAdmin() || isStaff()) && request.resource.data.senderRole == 'staff'));
+      // Conversation history is append-only; corrections are sent as a new message.
+      allow update, delete: if false;
+    }
+
     match /publicSettings/{settingId} {
       allow read: if settingId == 'siteProfile' || (signedIn() && settingId in ['paymentInstructions','driveIntegration']);
       allow create, update: if isSuperAdmin() && settingId == 'siteProfile'

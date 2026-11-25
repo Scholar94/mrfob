@@ -1130,3 +1130,23 @@ button:disabled{cursor:not-allowed}
 .measurement-field-details strong{color:#4a202c}
 @media(max-width:560px){.operations-insights{padding:13px}.operations-order-row{grid-template-columns:1fr 1fr}.operations-order-row small{grid-column:1/-1}.operations-stage-list>div{grid-template-columns:100px 1fr 22px}.operations-export-controls{align-items:stretch;flex-direction:column}.operations-export-controls label{width:100%}.operations-export-controls select{width:100%}}
 @media print{.operations-insights{break-inside:avoid;border:0}.operations-export-controls,.operations-print-button{display:none!important}}
+
+/* Private, append-only support conversation threads */
+
+.support-conversation{margin:12px 0 16px;padding:12px;border:1px solid #e9e1d8;border-radius:10px;background:#fcfaf7}
+.support-conversation-toggle{display:flex;justify-content:space-between;gap:12px;width:100%;padding:8px 2px;border:0;background:transparent;color:#32151f;font-weight:700;text-align:left;cursor:pointer}
+.support-conversation-toggle span{color:#85766d;font-size:11px;font-weight:500}
+.support-conversation-messages{display:grid;gap:9px;max-height:340px;overflow:auto;padding:10px 0}
+.support-conversation-message{max-width:min(92%,620px);padding:11px 13px;border-radius:10px;background:#f0e9e2}
+.support-conversation-message.from-staff{justify-self:end;background:#eee7d7}
+.support-conversation-message strong{font-size:11px;color:#6b4c2c}
+.support-conversation-message p{margin:6px 0;white-space:pre-wrap;line-height:1.55;font-size:13px}
+.support-conversation-message small{font-size:10px;color:#81746c}
+.support-conversation-compose{display:grid;gap:7px;padding-top:10px;border-top:1px solid #e8dfd5}
+.support-conversation-compose label{font-size:12px;font-weight:700;color:#4b3038}
+.support-conversation-compose textarea{width:100%;min-height:72px;padding:10px;border:1px solid #d8cec3;border-radius:8px;font:inherit;resize:vertical}
+.support-conversation-compose>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.support-conversation-compose button{padding:9px 14px;border:0;border-radius:7px;background:#32151f;color:white;font-weight:700}
+.support-conversation-compose button:disabled{opacity:.5;cursor:not-allowed}
+.support-thread-closed,.support-thread-error{font-size:12px;padding:9px 11px;border-radius:7px;background:#f3eee8;color:#675b54}
+.support-thread-error{background:#fff0ed;color:#9b3025}
