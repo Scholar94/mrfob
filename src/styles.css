@@ -581,22 +581,42 @@ button:disabled{cursor:not-allowed}
 @media(max-width:520px){.appointment-calendar{padding:10px}.appointment-calendar-heading{align-items:flex-start;flex-direction:column}.appointment-calendar-nav{width:100%;justify-content:space-between}.appointment-calendar-day,.appointment-calendar-empty{min-height:38px}.appointment-calendar-weekdays span{font-size:8px}}
 
 
-/* AI measurement assistant — transparent no-cost integration placeholder */
-.ai-measurement-module{margin:16px 0 22px;padding:18px;border:1px solid #d9cbb8;border-radius:12px;background:linear-gradient(135deg,#fbf8f2 0%,#f4eee5 100%);color:#49333a}
-.ai-measurement-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+/* AI measurement assistant — local pose inference and clearly labelled estimates */
+.ai-measurement-module{margin:16px 0 22px;padding:18px;border:1px solid #d9cbb8;border-radius:14px;background:linear-gradient(135deg,#fbf8f2 0%,#f4eee5 100%);color:#49333a}
+.ai-measurement-heading,.ai-measurement-results-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .ai-measurement-kicker{font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#84643e}
 .ai-measurement-status{padding:5px 9px;border:1px solid #d3b98f;border-radius:99px;background:#fffaf1;color:#79592f;font-size:10px;font-weight:800}
 .ai-measurement-module h3{margin:9px 0 7px;color:#4a202c;font-family:'Playfair Display',serif;font-size:19px}
-.ai-measurement-intro,.ai-measurement-notice p,.ai-measurement-roadmap li,.ai-measurement-footnote{font-size:12px;line-height:1.65;color:#66595a}
-.ai-measurement-notice{margin:13px 0;padding:13px;border-left:4px solid #a77d43;border-radius:7px;background:#fff}
-.ai-measurement-notice strong{color:#4a202c;font-size:13px}
-.ai-measurement-notice a{display:inline-block;margin-top:5px;color:#754a2e;font-size:12px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
-.ai-measurement-roadmap{padding-top:5px}
-.ai-measurement-roadmap>strong{font-size:12px;color:#4a202c}
-.ai-measurement-roadmap ol{margin:8px 0;padding-left:20px}
-.ai-measurement-roadmap li{margin:5px 0}
-.ai-measurement-footnote{margin:12px 0 0;font-size:10px;color:#82746c}
-@media(max-width:560px){.ai-measurement-module{padding:14px}.ai-measurement-module h3{font-size:17px}}
+.ai-measurement-intro,.ai-measurement-module p,.ai-measurement-module li,.ai-measurement-module small{font-size:12px;line-height:1.65;color:#66595a}
+.ai-measurement-privacy,.ai-measurement-instructions,.ai-measurement-limits,.ai-measurement-results{margin:13px 0;padding:13px;border:1px solid #e5d9c9;border-radius:9px;background:#fff}
+.ai-measurement-privacy strong,.ai-measurement-instructions strong,.ai-measurement-limits strong{color:#4a202c;font-size:13px}
+.ai-measurement-consent{display:flex;align-items:flex-start;gap:9px;margin-top:10px;font-size:12px;font-weight:700;color:#49333a}
+.ai-measurement-consent input{margin-top:2px;accent-color:#6d293d}
+.ai-measurement-instructions ol{margin:8px 0 0;padding-left:20px}
+.ai-measurement-instructions li{margin:4px 0}
+.ai-measurement-inputs{display:grid;grid-template-columns:1fr 1.5fr;gap:12px}
+.ai-measurement-inputs label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#49333a}
+.ai-measurement-inputs input{width:100%;min-height:42px;padding:9px;border:1px solid #d8cabb;border-radius:7px;background:#fff;color:#392b2d}
+.ai-measurement-preview{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-top:12px}
+.ai-measurement-preview img{display:block;width:auto;max-width:min(100%,260px);max-height:340px;object-fit:contain;border:1px solid #ddcfbf;border-radius:8px;background:#f8f5f0}
+.ai-measurement-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.ai-measurement-actions button,.ai-measurement-preview button,.ai-measurement-results button{min-height:38px;padding:8px 13px;border:1px solid #cbb9a5;border-radius:7px;background:#fff;color:#4a202c;font-size:12px;font-weight:800;cursor:pointer}
+.ai-measurement-module button:disabled{opacity:.55;cursor:not-allowed}
+.ai-measurement-module .ai-measurement-primary{border-color:#592637;background:#592637;color:#fff}
+.ai-measurement-error,.ai-measurement-status-message{padding:10px 12px;border-radius:7px;background:#fff;font-size:12px}
+.ai-measurement-error{border-left:4px solid #a53d3d;color:#8b2424!important}
+.ai-measurement-status-message{border-left:4px solid #7c8b58;color:#43532d!important}
+.ai-measurement-results{border-color:#d5c39f;background:#fffdf8}
+.ai-measurement-results-heading strong{color:#4a202c}
+.ai-measurement-results-heading span{font-size:10px;font-weight:800;color:#72572e}
+.ai-measurement-results dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.ai-measurement-results dl div{padding:10px;border-radius:7px;background:#f6f0e7}
+.ai-measurement-results dt{font-size:10px;color:#75696a}
+.ai-measurement-results dd{margin:4px 0 0;font-size:15px;font-weight:800;color:#4a202c}
+.ai-measurement-results small{display:block;margin-top:9px}
+.ai-measurement-limits{border-left:4px solid #a77d43}
+.ai-measurement-limits p{margin-bottom:0}
+@media(max-width:560px){.ai-measurement-module{padding:14px}.ai-measurement-module h3{font-size:17px}.ai-measurement-inputs{grid-template-columns:1fr}.ai-measurement-results dl{grid-template-columns:1fr}}
 
 
 /* Designer appointment availability */

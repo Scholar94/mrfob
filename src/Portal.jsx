@@ -2378,7 +2378,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       </section>}
       {!claims.superAdmin && !claims.staffRole && <section className="customer-management customer-self-service">
         <div className="customer-management-heading"><div><h3>My Measurements</h3><p>Save fitting measurements for your account. Values are stored consistently in centimetres.</p></div><button type="button" onClick={loadMeasurements} disabled={measurementsLoading}>{measurementsLoading ? "Loading…" : "Refresh measurements"}</button></div>
-        <AIMeasurementAssistant />
+        <AIMeasurementAssistant garmentType={measurementForm.garmentType} onApplyEstimates={(estimates)=>setMeasurementForm(current=>({ ...current, ...estimates, unit:"cm", notes:[current.notes, "AI pose estimates (not tape-measured): "+Object.entries(estimates).map(([key,value])=>key+" "+value+" cm").join(", ")+". Confirm every value with a flexible tape and obtain designer verification."].filter(Boolean).join("\n") }))} />
         <form id="measurement-manual-entry" className="portal-form inventory-form" onSubmit={saveMeasurement}>
           <label>Profile name<input value={measurementForm.profileName} maxLength={60} onChange={e=>setMeasurementForm({...measurementForm,profileName:e.target.value})} placeholder="e.g. Office shirt measurements"/></label>
           <label>Garment profile<select value={measurementForm.garmentType} onChange={e=>setMeasurementForm({...measurementForm,garmentType:e.target.value})}>{Object.keys(MEASUREMENT_PROFILES).map(type=><option key={type}>{type}</option>)}</select></label>
