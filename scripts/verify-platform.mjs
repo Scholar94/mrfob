@@ -24,6 +24,7 @@ const operations = read("src/OperationsInsights.jsx");
 const measurementGuide = read("src/MeasurementGuide.jsx");
 const appointmentCalendar = read("src/AppointmentCalendar.jsx");
 const supportConversation = read("src/SupportConversation.jsx");
+const privacyCenter = read("src/PrivacyRequestCenter.jsx");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
@@ -159,6 +160,10 @@ assert.ok(rules.includes("match /fabrics/{fabricId}") && rules.includes("match /
 assert.ok(portal.includes("transaction.delete(oldSlotRefs[index])") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)") && portal.includes("legacyAppointmentSlotId"), "Appointment alternative slot release/reservation and legacy migration are not transactional");
 assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && read("src/styles.css").includes(".fabric-grid"), "Responsive style/fabric UI styles are missing");
 
+assert.ok(privacyCenter.includes("async function exportPersonalData()") && privacyCenter.includes("where(ownerField, \"==\", user.uid)"), "Customer self-service data export must query only records owned by the signed-in user.");
+assert.ok(privacyCenter.includes('"instituteAssessmentSubmissions"') && privacyCenter.includes('"paymentDeclarations"') && privacyCenter.includes('"corporateRequests"'), "Personal data export must include relevant Institute, payment and corporate enquiry records.");
+assert.ok(privacyCenter.includes('collection(db, "orders", order.id, subcollection)') && privacyCenter.includes('collection(db, "supportTickets", ticket.id, "messages")'), "Personal data export must include owned order subrecords and private support messages.");
+assert.ok(privacyCenter.includes("bundle.omissions") && privacyCenter.includes("Google Drive files themselves are not downloaded"), "Personal data export must disclose incomplete datasets and Drive file limitations.");
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(read("src/RefundManagement.jsx").includes("paidRefundTotal") && read("src/RefundManagement.jsx").includes("openRefundTotal"), "Finance refund exposure summary is missing");
 assert.ok(portal.includes("0061030714") && portal.includes("2209515029") && portal.includes("registered account name"), "Both company bank account defaults and verification controls are missing");
