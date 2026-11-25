@@ -212,7 +212,6 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'appointmentDate', 'appointmentTime', 'updatedAt'])
         && existsAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime))
         && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentId == appointmentId
-        && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.customerUid == request.auth.uid
         && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentDate == request.resource.data.appointmentDate
         && getAfter(/databases/$(database)/documents/appointmentSlots/$(request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime)).data.appointmentTime == request.resource.data.appointmentTime
       );
@@ -220,12 +219,21 @@ service cloud.firestore {
     }
 
     match /appointmentSlots/{slotId} {
-      allow read: if signedIn();
+      // New lock documents contain no customer UID. Legacy records remain visible
+      // only to their owner and authorised staff until the Super Admin migrates them.
+      allow read: if signedIn() && (
+        !('customerUid' in resource.data)
+        || resource.data.customerUid == request.auth.uid
+        || isSuperAdmin()
+        || hasStaffRole(['manager','sales','tailor','institute'])
+      );
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['appointmentId', 'customerUid', 'appointmentDate', 'appointmentTime', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['appointmentId', 'appointmentDate', 'appointmentTime', 'updatedAt'])
         && request.resource.data.appointmentId is string
-        && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.resource.data.customerUid
-        && (isSuperAdmin() || request.resource.data.customerUid == request.auth.uid)
+        && request.resource.data.updatedAt is timestamp
+        && slotId == request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime
+        && (isSuperAdmin()
+          || getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.auth.uid)
         && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.status == 'confirmed'
         && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.appointmentDate == request.resource.data.appointmentDate
         && getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.appointmentTime == request.resource.data.appointmentTime;

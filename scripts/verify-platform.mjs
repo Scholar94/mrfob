@@ -7,7 +7,7 @@ const requiredFiles = [
   "src/App.jsx", "src/Portal.jsx", "src/InstituteWorkspace.jsx",
   "src/googleDrive.js", "src/FabricCatalogue.jsx", "src/CustomerBenefits.jsx",
   "src/ReferralProgramme.jsx", "src/CorporateOrderRequests.jsx",
-  "src/PortalErrorBoundary.jsx", "src/OperationsInsights.jsx", "src/SupportConversation.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
+  "src/PortalErrorBoundary.jsx", "src/OperationsInsights.jsx", "src/SupportConversation.jsx", "src/ProductDetailModal.jsx", "src/SystemControlCentre.jsx", "src/PrivacyRequestCenter.jsx", "src/NewsletterSignup.jsx", "src/PublicRoutePage.jsx", "src/WelcomeExperience.jsx", "src/FAQManager.jsx", "src/StyleRecommendations.jsx", "src/RefundManagement.jsx", "src/auditLog.js", "src/AuditLogViewer.jsx", "firestore.rules", "public/404.html",
   "public/sw.js", "public/manifest.webmanifest", "public/offline.html",
   "docs/MASTER-PROMPT-TRACEABILITY.md", "docs/QA-TEST-PLAN.md", "docs/PRODUCTION-OPERATIONS.md", ".github/dependabot.yml", "scripts/verify-firestore-rules.mjs", "scripts/smoke-test.mjs"
 ];
@@ -24,6 +24,7 @@ const operations = read("src/OperationsInsights.jsx");
 const measurementGuide = read("src/MeasurementGuide.jsx");
 const appointmentCalendar = read("src/AppointmentCalendar.jsx");
 const supportConversation = read("src/SupportConversation.jsx");
+const privacyCenter = read("src/PrivacyRequestCenter.jsx");
 const fallback = read("public/404.html");
 const traceability = read("docs/MASTER-PROMPT-TRACEABILITY.md");
 const manifest = JSON.parse(read("public/manifest.webmanifest"));
@@ -132,6 +133,9 @@ assert.ok(operations.includes("appointmentClashes") && operations.includes("pend
 assert.ok(operations.includes("if (!isSuperAdmin) return;") && operations.includes("downloadCsv"), "Operational CSV exports must remain Super Admin-only.");
 assert.ok(portal.includes("Request this design") && portal.includes("customer-order-request"), "Catalogue-to-custom-order prefill action is missing.");
 assert.ok(measurementGuide.includes("measurementFieldTips") && measurementGuide.includes("measurement-field-details"), "Field-by-field measurement guidance is missing.");
+assert.ok(rules.includes("!('customerUid' in resource.data)") || rules.includes("!('customerUid' in resource.data)"), "Legacy appointment slot customer identifiers must be private.");
+assert.ok(rules.includes("slotId == request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime"), "Appointment slot locks must use deterministic date/time IDs.");
+assert.ok(portal.includes("legacySlots = slotSnapshot.docs.filter") && portal.includes("delete safeSlotData.customerUid") && portal.includes("migrationBatch.set(slot.ref, safeSlotData)") && portal.includes("Reconcile & secure slots"), "Super Admin legacy appointment slot privacy migration is missing.");
 assert.ok(appointmentCalendar.includes("potentialConflicts") && appointmentCalendar.includes("appointment-conflict-review"), "Appointment same-slot review warning is missing.");
 assert.ok(portal.includes("<SupportConversation ticket=") && supportConversation.includes("onSnapshot") && supportConversation.includes("addDoc"), "Private multi-message support conversations are not mounted.");
 assert.ok(rules.includes("supportTickets/{ticketId}/messages/{messageId}") && rules.includes("allow update, delete: if false;"), "Support conversation messages must be private and append-only.");
@@ -159,6 +163,12 @@ assert.ok(rules.includes("match /fabrics/{fabricId}") && rules.includes("match /
 assert.ok(portal.includes("transaction.delete(oldSlotRefs[index])") && portal.includes("reserveAppointmentSlot(transaction, current, current.proposedDate, current.proposedTime)") && portal.includes("legacyAppointmentSlotId"), "Appointment alternative slot release/reservation and legacy migration are not transactional");
 assert.ok(read("src/styles.css").includes(".style-recommendation-layout") && read("src/styles.css").includes(".fabric-grid"), "Responsive style/fabric UI styles are missing");
 
+assert.ok(portal.includes("<ProductDetailModal") && portal.includes("function requestCatalogueDesign"), "Customer product details and catalogue-to-order handoff are missing.");
+assert.ok(read("src/ProductDetailModal.jsx").includes('role="dialog"') && read("src/ProductDetailModal.jsx").includes("aria-modal=\"true\"") && read("src/ProductDetailModal.jsx").includes("aria-labelledby"), "Product detail dialog must be accessible and labelled.");
+assert.ok(privacyCenter.includes("async function exportPersonalData()") && privacyCenter.includes("where(ownerField, \"==\", user.uid)"), "Customer self-service data export must query only records owned by the signed-in user.");
+assert.ok(privacyCenter.includes('"instituteAssessmentSubmissions"') && privacyCenter.includes('"paymentDeclarations"') && privacyCenter.includes('"corporateRequests"'), "Personal data export must include relevant Institute, payment and corporate enquiry records.");
+assert.ok(privacyCenter.includes('collection(db, "orders", order.id, subcollection)') && privacyCenter.includes('collection(db, "supportTickets", ticket.id, "messages")'), "Personal data export must include owned order subrecords and private support messages.");
+assert.ok(privacyCenter.includes("bundle.omissions") && privacyCenter.includes("Google Drive files themselves are not downloaded"), "Personal data export must disclose incomplete datasets and Drive file limitations.");
 assert.ok(read("src/StyleRecommendations.jsx").includes("YOUR STARTING IDEAS"), "Style recommendation experience is missing");
 assert.ok(read("src/RefundManagement.jsx").includes("paidRefundTotal") && read("src/RefundManagement.jsx").includes("openRefundTotal"), "Finance refund exposure summary is missing");
 assert.ok(portal.includes("0061030714") && portal.includes("2209515029") && portal.includes("registered account name"), "Both company bank account defaults and verification controls are missing");

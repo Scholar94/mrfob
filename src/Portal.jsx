@@ -22,6 +22,7 @@ import { recordAuditEvent } from "./auditLog.js";
 import SystemControlCentre from "./SystemControlCentre.jsx";
 import OperationsInsights from "./OperationsInsights.jsx";
 import SupportConversation from "./SupportConversation.jsx";
+import ProductDetailModal from "./ProductDetailModal.jsx";
 
 const PRODUCTION_STAGES = [
   ["received", "Order received"],
@@ -210,6 +211,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
   const productFormRef = useRef(null);
   const [productForm, setProductForm] = useState({ name: "", sku: "", category: "Custom clothing", description: "", price: "", costPrice: "", stock: "0", imageUrl: "", galleryImages: "", availableColors: "", fabricOptions: "", customizationOptions: "" });
   const [productGallerySelection, setProductGallerySelection] = useState({});
+  const [selectedProductDetail, setSelectedProductDetail] = useState(null);
   const [productImageFiles, setProductImageFiles] = useState([]);
   const [productImagesUploading, setProductImagesUploading] = useState(false);
   const [stockAdjustments, setStockAdjustments] = useState({});
@@ -1218,7 +1220,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
     if (slotSnapshot.exists() && slotSnapshot.data().appointmentId !== item.id) {
       throw new Error("That appointment time has already been reserved. Please choose another date or time.");
     }
-    transaction.set(slotRef, { appointmentId: item.id, customerUid: item.customerUid, appointmentDate: date, appointmentTime: time, updatedAt: serverTimestamp() });
+    transaction.set(slotRef, { appointmentId: item.id, appointmentDate: date, appointmentTime: time, updatedAt: serverTimestamp() });
   }
 
   async function updateAppointment(id, status) {
@@ -1363,7 +1365,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
             if (!current.exists() || current.data().status !== "confirmed") return;
             if (slot.exists() && slot.data().appointmentId !== item.id) throw new Error("Slot already belongs to another confirmed appointment.");
             if (legacySlot?.exists() && legacySlot.data().appointmentId !== item.id) throw new Error("Legacy slot is occupied by another confirmed appointment.");
-            transaction.set(slotRef, { appointmentId: item.id, customerUid: item.customerUid, appointmentDate: item.appointmentDate, appointmentTime: item.appointmentTime, updatedAt: serverTimestamp() });
+            transaction.set(slotRef, { appointmentId: item.id, appointmentDate: item.appointmentDate, appointmentTime: item.appointmentTime, updatedAt: serverTimestamp() });
             if (legacySlot?.exists() && legacySlot.data().appointmentId === item.id) transaction.delete(legacySlotRef);
             reserved++;
           });
@@ -1371,8 +1373,19 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           conflicts.push(item.appointmentDate + " " + item.appointmentTime + " (" + (item.customerName || item.id) + ")");
         }
       }
+      const slotSnapshot = await getDocs(collection(db, "appointmentSlots"));
+      const legacySlots = slotSnapshot.docs.filter(slot => Object.prototype.hasOwnProperty.call(slot.data(), "customerUid"));
+      for (let offset = 0; offset < legacySlots.length; offset += 450) {
+        const migrationBatch = writeBatch(db);
+        legacySlots.slice(offset, offset + 450).forEach(slot => {
+          const safeSlotData = { ...slot.data() };
+          delete safeSlotData.customerUid;
+          migrationBatch.set(slot.ref, safeSlotData);
+        });
+        await migrationBatch.commit();
+      }
       await loadAppointments();
-      setMessage("Slot reconciliation complete: " + reserved + " confirmed booking(s) protected; " + conflicts.length + " conflict(s) need manual review." + (conflicts.length ? " " + conflicts.slice(0, 5).join("; ") : ""));
+      setMessage("Slot reconciliation complete: " + reserved + " confirmed booking(s) protected; " + legacySlots.length + " legacy slot record(s) secured; " + conflicts.length + " conflict(s) need manual review." + (conflicts.length ? " " + conflicts.slice(0, 5).join("; ") : ""));
     } catch (err) { setError(err.message || "Could not reconcile confirmed appointment slots."); }
     finally { setBusy(false); }
   }
@@ -1449,7 +1462,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       });
       setAppointments(items => items.map(row => row.id === item.id ? { ...row, appointmentDate: item.proposedDate, appointmentTime: item.proposedTime, status: "confirmed" } : row));
       setMessage("You accepted the proposed appointment time.");
-    } catch (err) { setError(err.message || "Could not accept the proposed appointment."); }
+    } catch (err) { setError(err.code === "permission-denied" ? "That time may already be reserved. Please choose another time or contact the team." : err.message || "Could not accept the proposed appointment."); }
     finally { setBusy(false); }
   }
 
@@ -1816,6 +1829,29 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       }
     } catch (err) { setError(err.message || "Could not load products."); }
     finally { setProductsLoading(false); }
+  }
+
+  function requestCatalogueDesign(product) {
+    if (!product?.id) return;
+    const categoryText = String(product.category || "").toLowerCase();
+    const orderCategory = categoryText.includes("bridal") || categoryText.includes("wedding") ? "Bridal and occasion wear"
+      : categoryText.includes("women") || categoryText.includes("dress") ? "Women’s clothing"
+      : categoryText.includes("traditional") || categoryText.includes("agbada") || categoryText.includes("senator") ? "Traditional Nigerian attire"
+      : categoryText.includes("corporate") || categoryText.includes("uniform") || categoryText.includes("industrial") ? "Corporate or institutional uniforms"
+      : "Men’s clothing";
+    setCustomerOrderForm(current => ({
+      ...current,
+      category: orderCategory,
+      item: String(product.name || "").slice(0, 120),
+      fabric: product.fabricOptions?.[0] || current.fabric,
+      colour: product.availableColors?.[0] || current.colour,
+      instructions: [current.instructions, "Catalogue design reference: " + product.name + " (catalogue ID: " + product.id + "). Please confirm current availability, final price and customisation before accepting the order."].filter(Boolean).join("\n").slice(0, 1500)
+    }));
+    setSelectedProductDetail(null);
+    const orderForm = document.getElementById("customer-order-request");
+    orderForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+    orderForm?.querySelector("input, select, textarea")?.focus({ preventScroll: true });
+    setMessage("The selected catalogue design has been added to your custom order request. Review the details and submit when ready.");
   }
 
   async function toggleProductFavourite(product) {
@@ -2434,7 +2470,7 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
           {order.status === "delivered" && <div className="order-review-panel"><strong>Share your experience</strong>{myProductReviews.some(item=>item.orderId===order.id) ? <p>Your review status: {myProductReviews.find(item=>item.orderId===order.id).status || "pending moderation"}</p> : <form className="portal-form" onSubmit={e=>{e.preventDefault();submitOrderReview(order);}}><label>Rating<select value={(reviewDrafts[order.id] || {rating:"5"}).rating} onChange={e=>setReviewDrafts(current=>({...current,[order.id]:{...(current[order.id]||{rating:"5",comment:""}),rating:e.target.value}}))}><option value="5">5 — Excellent</option><option value="4">4 — Very good</option><option value="3">3 — Good</option><option value="2">2 — Fair</option><option value="1">1 — Poor</option></select></label><label>Your review<textarea maxLength={1000} minLength={10} value={(reviewDrafts[order.id] || {comment:""}).comment} onChange={e=>setReviewDrafts(current=>({...current,[order.id]:{...(current[order.id]||{rating:"5",comment:""}),comment:e.target.value}}))} placeholder="Tell us about your experience (10–1,000 characters)"/></label><button className="portal-submit" disabled={busy}>Submit review for moderation</button></form>}</div>}
                     <div className="order-progress" aria-label={`Production stage ${productionStageProgress(order.status).current} of ${productionStageProgress(order.status).total}`}><div className="order-progress-heading"><strong>Production progress</strong><span>Stage {productionStageProgress(order.status).current} of {productionStageProgress(order.status).total}</span></div><div className="order-progress-track"><span style={{width:`${productionStageProgress(order.status).percent}%`}}/></div><small>{productionStageProgress(order.status).percent}% of the listed production stages reached. The team will update this as work progresses.</small></div>{order.events?.length > 0 && <div className="production-history"><strong>Production history</strong>{order.events.map((event,index)=><div className="production-history-event" key={event.id || index}><span>{event.stageLabel || productionStageLabel(event.toStatus)}</span>{event.stageNote && <p>{event.stageNote}</p>}<small>{event.createdAt?.toDate ? event.createdAt.toDate().toLocaleString("en-NG") : "Date pending"}</small></div>)}</div>}{order.quotationStatus === "sent" && <div className="order-quotation-customer"><strong>Quotation: ₦{Number(order.amount || 0).toLocaleString("en-NG")}</strong>{Array.isArray(order.quotationItems) && <div className="customer-quotation-breakdown"><strong>Quotation breakdown</strong>{order.quotationItems.filter(line=>Number(line.amount)>0).map((line,index)=><div key={line.label||index}><span>{line.label}</span><b>₦{Number(line.amount).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div>)}<div className="quotation-total"><span>Total</span><b>₦{Number(order.amount||0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div></div>}{order.quotationNote&&<p>{order.quotationNote}</p>}<p>Please review and respond to this quotation.</p><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"accepted")}>Accept quotation</button><button type="button" disabled={busy} onClick={()=>respondToQuotation(order,"declined")}>Decline quotation</button></div>}{order.referenceDesigns?.length > 0 && <div className="production-history"><strong>Your reference designs</strong>{order.referenceDesigns.map(file=><p key={file.id}><a href={file.driveUrl} target="_blank" rel="noreferrer">{file.fileName}</a></p>)}</div>}<label className="production-photo-upload">Upload reference design (JPG, PNG, WebP or PDF; maximum 15 MB)<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" disabled={busy} onChange={e=>{uploadCustomerReference(order,e.target.files?.[0]);e.target.value="";}}/></label>{order.quotationStatus && <span className="appointment-status-text">Quotation status: {order.quotationStatus}</span>}</article>) : <p className="staff-empty">You don't have any orders yet.</p>}</section>}
       <section className="appointment-management">
-        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><div className="appointment-admin-actions"><button type="button" onClick={loadAppointments} disabled={appointmentsLoading || busy}>{appointmentsLoading ? "Loading…" : "Refresh"}</button>{claims.superAdmin && <button type="button" onClick={reconcileConfirmedAppointmentSlots} disabled={appointmentsLoading || busy}>Reconcile confirmed slots</button>}</div></div>
+        <div className="customer-management-heading"><div><h3>{claims.superAdmin || claims.staffRole ? "Appointment Management" : "My Appointments"}</h3><p>Book measurements, fittings and consultations</p></div><div className="appointment-admin-actions"><button type="button" onClick={loadAppointments} disabled={appointmentsLoading || busy}>{appointmentsLoading ? "Loading…" : "Refresh"}</button>{claims.superAdmin && <button type="button" onClick={reconcileConfirmedAppointmentSlots} disabled={appointmentsLoading || busy}>Reconcile & secure slots</button>}</div></div>
         {(claims.superAdmin || claims.staffRole) && <AppointmentCalendar appointments={appointments} />}
         {!claims.staffRole && !claims.superAdmin && <form id="customer-appointments" className="portal-form appointment-form" onSubmit={bookAppointment}>
           <h4>Request an appointment</h4>
@@ -2653,9 +2689,10 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
         <div className="customer-management-heading"><div><h3>Product Catalogue</h3><p>Browse products and current availability</p></div><button type="button" onClick={loadProducts} disabled={productsLoading}>{productsLoading ? "Loading…" : "Refresh catalogue"}</button></div>
         {productsLoading ? <p className="staff-empty">Loading products…</p> : products.filter(product=>product.active !== false).length ? <div className="inventory-list">{products.filter(product=>product.active !== false).map(product=><article className="inventory-card customer-product-card" key={product.id}>
           {(() => { const images = [...new Set([product.imageUrl, ...(product.galleryImages || [])].filter(Boolean))].slice(0, 9); const selectedImage = productGallerySelection[product.id] || images[0]; return <div className="customer-product-gallery">{selectedImage && <img className="customer-product-main-image" src={selectedImage} alt={product.name + " design view"} loading="lazy"/>}{images.length > 1 && <div className="customer-product-thumbnails" aria-label={product.name + " image views"}>{images.map((url,index)=><button type="button" key={url} className={selectedImage === url ? "active" : ""} onClick={()=>setProductGallerySelection(current=>({...current,[product.id]:url}))} aria-label={"Show image view " + (index+1)} aria-pressed={selectedImage === url}><img src={url} alt="" loading="lazy"/></button>)}</div>}</div>; })()}
-          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p>{product.availableColors?.length > 0 && <p><strong>Colours:</strong> {product.availableColors.join(", ")}</p>}{product.fabricOptions?.length > 0 && <p><strong>Fabric options:</strong> {product.fabricOptions.join(", ")}</p>}{product.customizationOptions?.length > 0 && <p><strong>Customisation:</strong> {product.customizationOptions.join(", ")}</p>}<b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button><button type="button" className="portal-submit" onClick={()=>{const categoryText=String(product.category||"").toLowerCase();const orderCategory=categoryText.includes("bridal")||categoryText.includes("wedding")?"Bridal and occasion wear":categoryText.includes("women")||categoryText.includes("dress")?"Women’s clothing":categoryText.includes("traditional")||categoryText.includes("agbada")||categoryText.includes("senator")?"Traditional Nigerian attire":categoryText.includes("corporate")||categoryText.includes("uniform")||categoryText.includes("industrial")?"Corporate or institutional uniforms":"Men’s clothing";setCustomerOrderForm(current=>({...current,category:orderCategory,item:String(product.name||"").slice(0,120),fabric:product.fabricOptions?.[0]||current.fabric,colour:product.availableColors?.[0]||current.colour,instructions:[current.instructions,"Catalogue design reference: "+product.name+" (catalogue ID: "+product.id+"). Please confirm current availability, final price and customisation before accepting the order."].filter(Boolean).join("\n").slice(0,1500)}));document.getElementById("customer-order-request")?.scrollIntoView({behavior:"smooth",block:"center"});setMessage("The selected catalogue design has been added to your custom order request. Review the details and submit when ready.");}}>Request this design</button></div>
+          <div className="inventory-product-info"><strong>{product.name}</strong><span>{product.category}</span><p>{product.description || "Contact us for more details."}</p>{product.availableColors?.length > 0 && <p><strong>Colours:</strong> {product.availableColors.join(", ")}</p>}{product.fabricOptions?.length > 0 && <p><strong>Fabric options:</strong> {product.fabricOptions.join(", ")}</p>}{product.customizationOptions?.length > 0 && <p><strong>Customisation:</strong> {product.customizationOptions.join(", ")}</p>}<b>₦{Number(product.price || 0).toLocaleString("en-NG")}</b><span className={Number(product.stock || 0) > 0 ? "stock-ok" : "stock-low"}>{Number(product.stock || 0) > 0 ? "In stock" : "Currently out of stock"}</span><button type="button" className="portal-submit secondary" onClick={()=>setSelectedProductDetail(product)}>View full details</button><button type="button" className="portal-submit secondary" onClick={()=>toggleProductFavourite(product)} aria-pressed={favouriteProductIds.includes(product.id)}>{favouriteProductIds.includes(product.id) ? "♥ Saved to favourites" : "♡ Save design"}</button><button type="button" className="portal-submit" onClick={()=>requestCatalogueDesign(product)}>Request this design</button></div>
         </article>)}</div> : <p className="staff-empty">Our product catalogue is being updated. Please check again soon.</p>}
       </section>}
+      <ProductDetailModal product={selectedProductDetail} onClose={()=>setSelectedProductDetail(null)} onRequest={requestCatalogueDesign} favourite={!!selectedProductDetail && favouriteProductIds.includes(selectedProductDetail.id)} onToggleFavourite={toggleProductFavourite}/>
       {(claims.superAdmin || claims.staffRole === "manager") && <section className="customer-management"><div className="customer-management-heading"><div><h3>Customer review moderation</h3><p>Only reviews linked to delivered orders can be submitted; publication requires approval.</p></div><button type="button" onClick={loadReviewModeration}>Refresh reviews</button></div>{moderationReviews.length ? <div className="appointment-list">{moderationReviews.map(review=><article className="appointment-card" key={review.id}><strong>{review.customerName || "Customer"} · {review.rating}/5</strong><p>Order: {review.orderId}</p><p>{review.comment}</p><div className="row-actions"><button type="button" disabled={busy} onClick={()=>moderateReview(review,"approved")}>Approve for publication</button><button type="button" disabled={busy} onClick={()=>moderateReview(review,"rejected")}>Reject</button></div></article>)}</div> : <p className="staff-empty">No pending reviews are loaded. Use Refresh reviews to check the queue.</p>}</section>}
       {claims.superAdmin && <section className="customer-management">
         <div className="customer-management-heading"><div><h3>Customer Management</h3><p>View and update registered customer profiles</p></div><button type="button" onClick={loadCustomers} disabled={customerLoading}>{customerLoading ? "Loading…" : "Refresh customers"}</button></div>
