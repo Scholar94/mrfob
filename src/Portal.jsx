@@ -1848,7 +1848,9 @@ export default function Portal({ onClose, initialMode = "login", initialSection 
       instructions: [current.instructions, "Catalogue design reference: " + product.name + " (catalogue ID: " + product.id + "). Please confirm current availability, final price and customisation before accepting the order."].filter(Boolean).join("\n").slice(0, 1500)
     }));
     setSelectedProductDetail(null);
-    document.getElementById("customer-order-request")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const orderForm = document.getElementById("customer-order-request");
+    orderForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+    orderForm?.querySelector("input, select, textarea")?.focus({ preventScroll: true });
     setMessage("The selected catalogue design has been added to your custom order request. Review the details and submit when ready.");
   }
 
