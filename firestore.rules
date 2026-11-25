@@ -230,6 +230,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['appointmentId', 'appointmentDate', 'appointmentTime', 'updatedAt'])
         && request.resource.data.appointmentId is string
+        && request.resource.data.updatedAt is timestamp
         && slotId == request.resource.data.appointmentDate + '_' + request.resource.data.appointmentTime
         && (isSuperAdmin()
           || getAfter(/databases/$(database)/documents/appointments/$(request.resource.data.appointmentId)).data.customerUid == request.auth.uid)
