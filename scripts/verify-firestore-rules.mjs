@@ -593,6 +593,28 @@ try {
     senderUid: "manager-a", senderRole: "staff", senderName: "MR FOP team",
     body: "Thank you. We are reviewing your request.", createdAt: now
   }));
+
+  await assertSucceeds(getDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "customer-message")));
+  await assertFails(setDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "spoofed-sender"), {
+    senderUid: "customer-b", senderRole: "customer", senderName: "Spoofed sender",
+    body: "Sender identity must match the signed-in user.", createdAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "customer-claims-staff"), {
+    senderUid: "customer-a", senderRole: "staff", senderName: "Pretending to be staff",
+    body: "Customers cannot send staff-labelled messages.", createdAt: now
+  }));
+  await assertFails(setDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "staff-claims-customer"), {
+    senderUid: "manager-a", senderRole: "customer", senderName: "Pretending to be customer",
+    body: "Staff cannot send customer-labelled messages.", createdAt: now
+  }));
+  await assertFails(setDoc(doc(customerA, "supportTickets", "support-thread-a", "messages", "oversized-message"), {
+    senderUid: "customer-a", senderRole: "customer", senderName: "Test Customer A",
+    body: "x".repeat(2001), createdAt: now
+  }));
+  await assertFails(setDoc(doc(manager, "supportTickets", "support-thread-a", "messages", "extra-field"), {
+    senderUid: "manager-a", senderRole: "staff", senderName: "MR FOP team",
+    body: "Unexpected fields must be rejected.", createdAt: now, isAdmin: true
+  }));
   await assertFails(setDoc(doc(customerB, "supportTickets", "support-thread-a", "messages", "intruder-message"), {
     senderUid: "customer-b", senderRole: "customer", senderName: "Other customer",
     body: "This must not be allowed.", createdAt: now
