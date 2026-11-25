@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { addDoc, collection, getDocs, query, serverTimestamp, updateDoc, where, doc } from "firebase/firestore";
+import { addDoc, collection, getDoc, getDocs, query, serverTimestamp, updateDoc, where, doc } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { recordAuditEvent } from "./auditLog.js";
 
@@ -19,6 +19,7 @@ export default function PrivacyRequestCenter({ user, claims }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [exporting, setExporting] = useState(false);
   const isAdmin = !!claims?.superAdmin;
 
   async function refresh() {
@@ -40,6 +41,122 @@ export default function PrivacyRequestCenter({ user, claims }) {
   }
 
   useEffect(() => { refresh(); }, [user?.uid, isAdmin]);
+
+  async function exportPersonalData() {
+    if (!user || isAdmin || exporting) return;
+    setExporting(true); setError(""); setNotice("");
+    const bundle = {
+      format: "MR FOP FASHIONS personal data export",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      account: { uid: user.uid, email: user.email || "", displayName: user.displayName || "" },
+      data: {},
+      omissions: []
+    };
+    async function readOwnedCollection(key, collectionName, ownerField = "customerUid") {
+      try {
+        const snapshot = await getDocs(query(collection(db, collectionName), where(ownerField, "==", user.uid)));
+        bundle.data[key] = snapshot.docs.map(row => ({ id: row.id, ...row.data() }));
+      } catch (err) {
+        bundle.data[key] = [];
+        bundle.omissions.push({ collection: collectionName, reason: "This dataset could not be retrieved with the current account permissions." });
+      }
+    }
+    try {
+      try {
+        const profile = await getDoc(doc(db, "users", user.uid));
+        bundle.data.profile = profile.exists() ? { id: profile.id, ...profile.data() } : null;
+      } catch {
+        bundle.data.profile = null;
+        bundle.omissions.push({ collection: "users", reason: "Profile record could not be retrieved." });
+      }
+      const collections = [
+        ["orders", "orders", "customerUid"],
+        ["appointments", "appointments", "customerUid"],
+        ["measurements", "measurements", "customerUid"],
+        ["paymentDeclarations", "paymentDeclarations", "customerUid"],
+        ["payments", "payments", "customerUid"],
+        ["refunds", "refunds", "customerUid"],
+        ["notifications", "notifications", "customerUid"],
+        ["supportTickets", "supportTickets", "customerUid"],
+        ["reviews", "reviews", "customerUid"],
+        ["trainingEnquiries", "trainingEnquiries", "customerUid"],
+        ["corporateRequests", "corporateRequests", "customerUid"],
+        ["referrals", "referralClaims", "customerUid"],
+        ["privacyRequests", "privacyRequests", "customerUid"],
+        ["instituteApplications", "instituteApplications", "customerUid"],
+        ["instituteEnrollments", "instituteEnrollments", "studentUid"],
+        ["instituteLessonProgress", "instituteLessonProgress", "studentUid"],
+        ["instituteSubmissions", "instituteSubmissions", "studentUid"],
+        ["instituteAssessmentSubmissions", "instituteAssessmentSubmissions", "studentUid"],
+        ["instituteAttendance", "instituteAttendance", "studentUid"],
+        ["instituteCertificates", "instituteCertificates", "studentUid"],
+        ["loyaltyTransactions", "loyaltyTransactions", "customerUid"]
+      ];
+      await Promise.all(collections.map(([key, name, field]) => readOwnedCollection(key, name, field)));
+      try {
+        const benefits = await getDoc(doc(db, "customerBenefits", user.uid));
+        bundle.data.customerBenefits = benefits.exists() ? { id: benefits.id, ...benefits.data() } : null;
+      } catch {
+        bundle.data.customerBenefits = null;
+        bundle.omissions.push({ collection: "customerBenefits", reason: "Benefits record could not be retrieved." });
+      }
+      try {
+        const favourites = await getDocs(collection(db, "customerFavourites", user.uid, "items"));
+        bundle.data.favourites = favourites.docs.map(row => ({ id: row.id, ...row.data() }));
+      } catch {
+        bundle.data.favourites = [];
+        bundle.omissions.push({ collection: "customerFavourites", reason: "Saved favourites could not be retrieved." });
+      }
+      const orders = bundle.data.orders || [];
+      await Promise.all(orders.map(async order => {
+        order.relatedRecords = {};
+        for (const [key, subcollection] of [["productionEvents", "events"], ["productionMedia", "progressUpdates"], ["referenceDesigns", "referenceDesigns"]]) {
+          try {
+            const snapshot = await getDocs(collection(db, "orders", order.id, subcollection));
+            order.relatedRecords[key] = snapshot.docs.map(row => ({ id: row.id, ...row.data() }));
+          } catch {
+            order.relatedRecords[key] = [];
+            bundle.omissions.push({ collection: "orders/" + order.id + "/" + subcollection, reason: "Related order records could not be retrieved." });
+          }
+        }
+      }));
+      const tickets = bundle.data.supportTickets || [];
+      await Promise.all(tickets.map(async ticket => {
+        try {
+          const snapshot = await getDocs(collection(db, "supportTickets", ticket.id, "messages"));
+          ticket.messages = snapshot.docs.map(row => ({ id: row.id, ...row.data() }));
+        } catch {
+          ticket.messages = [];
+          bundle.omissions.push({ collection: "supportTickets/" + ticket.id + "/messages", reason: "Support conversation messages could not be retrieved." });
+        }
+      }));
+      const normalise = value => {
+        if (value && typeof value.toDate === "function") return value.toDate().toISOString();
+        if (value instanceof Date) return value.toISOString();
+        if (Array.isArray(value)) return value.map(normalise);
+        if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, normalise(child)]));
+        return value;
+      };
+      const json = JSON.stringify(normalise(bundle), null, 2);
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "mr-fop-personal-data-" + new Date().toISOString().slice(0, 10) + ".json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(bundle.omissions.length
+        ? "Your personal-data export has downloaded, but " + bundle.omissions.length + " dataset(s) could not be retrieved. Review the omissions list inside the exported file and contact the team for assistance."
+        : "Your personal-data export has downloaded. Review the file and contact the team if you believe a record is missing.");
+    } catch (err) {
+      setError(err.message || "Could not prepare your personal-data export. Please try again or submit an access request.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -100,6 +217,7 @@ export default function PrivacyRequestCenter({ user, claims }) {
       </div>
       <button type="button" onClick={refresh} disabled={loading || busy}>{loading ? "Loading…" : "Refresh requests"}</button>
     </div>
+    {!isAdmin && <div className="privacy-export-panel"><div><strong>Download a copy of your personal data</strong><p>Prepare a JSON file containing the account records currently available to your signed-in account, including orders and their timelines, appointments, measurements, payment records, support conversations and Institute records where applicable. Google Drive files themselves are not downloaded.</p></div><button type="button" className="portal-secondary" onClick={exportPersonalData} disabled={exporting || busy}>{exporting ? "Preparing your export…" : "Download my data"}</button></div>}
     {!isAdmin && <form className="portal-form privacy-request-form" onSubmit={submit}>
       <label>Request type<select value={requestType} onChange={event => setRequestType(event.target.value)}>{REQUEST_TYPES.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
       <label>Details<textarea required minLength={10} maxLength={1500} rows={4} value={details} onChange={event => setDetails(event.target.value)} placeholder="Tell us which records or corrections your request concerns. Do not include passwords or bank PINs."/></label>
